@@ -9,3 +9,4 @@ raceplotly==0.1.7
 scikit_learn==1.5.2
 streamlit==1.37.1
 streamlit_folium==0.22.0
+openpyxl
