@@ -105,15 +105,11 @@ def plot_race(df_result,geo_scale):
 
     # Get unique provinces
     df_first_year= df_result.loc[st.session_state["slider_year_2"][0]]
-    print("kkk:",df_first_year.reset_index(),"zzzz:",df_result.loc[st.session_state["slider_year_2"][1]].reset_index()[geo_scale].nunique())
     unique_geoscales = df_first_year.reset_index().sort_values(by="result", ascending=False).loc[:min(20,len(df_first_year)-1), geo_scale]
-    print("unique_provinces:\n",unique_geoscales)
 
     # Create a mapping of provinces to colors
     color_mapping = {province: "rgb"+str(colors_255[i % len(colors_255)]) for i, province in enumerate(unique_geoscales)}
-    print("UYY:",color_mapping)
     # Assign colors to the 'color' column based on the province
-    print("map:",color_mapping)
     df_result = df_result.reset_index()
     my_raceplot = barplot(df_result,
                           item_column=geo_scale,
@@ -200,10 +196,8 @@ def plot_matplotlib(col_plot, col_df, gdf_borders, df_result, geo_scale):
 
     if display_change:
         ax = axs[2, 0]
-        print("CHA:",get_df_change(df_result).head())
         df_change = get_df_change(df_result)
         gdf_result = get_geo_df_result(gdf_borders, df_change, geo_scale)
-        print("HEYO:",gdf_result.head())
         with col_plot:
             plot_matplotlib_plotter(gdf_result, ax, geo_scale)
             start_word = "Change"
@@ -246,7 +240,6 @@ def get_df_year_and_features(df_data, nom_denom_selection, year, selected_featur
     df_codes = df_codes.ffill()
 
     df = df_data[nom_denom_selection]
-    print("QWERT:",df.head())
     selected_features = selected_features_dict[nom_denom_selection]
     if df.columns.nlevels > 1:  # Check if the DataFrame has multiple column levels
         print("ZZZ:\n",df.loc[year, selected_features].droplevel(1, axis=1).head())
@@ -260,10 +253,7 @@ def get_df_year_and_features(df_data, nom_denom_selection, year, selected_featur
     df.rename(columns={df.columns[-1]: "result"}, inplace=True)
     if geo_scale != ["district"]:
         df = df_codes.merge(df, left_index=True, right_on="province")
-    print("HEHEHE:\n",geo_scale)
     if geo_scale == ["sub-region"]:
-        print("HAHAHA:\n",df.head())
-        print("bbbb:\n", df.head())
         agg_funs = {"province": lambda x: ",".join(x), "ibbs1 code": 'first', "region": "first",  "ibbs2 code": 'first', "result": "sum"}
         df = df.reset_index().groupby(["year", "sub-region"]).agg(agg_funs)
         # Replacing "alt bölgesi" with "sub-region" in the MultiIndex
@@ -280,7 +270,6 @@ def get_df_change(df_result):
         if st.session_state["display_percentage"]:
             df_change["result"] = df_change["result"] /  df_result.loc[st.session_state["year_1"],"result"] * 100
 
-    print("PPP:",df_change.head())
     return df_change
 
 
@@ -304,7 +293,6 @@ def plot(col_plot, col_df, df_data, gdf_borders, selected_features, geo_scale):
         plot_race(df_result,geo_scale[0])
     else:
         df_result = get_df_results_yeni(df_data, selected_features, geo_scale, sorted({st.session_state["year_1"], st.session_state["year_2"]}))
-        print("RESS:",df_result.head())
         if st.session_state["visualization_option"] == "Matplotlib (static)":
             plot_matplotlib(col_plot, col_df, gdf_borders, df_result, geo_scale)
         elif st.session_state["visualization_option"] == "Folium (static)":
