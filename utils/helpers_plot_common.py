@@ -35,17 +35,26 @@ def resize_folium_map(m):
     # Render the HTML
     components.html(html, height=400)
 
-def create_folium_static(gdf_borders,df_result,title):
-
+def create_folium_static(gdf_borders,df_result,title,geo_scale):
     st.markdown(f"<h3 style='text-align: center; color: grey;'>{title}</h1>", unsafe_allow_html=True)
+   # df_result = df_result.reset_index()
+    choropleth_map = folium.Map(location=[36.5, 35], zoom_start = 6.4, tiles="cartodb positron")
+   # merged = gdf_borders.merge(df_result[geo_scale+["result"]],on=geo_scale,how="right")
+    merged = gdf_borders.dissolve(by=geo_scale)[["id","geometry"]].merge(df_result, left_index=True,right_index=True)  # common index is geo_scale(province) after dissolving
+    merged=merged.reset_index()#move index(geo_scale) to a data column
+    print("\nDDD:gdf_borders\n",gdf_borders.head(),"\nDDD:df_result\n",df_result.head(),"\nDDD: merged\n",merged.head())
+    print("merged.shape",merged.shape,"type",type(merged))
+    print("type of id ",merged.dtypes,"type",type(merged))
 
-    choropleth_map = folium.Map(location=[36.5, 35], zoom_start=6.4, tiles="cartodb positron")
+    print("ğğğ:",merged.isna().sum())
+   # usmap_json_with_id = merged.set_index(keys = "id").to_json()
+    #merged["id"]=  merged["id"].astype("str")
     folium.Choropleth(
-        geo_data=gdf_borders,
+        geo_data=merged,
         name="choropleth",
-        data=df_result.reset_index(),
-        columns=["province", "result"],
-        key_on='feature.properties.province',
+        data=merged,
+        columns=geo_scale + ["result"] if "district" not in geo_scale else ["id","result"],
+        key_on=f'feature.properties.{geo_scale[0]}' if "district" not in geo_scale else "feature.properties.id",
         fill_color=st.session_state["selected_cmap"],
         nan_fill_color="purple",
         fill_opacity=0.7,
@@ -54,12 +63,27 @@ def create_folium_static(gdf_borders,df_result,title):
     ).add_to(choropleth_map)
     resize_folium_map(choropleth_map)
 
+    """
+    folium.Choropleth(
+        geo_data=gdf_borders,
+        name="choropleth",
+        data=df_result.reset_index(),
+        columns=["province", "result"],
+        key_on='feature.properties.id',
+        fill_color=st.session_state["selected_cmap"],
+        nan_fill_color="purple",
+        fill_opacity=0.7,
+        line_opacity=0.2,
+        legend_name="Result",
+    ).add_to(choropleth_map)
+    resize_folium_map(choropleth_map)
+    """
 def get_geo_df_result(gdf_borders, df_result, geo_scale):
     if "district" not in geo_scale:
      #   df_result = df_result.reset_index()
         print("\nAAA:\n",gdf_borders.head(),"\nBBB:\n",df_result.head())
         print("\nCCC:\n",gdf_borders.dissolve(by=geo_scale).head())
-        gdf_result = gdf_borders.dissolve(by=geo_scale).merge(df_result[["result"]],left_index=True,right_index=True)  # common index is province
+        gdf_result = gdf_borders.dissolve(by=geo_scale).merge(df_result[["result"]],left_index=True,right_index=True)  # after dissolving index becomes geo_scal,so common index is geo_scale(example:province)
         print("\nEEE:\n",gdf_result.head())
     else:
         gdf_result = gdf_borders.merge(df_result, on=geo_scale)  # gdf_results.append(gdf_borders.merge(df_result, left_on=geo_scale, right_on=geo_scale)),
@@ -80,7 +104,7 @@ def plot_folium_static(col_plot, col_df, gdf_borders, df_result, geo_scale, inpu
 
     for i, year in enumerate(years):
         with col_plot:
-            create_folium_static(gdf_borders, df_result.loc[year],f"Result for year {year}")
+            create_folium_static(gdf_borders, df_result.loc[year],f"Result for year {year}", geo_scale)
         col_df.markdown('<div class="dataframe-margin">', unsafe_allow_html=True)
         col_df.dataframe(df_result.loc[year])
         col_df.markdown('</div>', unsafe_allow_html=True)
@@ -93,7 +117,7 @@ def plot_folium_static(col_plot, col_df, gdf_borders, df_result, geo_scale, inpu
             start_word = "Relative change in ratio"
         title = f"{start_word} between years {st.session_state.year_1} and {st.session_state.year_2}"
         with col_plot:
-            create_folium_static(gdf_borders,df_change, title)
+            create_folium_static(gdf_borders,df_change, title,geo_scale)
         col_df.markdown('<div class="dataframe-margin">', unsafe_allow_html=True)
         col_df.dataframe(df_change)
         col_df.markdown('</div>', unsafe_allow_html=True)
@@ -234,12 +258,13 @@ def plot_matplotlib(col_plot, col_df, gdf_borders, df_result, geo_scale):
 
 def get_df_year_and_features(df_data, nom_denom_selection, year, selected_features_dict, geo_scale):
 
-    df_codes = pd.read_excel("data/preprocessed/region_codes.xlsx", index_col=-1)
+    df_codes = pd.read_csv("data/preprocessed/region_codes.csv", index_col=0)
     #df_codes = pd.read_excel("data/updated_excel_file.xlsx", index_col=-1)
 
     df_codes = df_codes.ffill()
 
     df = df_data[nom_denom_selection]
+    print("START:",df.head())
     selected_features = selected_features_dict[nom_denom_selection]
     if df.columns.nlevels > 1:  # Check if the DataFrame has multiple column levels
         print("ZZZ:\n",df.loc[year, selected_features].droplevel(1, axis=1).head())
@@ -251,6 +276,8 @@ def get_df_year_and_features(df_data, nom_denom_selection, year, selected_featur
         else:  # if it is a dataframe, then sum column values along horizontal axis
             df = pd.DataFrame(df.loc[year, selected_features].sum(axis=1))  # .reset_index()
     df.rename(columns={df.columns[-1]: "result"}, inplace=True)
+    print("geo_scale:",geo_scale,"GGG:",df.head())
+    print("\ndf_codes HHH:",df_codes.head())
     if geo_scale != ["district"]:
         df = df_codes.merge(df, left_index=True, right_on="province")
     if geo_scale == ["sub-region"]:
@@ -260,6 +287,7 @@ def get_df_year_and_features(df_data, nom_denom_selection, year, selected_featur
      #   df.index = pd.MultiIndex.from_tuples([(year, region.replace("alt bölgesi", "sub-region")) for year, region in df.index] )
         print("FFF:\n", df.head())
     elif geo_scale == ["region"]:
+        print("SSS:",df.head())
         agg_funs = {"province": lambda x: ",".join(x), "ibbs1 code": 'first', "sub-region": lambda x: ",".join(x),  "ibbs2 code": 'first', "result": "sum"}
         df = df.reset_index().groupby(["year", "region"]).agg(agg_funs)
     return df
@@ -294,6 +322,7 @@ def plot(col_plot, col_df, df_data, gdf_borders, selected_features, geo_scale):
     else:
         df_result = get_df_results_yeni(df_data, selected_features, geo_scale, sorted({st.session_state["year_1"], st.session_state["year_2"]}))
         if st.session_state["visualization_option"] == "Matplotlib (static)":
+            print("RRR:",df_result.head(),"PPP:",gdf_borders.head())
             plot_matplotlib(col_plot, col_df, gdf_borders, df_result, geo_scale)
         elif st.session_state["visualization_option"] == "Folium (static)":
             plot_folium_static(col_plot, col_df, gdf_borders, df_result, geo_scale)

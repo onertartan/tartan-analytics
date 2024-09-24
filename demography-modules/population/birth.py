@@ -16,7 +16,7 @@ def get_data(geo_scale_code):
     else:
         file_path = "data/preprocessed/population/birth-district-2014-2023.csv"
         df = pd.read_csv(file_path, index_col=[0, 1, 2], header=[0])
-        gdf_borders = gpd.read_file("data/raw/gdf_borders_district.geojson")
+        gdf_borders = gpd.read_file("data/preprocessed/gdf_borders_district.geojson")
 
 
     df_data_denom = pd.read_csv("data/preprocessed/population/age-sex-ibbs3-2007-2023.csv", index_col=[0, 1], header=[0, 1])

@@ -12,9 +12,8 @@ def get_data(geo_scale_code):
     if geo_scale_code is not None: # district
         gdf_borders = gpd.read_file("data/preprocessed/gdf_borders_ibbs3.geojson")
         df = pd.read_csv("data/preprocessed/population/age-sex-ibbs3-2007-2023.csv", index_col=[0, 1],  header=[0, 1])
-
     else:
-        gdf_borders = gpd.read_file("data/raw/gdf_borders_district.geojson")
+        gdf_borders = gpd.read_file("data/preprocessed/gdf_borders_district.geojson")
         df = pd.read_csv("data/preprocessed/population/age-sex-district-2018-2023.csv", index_col=[0, 1, 2], header=[0, 1])
 
     df = df.sort_index()

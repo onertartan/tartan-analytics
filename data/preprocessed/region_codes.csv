@@ -1,0 +1,163 @@
+province,ibbs1 code,region,ibbs2 code,sub-region,ibbs3 code
+İstanbul,TR1,Istanbul,TR10,"İstanbul 
+sub-region",TR100
+Tekirdağ,TR2,Western Marmara,TR21,"Tekirdağ 
+sub-region",TR211
+Edirne,TR2,Western Marmara,TR21,"Tekirdağ 
+sub-region",TR212
+Kırklareli,TR2,Western Marmara,TR21,"Tekirdağ 
+sub-region",TR213
+Balıkesir,TR2,Western Marmara,TR22,"Balıkesir 
+sub-region",TR221
+Çanakkale,TR2,Western Marmara,TR22,"Balıkesir 
+sub-region",TR222
+İzmir,TR3,Aegean,TR31,"İzmir 
+sub-region",TR310
+Aydın,TR3,Aegean,TR32,"Aydın 
+sub-region",TR321
+Denizli,TR3,Aegean,TR32,"Aydın 
+sub-region",TR322
+Muğla,TR3,Aegean,TR32,"Aydın 
+sub-region",TR323
+Manisa,TR3,Aegean,TR33,"Manisa 
+sub-region",TR331
+Afyonkarahisar,TR3,Aegean,TR33,"Manisa 
+sub-region",TR332
+Kütahya,TR3,Aegean,TR33,"Manisa 
+sub-region",TR333
+Uşak,TR3,Aegean,TR33,"Manisa 
+sub-region",TR334
+Bursa,TR4,Eastern Marmara,TR41,"Bursa 
+sub-region",TR411
+Eskişehir,TR4,Eastern Marmara,TR41,"Bursa 
+sub-region",TR412
+Bilecik,TR4,Eastern Marmara,TR41,"Bursa 
+sub-region",TR413
+Kocaeli,TR4,Eastern Marmara,TR42,"Kocaeli 
+sub-region",TR421
+Sakarya,TR4,Eastern Marmara,TR42,"Kocaeli 
+sub-region",TR422
+Düzce,TR4,Eastern Marmara,TR42,"Kocaeli 
+sub-region",TR423
+Bolu,TR4,Eastern Marmara,TR42,"Kocaeli 
+sub-region",TR424
+Yalova,TR4,Eastern Marmara,TR42,"Kocaeli 
+sub-region",TR425
+Ankara,TR5,Western Anatolia,TR51,"Ankara 
+sub-region",TR511
+Konya,TR5,Western Anatolia,TR52,"Konya 
+sub-region",TR521
+Karaman,TR5,Western Anatolia,TR52,"Konya 
+sub-region",TR522
+Antalya,TR6,Mediterranean,TR61,"Antalya 
+sub-region",TR611
+Isparta,TR6,Mediterranean,TR61,"Antalya 
+sub-region",TR612
+Burdur,TR6,Mediterranean,TR61,"Antalya 
+sub-region",TR613
+Adana,TR6,Mediterranean,TR62,"Adana 
+sub-region",TR621
+Mersin,TR6,Mediterranean,TR62,"Adana 
+sub-region",TR622
+Hatay,TR6,Mediterranean,TR63,"Hatay 
+sub-region",TR631
+Kahramanmaraş,TR6,Mediterranean,TR63,"Hatay 
+sub-region",TR632
+Osmaniye,TR6,Mediterranean,TR63,"Hatay 
+sub-region",TR633
+Kırıkkale,TR7,Central Anatolia,TR71,"Kırıkkale 
+sub-region",TR711
+Aksaray,TR7,Central Anatolia,TR71,"Kırıkkale 
+sub-region",TR712
+Niğde,TR7,Central Anatolia,TR71,"Kırıkkale 
+sub-region",TR713
+Nevşehir,TR7,Central Anatolia,TR71,"Kırıkkale 
+sub-region",TR714
+Kırşehir,TR7,Central Anatolia,TR71,"Kırıkkale 
+sub-region",TR715
+Kayseri,TR7,Central Anatolia,TR72,"Kayseri 
+sub-region",TR721
+Sivas,TR7,Central Anatolia,TR72,"Kayseri 
+sub-region",TR722
+Yozgat,TR7,Central Anatolia,TR72,"Kayseri 
+sub-region",TR723
+Zonguldak,TR8,Western Black Sea,TR81,"Zonguldak 
+sub-region",TR811
+Karabük,TR8,Western Black Sea,TR81,"Zonguldak 
+sub-region",TR812
+Bartın,TR8,Western Black Sea,TR81,"Zonguldak 
+sub-region",TR813
+Kastamonu,TR8,Western Black Sea,TR82,"Kastamonu 
+sub-region",TR821
+Çankırı,TR8,Western Black Sea,TR82,"Kastamonu 
+sub-region",TR822
+Sinop,TR8,Western Black Sea,TR82,"Kastamonu 
+sub-region",TR823
+Samsun,TR8,Western Black Sea,TR83,"Samsun 
+sub-region",TR831
+Tokat,TR8,Western Black Sea,TR83,"Samsun 
+sub-region",TR832
+Çorum,TR8,Western Black Sea,TR83,"Samsun 
+sub-region",TR833
+Amasya,TR8,Western Black Sea,TR83,"Samsun 
+sub-region",TR834
+Trabzon,TR9,Eastern Black Sea,TR90,"Trabzon 
+sub-region",TR901
+Ordu,TR9,Eastern Black Sea,TR90,"Trabzon 
+sub-region",TR902
+Giresun,TR9,Eastern Black Sea,TR90,"Trabzon 
+sub-region",TR903
+Rize,TR9,Eastern Black Sea,TR90,"Trabzon 
+sub-region",TR904
+Artvin,TR9,Eastern Black Sea,TR90,"Trabzon 
+sub-region",TR905
+Gümüşhane,TR9,Eastern Black Sea,TR90,"Trabzon 
+sub-region",TR906
+Erzurum,TRA,Northeastern Anatolia,TRA1,"Erzurum 
+sub-region",TRA11
+Erzincan,TRA,Northeastern Anatolia,TRA1,"Erzurum 
+sub-region",TRA12
+Bayburt,TRA,Northeastern Anatolia,TRA1,"Erzurum 
+sub-region",TRA13
+Ağrı,TRA,Northeastern Anatolia,TRA2,"Ağrı 
+sub-region",TRA21
+Kars,TRA,Northeastern Anatolia,TRA2,"Ağrı 
+sub-region",TRA22
+Iğdır,TRA,Northeastern Anatolia,TRA2,"Ağrı 
+sub-region",TRA23
+Ardahan,TRA,Northeastern Anatolia,TRA2,"Ağrı 
+sub-region",TRA24
+Malatya,TRB,Middle East Anatolia,TRB1,"Malatya 
+sub-region",TRB11
+Elazığ,TRB,Middle East Anatolia,TRB1,"Malatya 
+sub-region",TRB12
+Bingöl,TRB,Middle East Anatolia,TRB1,"Malatya 
+sub-region",TRB13
+Tunceli,TRB,Middle East Anatolia,TRB1,"Malatya 
+sub-region",TRB14
+Van,TRB,Middle East Anatolia,TRB2,"Van 
+sub-region",TRB21
+Muş,TRB,Middle East Anatolia,TRB2,"Van 
+sub-region",TRB22
+Bitlis,TRB,Middle East Anatolia,TRB2,"Van 
+sub-region",TRB23
+Hakkari,TRB,Middle East Anatolia,TRB2,"Van 
+sub-region",TRB24
+Gaziantep,TRC,Southeastern Anatolia,TRC1,"Gaziantep 
+sub-region",TRC11
+Adıyaman,TRC,Southeastern Anatolia,TRC1,"Gaziantep 
+sub-region",TRC12
+Kilis,TRC,Southeastern Anatolia,TRC1,"Gaziantep 
+sub-region",TRC13
+Şanlıurfa,TRC,Southeastern Anatolia,TRC2,"Şanlıurfa 
+sub-region",TRC21
+Diyarbakır,TRC,Southeastern Anatolia,TRC2,"Şanlıurfa 
+sub-region",TRC22
+Mardin,TRC,Southeastern Anatolia,TRC3,"Mardin 
+sub-region",TRC31
+Batman,TRC,Southeastern Anatolia,TRC3,"Mardin 
+sub-region",TRC32
+Şırnak,TRC,Southeastern Anatolia,TRC3,"Mardin 
+sub-region",TRC33
+Siirt,TRC,Southeastern Anatolia,TRC3,"Mardin 
+sub-region",TRC34

@@ -20,7 +20,7 @@ def get_data(geo_scale_code):
         gdf_borders = gpd.read_file("data/preprocessed/gdf_borders_ibbs3.geojson")
    # df.index.set_names('year', level=0, inplace=True)
     else:
-        gdf_borders = gpd.read_file("data/raw/gdf_borders_district.geojson")
+        gdf_borders = gpd.read_file("data/preprocessed/gdf_borders_district.geojson")
         df = pd.read_csv("data/preprocessed/population/age-sex-maritial-status-district-2018-2023.csv", index_col=[0, 1, 2], header=[0, 1, 2])
 
     df_data = {"nominator": df, "denominator": df}
