@@ -35,24 +35,17 @@ def resize_folium_map(m):
     # Render the HTML
     components.html(html, height=400)
 
-def create_folium_static(gdf_borders,df_result,title,geo_scale):
+def create_folium_static(gdf_result,title,geo_scale):
     st.markdown(f"<h3 style='text-align: center; color: grey;'>{title}</h1>", unsafe_allow_html=True)
    # df_result = df_result.reset_index()
     choropleth_map = folium.Map(location=[36.5, 35], zoom_start = 6.4, tiles="cartodb positron")
-   # merged = gdf_borders.merge(df_result[geo_scale+["result"]],on=geo_scale,how="right")
-    merged = gdf_borders.dissolve(by=geo_scale)[["id","geometry"]].merge(df_result, left_index=True,right_index=True)  # common index is geo_scale(province) after dissolving
-    merged=merged.reset_index()#move index(geo_scale) to a data column
-    print("\nDDD:gdf_borders\n",gdf_borders.head(),"\nDDD:df_result\n",df_result.head(),"\nDDD: merged\n",merged.head())
-    print("merged.shape",merged.shape,"type",type(merged))
-    print("type of id ",merged.dtypes,"type",type(merged))
-
-    print("ğğğ:",merged.isna().sum())
-   # usmap_json_with_id = merged.set_index(keys = "id").to_json()
+    gdf_result = gdf_result.reset_index()
+    # usmap_json_with_id = merged.set_index(keys = "id").to_json()
     #merged["id"]=  merged["id"].astype("str")
     folium.Choropleth(
-        geo_data=merged,
+        geo_data=gdf_result,
         name="choropleth",
-        data=merged,
+        data=gdf_result,
         columns=geo_scale + ["result"] if "district" not in geo_scale else ["id","result"],
         key_on=f'feature.properties.{geo_scale[0]}' if "district" not in geo_scale else "feature.properties.id",
         fill_color=st.session_state["selected_cmap"],
@@ -79,15 +72,17 @@ def create_folium_static(gdf_borders,df_result,title,geo_scale):
     resize_folium_map(choropleth_map)
     """
 def get_geo_df_result(gdf_borders, df_result, geo_scale):
-    if "district" not in geo_scale:
+   # if "district" not in geo_scale:
      #   df_result = df_result.reset_index()
         print("\nAAA:\n",gdf_borders.head(),"\nBBB:\n",df_result.head())
         print("\nCCC:\n",gdf_borders.dissolve(by=geo_scale).head())
-        gdf_result = gdf_borders.dissolve(by=geo_scale).merge(df_result[["result"]],left_index=True,right_index=True)  # after dissolving index becomes geo_scal,so common index is geo_scale(example:province)
+        print("before:\n",gdf_borders.shape,"\n")
+        gdf_result = gdf_borders.dissolve(by=geo_scale)[["id","geometry"]].merge(df_result,left_index=True,right_index=True)  # after dissolving index becomes geo_scal,so common index is geo_scale(example:province)
+        print("after:\n",gdf_result.shape,"\n")
         print("\nEEE:\n",gdf_result.head())
-    else:
-        gdf_result = gdf_borders.merge(df_result, on=geo_scale)  # gdf_results.append(gdf_borders.merge(df_result, left_on=geo_scale, right_on=geo_scale)),
-    return gdf_result
+   # else:
+   #     gdf_result = gdf_borders.merge(df_result, on=geo_scale)  # gdf_results.append(gdf_borders.merge(df_result, left_on=geo_scale, right_on=geo_scale)),
+        return gdf_result
 
 def plot_folium_static(col_plot, col_df, gdf_borders, df_result, geo_scale, input_color_theme="Viridis"):
     col_df.write(
@@ -103,21 +98,25 @@ def plot_folium_static(col_plot, col_df, gdf_borders, df_result, geo_scale, inpu
     years = df_result.index.get_level_values(0).unique()
 
     for i, year in enumerate(years):
+        gdf_result = get_geo_df_result(gdf_borders, df_result.loc[year], geo_scale)
         with col_plot:
-            create_folium_static(gdf_borders, df_result.loc[year],f"Result for year {year}", geo_scale)
+            create_folium_static(gdf_result,f"Result for year {year}", geo_scale)
+
         col_df.markdown('<div class="dataframe-margin">', unsafe_allow_html=True)
-        col_df.dataframe(df_result.loc[year])
+        col_df.dataframe(df_result.loc[year].sort_values(by="result",ascending=False))
         col_df.markdown('</div>', unsafe_allow_html=True)
 
     #      folium_static(choropleth_map, width=900, height=400)
     if display_change:
         df_change = get_df_change(df_result)
+        gdf_result = get_geo_df_result(gdf_borders, df_change, geo_scale)
+
         start_word = "Change"
         if st.session_state["display_percentage"]:
             start_word = "Relative change in ratio"
         title = f"{start_word} between years {st.session_state.year_1} and {st.session_state.year_2}"
         with col_plot:
-            create_folium_static(gdf_borders,df_change, title,geo_scale)
+            create_folium_static(gdf_result, title,geo_scale)
         col_df.markdown('<div class="dataframe-margin">', unsafe_allow_html=True)
         col_df.dataframe(df_change)
         col_df.markdown('</div>', unsafe_allow_html=True)
@@ -151,24 +150,36 @@ def plot_race(df_result,geo_scale):
 
     st.plotly_chart(fig, theme="streamlit", use_container_width=True)
 
-def folium_interactive():
-    """
-          with col_plot:
-             choropleth_map = make_choropleth(gdf_results[i].reset_index())
-             folium_static(choropleth_map, width=1000, height=250) #!!!!!
+def folium_interactive_plotter(gdf_result):
+    gdf_result = gdf_result.reset_index()
+    print("TRE:",gdf_result.dtypes,gdf_result.head())
 
-             m= gdf_results[i].explore(
-                  column="result",  # make choropleth based on "BoroName" column
-                  tooltip="province",  # show "BoroName" value in tooltip (on hover)
-                  popup=True,  # show all values in popup (on click)
-                  tiles="CartoDB positron",  # use "CartoDB positron" tiles
-                  cmap="Set1",  # use "Set1" matplotlib colormap
-                  style_kwds=dict(color="black"
-                                  ,line_width=.01),  # use black outline
-              )
-             folium_static(m)
-    """
-    pass
+
+    m = gdf_result.explore(
+        column="result",  # make choropleth based on "BoroName" column
+        tooltip="province",  # show "BoroName" value in tooltip (on hover)
+        popup=True,  # show all values in popup (on click)
+        tiles="CartoDB positron",  # use "CartoDB positron" tiles
+        cmap= st.session_state["selected_cmap"],  # use "Set1" matplotlib colormap
+    columns = [col  for col in gdf_result.columns if col!="year"],
+        style_kwds=dict(color="black", line_width=.01),  # use black outline
+    )
+
+    folium_static(m)
+def plot_folium_interactive(col_plot, col_df, gdf_borders, df_result, geo_scale):
+    gdf_result = get_geo_df_result(gdf_borders, df_result, geo_scale)
+
+    display_change = (st.session_state["year_1"] != st.session_state["year_2"])
+    fig, axs = figure_setup(display_change)
+    years = df_result.index.get_level_values(0).unique()
+    for i,year in enumerate(years):
+        ax = axs[i,0]
+        folium_interactive_plotter(gdf_result)
+    if display_change:
+        ax = axs[2, 0]
+        df_change = get_df_change(df_result)
+        gdf_result = get_geo_df_result(gdf_borders, df_change, geo_scale)
+        folium_interactive_plotter(gdf_result)
 
 def plot_matplotlib_plotter(gdf_result,ax,geo_scale):
     norm = None
@@ -261,7 +272,6 @@ def get_df_year_and_features(df_data, nom_denom_selection, year, selected_featur
     df_codes = pd.read_csv("data/preprocessed/region_codes.csv", index_col=0)
     #df_codes = pd.read_excel("data/updated_excel_file.xlsx", index_col=-1)
 
-    df_codes = df_codes.ffill()
 
     df = df_data[nom_denom_selection]
     print("START:",df.head())
@@ -280,6 +290,7 @@ def get_df_year_and_features(df_data, nom_denom_selection, year, selected_featur
     print("\ndf_codes HHH:",df_codes.head())
     if geo_scale != ["district"]:
         df = df_codes.merge(df, left_index=True, right_on="province")
+        print("\nJJJ:\n",df.head())
     if geo_scale == ["sub-region"]:
         agg_funs = {"province": lambda x: ",".join(x), "ibbs1 code": 'first', "region": "first",  "ibbs2 code": 'first', "result": "sum"}
         df = df.reset_index().groupby(["year", "sub-region"]).agg(agg_funs)
@@ -294,14 +305,14 @@ def get_df_year_and_features(df_data, nom_denom_selection, year, selected_featur
 
 def get_df_change(df_result):
     if st.session_state["year_1"] != st.session_state["year_2"]:  # display_change: Show the change between end and start years in the third figure
-        df_change =  pd.DataFrame({"result":df_result.loc[st.session_state["year_2"],"result"]- df_result.loc[st.session_state["year_1"],"result"] })
+        df_change = pd.DataFrame({"result":df_result.loc[st.session_state["year_2"],"result"]- df_result.loc[st.session_state["year_1"],"result"] })
         if st.session_state["display_percentage"]:
-            df_change["result"] = df_change["result"] /  df_result.loc[st.session_state["year_1"],"result"] * 100
+            df_change["result"] = df_change["result"] / df_result.loc[st.session_state["year_1"],"result"] * 100
 
     return df_change
 
 
-def get_df_results_yeni(df_data,selected_features, geo_scale,years):
+def get_df_results_yeni(df_data, selected_features, geo_scale, years):
     df_result = df_nom_result = get_df_year_and_features(df_data, "nominator", years, selected_features, geo_scale)
     if st.session_state["display_percentage"]:
         # df_data_nom and df_data_denom is same for maritial_status, sex-age pages, but different for birth
@@ -326,3 +337,5 @@ def plot(col_plot, col_df, df_data, gdf_borders, selected_features, geo_scale):
             plot_matplotlib(col_plot, col_df, gdf_borders, df_result, geo_scale)
         elif st.session_state["visualization_option"] == "Folium (static)":
             plot_folium_static(col_plot, col_df, gdf_borders, df_result, geo_scale)
+        else:
+            plot_folium_interactive(col_plot, col_df, gdf_borders, df_result, geo_scale)
