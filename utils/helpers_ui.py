@@ -4,7 +4,10 @@ from matplotlib import pyplot as plt
 from utils.dashboard_components import basic_sidebar_controls
 locale.setlocale(locale.LC_ALL, 'tr_TR.utf8')
 
+
+
 def ui_basic_setup_common(num_sub_cols):
+
     st.markdown( """<style>.block-container{padding-top: 2rem; padding-left: 1rem; padding-right: 2rem; padding-bottom: 0rem; margin-top: 2rem;}</style>""",
         unsafe_allow_html=True)
     st.markdown(""" <style>[role=checkbox]{ gap: 3rem; }</style>""", unsafe_allow_html=True)
@@ -33,7 +36,7 @@ def ui_basic_setup_names(page_name, df_data):
         st.session_state["select_both_sexes_" + page_name] = False
 
     if page_name == "names or surnames":
-        name_surname = col_1.radio("Select name or surname", ["Name", "Surname"],key="name_surname_rb").lower()
+        name_surname = col_1.radio("Select name or surname", ["Name", "Surname"], key="name_surname_rb").lower()
         if name_surname == "surname":
             st.session_state["select_both_sexes_" + page_name] = True
         sex = col_2.radio("Choose sex", ["Male", "Female"], disabled=st.session_state["select_both_sexes_"+page_name],key="sex_"+page_name).lower()
@@ -50,7 +53,7 @@ def ui_basic_setup_names(page_name, df_data):
 
     choice = col_3.radio("Or select an displaying option",
                             [f"Show the most common {page_name}", f"Select {page_name} and top-n number to filter"],
-                            horizontal=True, disabled=disable_when_clustering,key="secondary_option_" + page_name)
+                            horizontal=True, disabled=disable_when_clustering, key="secondary_option_" + page_name)
 
     disable_top_n_selection = not disable_when_clustering and choice == f"Show the most common {page_name}"
 

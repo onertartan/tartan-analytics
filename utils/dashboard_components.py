@@ -1,4 +1,6 @@
 import streamlit as st
+import extra_streamlit_components as stx
+
 
 def update_selected_slider_and_years(slider_index):
     st.session_state.selected_slider = slider_index
@@ -9,17 +11,15 @@ def update_selected_slider_and_years(slider_index):
             st.session_state.slider_year_2[1])
 
 
-def basic_sidebar_controls(start_year, end_year):
+def basic_sidebar_controls(start_year, end_year, module_name=None):
     """
        Renders the sidebar controls
        Parameters: starting year, ending year
-       """
+    """
     # Inject custom CSS to set the width of the sidebar
     st.markdown("""<style>section[data-testid="stSidebar"] {width: 300px; !important;} </style> """,  unsafe_allow_html=True)
     with (st.sidebar):
         st.header('Visualization options')
-        # Create a container to hold sliders
-        st.markdown("<div class='slider-container'>", unsafe_allow_html=True)
         # Create a slider to select a single year
         st.slider("Select a year", start_year, end_year, 2023, on_change=update_selected_slider_and_years, args=[1],
                   key="slider_year_1")
@@ -37,12 +37,25 @@ def basic_sidebar_controls(start_year, end_year):
             st.write("Start and end years are selected from the second slider.")
             st.write("Selected start year:", st.session_state.year_1, "\nSelected end year:", st.session_state.year_2)
 
-        if "visualization_option" not in st.session_state:
-            st.session_state["visualization_option"] = "Matplotlib (static)"
-        st.session_state["visualization_option"] = st.radio("Choose visualization option", ["Matplotlib (static)", "Folium (static)", "Folium interactive", "Plotly race chart"],key="visualiztion_option")
+        if "selected_tab" not in st.session_state:
+            st.session_state["selected_tab"] = "tab_map"
+        tabs = [stx.TabBarItemData(id="tab_map", title="🗺️ Map / Race plot",description="")]
+        if module_name == None:
+            st.session_state["selected_tab"] = tabs.append(stx.TabBarItemData(id="tab_pyramid", title="🔺Population Pyramid",description="") )
+
+     #   tab_map, tab_pyramid= st.tabs(["Map", "Population pyramid"])
+        st.session_state["selected_tab"] = stx.tab_bar(data=tabs, default="tab_map")
 
 
-def sidebar_controls(start_year, end_year):  # start_year=2007,end_year=2023
+        if st.session_state["selected_tab"] == "tab_map":
+            if "visualization_option" not in st.session_state:
+                st.session_state["visualization_option"] = "Matplotlib (static)"
+            st.session_state["visualization_option"] = st.radio("Choose visualization option", ["Matplotlib (static)","Folium (static)", "Folium interactive", "Plotly race chart"])
+        else:
+            st.session_state["visualization_option"] = st.radio("Choose visualization option", ["Matplotlib", "Plotly"] )
+
+
+def sidebar_controls(start_year, end_year, module_name=None):  # start_year=2007,end_year=2023
 
     basic_sidebar_controls(start_year, end_year)
     if "colormap_list" not in st.session_state:

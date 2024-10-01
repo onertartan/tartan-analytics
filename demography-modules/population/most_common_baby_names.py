@@ -1,4 +1,4 @@
-from utils.helpers_names import main
+from utils.helpers_names import names_main
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
@@ -16,10 +16,10 @@ def get_data():
     df_data["male"] = pd.read_csv(file_path,index_col=[0,1])
     file_path = "data/preprocessed/population/most_common_baby_names_female.csv"
     df_data["female"] = pd.read_csv(file_path, index_col=[0, 1])
-    gdf_borders = gpd.read_file("data/gdf_borders_ibbs3.geojson")
+    gdf_borders = gpd.read_file("data/preprocessed/gdf_borders_ibbs3.geojson")
     return df_data, gdf_borders
 
 
 page_name = "baby names"
-main(page_name, get_data)
+names_main(page_name, get_data)
 

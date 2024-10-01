@@ -1,5 +1,5 @@
 from utils.dashboard_components import sidebar_controls
-from utils.helpers_plot_common import plot
+from utils.plot_map_common import plot
 import geopandas as gpd
 import pandas as pd
 import streamlit as st
@@ -32,7 +32,7 @@ else:
     geo_scale = [geo_scale[:geo_scale.index("(")].strip()]
 
 
-st.markdown("""<style> [role=radiogroup]{ gap: .8rem; } </style>""", unsafe_allow_html=True)
+#st.markdown("""<style> [role=radiogroup]{ gap: .8rem; } </style>""", unsafe_allow_html=True)
 cols[1].radio("Age group selection", ["Custom selection","Quick selection for total age dependency ratio",
                                      "Quick selection for child age dependency ratio","Quick selection for old-age dependency ratio"],
                                     key="sex_age_age_group_selection")
@@ -41,7 +41,7 @@ cols[2].image("images/age-dependency.jpg")
 page_name = "sex_age"
 cols_nom_denom = ui_basic_setup_common(num_sub_cols=2)
 df_data, gdf_borders, age_group_keys = get_data(geo_scale_code)
-sidebar_controls(df_data["nominator"].index.get_level_values(0).min(),df_data["nominator"].index.get_level_values(0).max() )
+sidebar_controls(df_data["nominator"].index.get_level_values(0).min(), df_data["nominator"].index.get_level_values(0).max() )
 
 if page_name+'_age_checkbox_group' not in st.session_state:
     st.session_state[page_name+"_age_checkbox_group"] = None
@@ -53,8 +53,8 @@ for nom_denom in cols_nom_denom.keys():
     selected_features[nom_denom] = (feature_choice(cols_nom_denom[nom_denom][0], "sex", nom_denom),
                                     feature_choice(cols_nom_denom[nom_denom][1], "age", nom_denom, 4, age_group_keys, page_name) )# Page
 
-st.write("""<style>[data-testid="stHorizontalBlock"]{align-items: center;}</style>""",unsafe_allow_html=True)
-col_plot, col_df = st.columns((4 ,1), gap="small")
+st.write("""<style>[data-testid="stHorizontalBlock"]{align-items: center;}</style>""", unsafe_allow_html=True)
+col_plot, col_df = st.columns((4, 1), gap="small")
 plot(col_plot, col_df, df_data, gdf_borders, selected_features, geo_scale)
 
 # Create a Folium map

@@ -3,9 +3,9 @@ import geopandas as gpd
 import streamlit as st
 from utils.checkbox_group import Checkbox_Group
 from utils.dashboard_components import sidebar_controls
-from utils.helpers_plot_common import plot
+from utils.plot_map_common import plot
 from utils.helpers_ui import ui_basic_setup_common
-from utils.helpers_common  import feature_choice
+from utils.helpers_common import feature_choice
 
 @st.cache_data
 def get_data(geo_scale_code):
@@ -27,7 +27,22 @@ def get_data(geo_scale_code):
 
 cols = st.columns([1, 1.4, 2.6, 1.2], gap="small")
 
+style = """<style>div.row-widget.stRadio > div {
+ flex-direction: column;
+ align-items: stretch;
+}
+
+div.row-widget.stRadio > div[role="radiogroup"] > label[data-baseweb="radio"]  {
+ background-color: #9AC5F4;
+ padding-right: 10px;
+ padding-left: 4px;
+ padding-bottom: 3px;
+ margin: 4px;
+}</style>"""
+#st.markdown(f'<style> {style}</style>', unsafe_allow_html=True)
+
 geo_scale = cols[0].radio("Choose geographic scale", ["province (ibbs3)", "sub-region (ibbs2)", "region (ibbs1)", "district"])
+
 if geo_scale == "district":
     geo_scale = ["district"]
     geo_scale_code = None
@@ -41,7 +56,7 @@ cols[2].image("images/fertility-rate.jpg")
 cols_nom_denom = ui_basic_setup_common(num_sub_cols=2)
 #start_year, end_year= (2009,2023) if geo_scale == "ibbs3" else (2018,2023)
 df_data, gdf_borders, age_group_keys = get_data(geo_scale_code)
-sidebar_controls(df_data["nominator"].index.get_level_values(0).min(),df_data["nominator"].index.get_level_values(0).max() )
+sidebar_controls(df_data["nominator"].index.get_level_values(0).min(),df_data["nominator"].index.get_level_values(0).max(),"birth_module" )
 
 
 page_name = "birth"

@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 from sklearn.cluster import KMeans
-from utils.helpers_plot_names import plot_geopandas
+from utils.plot_map_names import plot_geopandas
 from utils.helpers_ui import figure_setup, ui_basic_setup_names
 
 
@@ -17,7 +17,7 @@ def set_session_state_variables(page_name):
     if "name_surname_rb"  not in st.session_state:
         st.session_state["name_surname_rb"] = "Name"
 
-def main(page_name, get_data_func):
+def names_main(page_name, get_data_func):
     set_session_state_variables(page_name)
     df_data, gdf_borders = get_data_func()
     ui_basic_setup_names(page_name, df_data)

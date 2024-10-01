@@ -12,6 +12,8 @@ def extract_years(filename):
     if match:
         return int(match.group(1)), int(match.group(2))
     return None  # Return None if no match found
+
+
 def get_file_path_by_suffix(folder_name,file_prefix, suffix):
     folder_path = "data/preprocessed/"+folder_name
     for filename in os.listdir(folder_path):
