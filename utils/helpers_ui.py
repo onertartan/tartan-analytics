@@ -14,8 +14,11 @@ def ui_basic_setup_common(num_sub_cols):
 
     cols_title = st.columns(2)
     cols_title[0].write(":red[Select primary parameters.]")
+
     # Checkbox to switch between population and percentage display
-    cols_title[1].checkbox('Check to get proportion. \n Uncheck to show counts of primary parameters.)', key="display_percentage")
+    cols_title[1].checkbox("Check to get proportion.", key="display_percentage")
+    cols_title[1].write("Ratio: primary parameters/secondary parameters.")
+    cols_title[1].write("Uncheck to show counts of primary parameters.")
 
     cols_title[1].write(":blue[Select secondary parameters.]")
     if num_sub_cols == 3:

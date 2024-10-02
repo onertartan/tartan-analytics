@@ -3,32 +3,42 @@ import streamlit as st
 from matplotlib import pyplot as plt, patches
 
 
-def get_pyramid_dfs(df_data):
+def get_pyramid_dfs(df_data,selected_features):
     # Adding Male data to the figure
-    df = df_data["nominator"].loc[st.session_state["slider_year_1"]].sum()
+    print("UUU:",df_data["nominator"].head(),"selected_features",selected_features)
+    selected_features = selected_features["nominator"]
+    df = df_data["nominator"].loc[2008:2008]
     print("TTT:",df)
     age_groups_ordered = [f"{i}-{i + 4}" for i in range(0, 90, 5)] + ["90+"]
     df_male = df.loc["male"].loc[age_groups_ordered]
     df_female = df.loc["female"].loc[age_groups_ordered]
     return df_male, df_female
 
-def plot_pyramid_plotly(df_data):
+def plot_pyramid_plotly(df_data,selected_features):
 
 
-    df_male, df_female = get_pyramid_dfs(df_data)
+    df_male, df_female = get_pyramid_dfs(df_data,selected_features)
+    return
+    total_population = df_male.sum() + df_female.sum()
     # Create the male and female bar traces
     trace_male = go.Bar(x=df_male, y=df_male.index,  name='Male', orientation='h', marker=dict(color="#1f77b4"))
     trace_female = go.Bar(x=-df_female, y=df_female.index, name='Female', orientation='h', marker=dict(color="#d62728"))
+    max_population = max(df_female.max(), df_male.max()) * 1.2  # Find the max count either male or female
 
     # Create the layout
-    layout = go.Layout(title="Population Pyramid",
-                       xaxis=dict(title="Count"),
+    layout = go.Layout(title="Population Pyramid",title_font_size = 22, barmode = 'overlay',
                        yaxis=dict(title="Age"),
-                       barmode="overlay", bargroupgap=0,
-                       bargap=0.1)
+                        bargroupgap=0,   xaxis=go.layout.XAxis(
+                       range=[-max_population, max_population],ticktext = ['6M', '4M', '2M', '0',  '2M', '4M', '6M'],
+                              title = 'Population in Millions',
+                              title_font_size = 14 ),
+                       bargap=.3)
 
     # Create the figure
-    fig = go.Figure(data=[trace_male, trace_female], layout=layout)
+    fig = go.Figure(data=[trace_male, trace_female], layout=layout,)
+
+    fig.update_xaxes(range=[-max_population*1.2,max_population*1.2])
+
     st.plotly_chart(fig)
 
 
@@ -71,7 +81,7 @@ def plot_pyramid_matplotlib(df_data):
     # X-axis
     ax.xaxis.set_major_formatter(
         plt.FuncFormatter(lambda x, pos: f'{int(abs(x))}'))  # Set custom tick labels to show absolute values
-    max_population = max(abs(df_female).max(), df_male.max()) * 1.2  # Find the max count either male or female
+    max_population = max(df_female.max(), df_male.max()) * 1.2  # Find the max count either male or female
     ax.set_xlim(left=-max_population, right=max_population)  # Adjust x-axis limits for centering
 
     # Add data labels
@@ -112,7 +122,7 @@ def plot_pyramid_matplotlib(df_data):
             weight='bold',
             bbox=dict(facecolor='#4583b5', edgecolor='#4583b5', boxstyle=f"round,pad=1.2,rounding_size={0.4}"))
 
-    ax.text(0.13, 0.95, f'Female: {df_female.sum()} ({df_female.sum()  / total_population:.1%})',
+    ax.text(0.21, 0.95, f'Female: {df_female.sum()} ({df_female.sum()  / total_population:.1%})',
             transform=ax.transAxes,
             fontsize=9,
             ha='right',

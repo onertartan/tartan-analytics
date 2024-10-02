@@ -39,9 +39,9 @@ def basic_sidebar_controls(start_year, end_year, module_name=None):
 
         if "selected_tab" not in st.session_state:
             st.session_state["selected_tab"] = "tab_map"
-        tabs = [stx.TabBarItemData(id="tab_map", title="🗺️ Map / Race plot",description="")]
+        tabs = [stx.TabBarItemData(id="tab_map", title="Map/Race plot",description="")]
         if module_name == None:
-            st.session_state["selected_tab"] = tabs.append(stx.TabBarItemData(id="tab_pyramid", title="🔺Population Pyramid",description="") )
+            st.session_state["selected_tab"] = tabs.append(stx.TabBarItemData(id="tab_pyramid", title="Pop. Pyramid",description="") )
 
      #   tab_map, tab_pyramid= st.tabs(["Map", "Population pyramid"])
         st.session_state["selected_tab"] = stx.tab_bar(data=tabs, default="tab_map")
@@ -61,7 +61,7 @@ def sidebar_controls(start_year, end_year, module_name=None):  # start_year=2007
     if "colormap_list" not in st.session_state:
         st.session_state["colormap_list"]= []
 
-    if st.session_state["visualization_option"] ==  "Matplotlib (static)" :
+    if st.session_state["visualization_option"] == "Matplotlib (static)" :
         st.session_state["colormap_list"] = ["bwr", "PiYG", "PRGn", "BrBG", "PuOr", "RdGy", "RdBu", "RdYlBu", "RdYlGn", "Spectral",
          "coolwarm", "seismic", "Reds", "Purples", "Blues", "Greens", "Oranges", "Greys", "YlOrRd",
          "OrRd", "PuRd", "RdPu", "BuPu", "GnBu", "PuBu", "YlGnBu", "PuBuGn", "BuGn", "YlGn",

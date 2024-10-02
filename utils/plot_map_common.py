@@ -158,7 +158,7 @@ def plot(col_plot, col_df, df_data, gdf_borders, selected_features, geo_scale):
     if geo_scale == ["district"]:
         geo_scale = geo_scale + ["province"]  # geo_scale = ["province", "district"]
     if st.session_state["visualization_option"] == "Plotly":
-        plot_pyramid_plotly(df_data)
+        plot_pyramid_plotly(df_data,selected_features)
     elif st.session_state["visualization_option"] == "Matplotlib":
         plot_pyramid_matplotlib(df_data)
     elif st.session_state["visualization_option"] == "Plotly race chart":
