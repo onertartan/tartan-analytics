@@ -160,7 +160,7 @@ def plot(col_plot, col_df, df_data, gdf_borders, selected_features, geo_scale):
     if st.session_state["visualization_option"] == "Plotly":
         plot_pyramid_plotly(df_data,selected_features)
     elif st.session_state["visualization_option"] == "Matplotlib":
-        plot_pyramid_matplotlib(df_data)
+        plot_pyramid_matplotlib(df_data,selected_features)
     elif st.session_state["visualization_option"] == "Plotly race chart":
         df_result = get_df_result(df_data, selected_features, geo_scale, list(range(st.session_state["slider_year_2"][0], st.session_state["slider_year_2"][1] + 1)))
         plot_race(df_result, geo_scale[0])
