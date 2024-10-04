@@ -49,8 +49,11 @@ class Checkbox_Group:
             st.session_state[self.page_name + "_" + "all" + "_" + nom_denom_key_suffix] = False
 
     @staticmethod
-    def age_group_quick_select(page_name, basic_keys):
+    def age_group_quick_select(page_name):
         age_group_selection = st.session_state[page_name+"_age_group_selection"]
+        print("GGG:", st.session_state["age_group_keys"].keys())
+
+        basic_keys = st.session_state["age_group_keys"][page_name]
         if page_name == "sex_age":
             child_age_groups, elderly_age_groups = (["0-4", "5-9", "10-14"],
                                                     ["65-69", "70-74", "75-79", "80-84","85-89","90+"])

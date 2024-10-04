@@ -5,27 +5,26 @@ from matplotlib import pyplot as plt, patches
 
 import plotly.express as px
 
-def get_pyramid_dfs(df_data,selected_features):
-    age_groups_ordered = [f"{i}-{i + 4}" for i in range(0, 90, 5)] + ["90+"]
-
+def get_pyramid_dfs(df_data,selected_features,page_name):
+    age_groups_ordered = st.session_state["age_group_keys"][page_name][1:] # exclude the 0th element "all"
+    print("ÇÇ",age_groups_ordered)
     # Adding Male data to the figure
-    print("UUU:",df_data["nominator"].head(),"selected_features",selected_features)
-    df= df_data["nominator"].loc[:,(slice(None, None, None), age_groups_ordered)] #sort age groups
-
-    selected_features = selected_features["nominator"]
-
-    df = df.loc[st.session_state.slider_year_2[0]:st.session_state.slider_year_2[1],selected_features].reset_index().drop(columns=["province"]).groupby("year").sum()
+    df = df_data["nominator"].loc[st.session_state.slider_year_2[0]:st.session_state.slider_year_2[1],selected_features["nominator"]].reset_index().drop(columns=["province"]).groupby("year").sum()
     print("TTT:",df)
+
   #  df = df.loc[:,pd.IndexSlice["male",age_groups_ordered]]
-    df=df.stack(future_stack=True).stack(future_stack=True).reset_index()
-    print("FGH:",df)
-    df.rename(columns={df.columns[-1]:"Population"},inplace=True)
+    print("şş:",df.columns.nlevels)
+    for i in range(df.columns.nlevels):
+        df = df.stack(future_stack=True)
+    df = df.reset_index()
+    print("FGH:\n",df)
+    df.rename(columns={df.columns[-1]:"Population"}, inplace=True)
     return df
 
-def plot_pyramid_plotly(df_data,selected_features):
+def plot_pyramid_plotly(df_data,selected_features,page_name):
 
 
-    df  = get_pyramid_dfs(df_data,selected_features)
+    df  = get_pyramid_dfs(df_data,selected_features,page_name)
 
     #total_population = df_male.sum() + df_female.sum()
     # Create the male and female bar traces
@@ -64,23 +63,28 @@ def plot_pyramid_plotly(df_data,selected_features):
     st.plotly_chart(fig)
 
 
-def plot_pyramid_matplotlib(df_data,selected_features):
+def plot_pyramid_matplotlib(df_data,selected_features,page_name):
     cols = st.columns([1,8, 1])
-    df_male, df_female = get_pyramid_dfs(df_data,selected_features)
+    cols[1].write("Note: First slider is used for year selection.")
+    df = df_data["nominator"].loc[st.session_state.slider_year_1, selected_features["nominator"]]
+
+    df_male= df["male"].sum().reset_index()
+    df_female = df["female"].sum().reset_index()
+    df_male.rename(columns={df_male.columns[-1]:"Population"}, inplace=True)
+    df_female.rename(columns={df_female.columns[-1]:"Population"}, inplace=True)
+
+    print("jjj\n",df_male)
     # Calculate total population for percentage
-    total_population = df_male + df_female
+    total_population = df_male["Population"].sum()+ df_female["Population"].sum()
     fig, ax = plt.subplots(figsize=(9, 6))
 
-    # Calculate total population for percentage
-    total_population = df_male.sum() + df_female.sum()
-    shift =300000  # Adjust this based on your data scale
-
+    shift =total_population/100  # Adjust this based on your data scale
     # Plot bars with a custom size and color
-
-    bars_male = ax.barh(df_male.index, df_male, color='#4583b5', align='center', height=0.7, left=shift, label='Male',
+    bars_male = ax.barh(df_male["age_group"], df_male["Population"], color='#4583b5', align='center', height=0.7, left=shift, label='Male',
                         zorder=3)
 
-    bars_female = ax.barh(df_female.index, -df_female, color='#ef7a84', align='center', height=0.7, left=-shift, label='Female',
+    bars_female = ax.barh(df_female["age_group"], -df_female["Population"], color='#ef7a84', align='center', height=0.7, left=-shift,
+                          label='Female',
                           zorder=3)
     ax.set_yticklabels([])
 
@@ -96,20 +100,20 @@ def plot_pyramid_matplotlib(df_data,selected_features):
     # Y-axis
     ax.spines['left'].set_position(('data', shift))  # Center the y-axis
     ax.yaxis.set_ticks_position('none')  # Remove y-axis ticks
-    for label in df_male.index:
+    for label in df_male["age_group"]:
         ax.text(0, label, f' {label} ', va='center', ha='center', color='black',
                 backgroundcolor='#fafafa')  # Center y-axis labels
 
     # X-axis
     ax.xaxis.set_major_formatter(
         plt.FuncFormatter(lambda x, pos: f'{int(abs(x))}'))  # Set custom tick labels to show absolute values
-    max_population = max(df_female.max(), df_male.max()) * 1.2  # Find the max count either male or female
+    max_population = max(df_female["Population"].max(), df_male["Population"].max()) * 1.2  # Find the max count either male or female
     ax.set_xlim(left=-max_population, right=max_population)  # Adjust x-axis limits for centering
 
     # Add data labels
     fontsize = 9  # Font size for the labels
-    max_bar_width = max([bar.get_width() for bar in bars_male])
-    label_shift = max_bar_width / 5
+    max_bar_width =max( max([bar.get_width() for bar in bars_male]),max([abs(bar.get_width()) for bar in bars_female]))
+    label_shift = max_bar_width /4
     for bar in bars_female:
         width = bar.get_width()
         label_x_pos = bar.get_x() + width - label_shift  # Adjust position outside the bar
@@ -135,7 +139,7 @@ def plot_pyramid_matplotlib(df_data,selected_features):
 
     # Adding data for males and females in corners
     ax.text(1.11, 0.95,
-            f'Male: {df_male.sum()} ({df_male.sum() / total_population:.1%})',
+            f'Male: {df_male["Population"].sum()  } ({df_male["Population"].sum() / total_population:.1%})',
             transform=ax.transAxes,
             fontsize=9,
             ha='right',
@@ -144,7 +148,7 @@ def plot_pyramid_matplotlib(df_data,selected_features):
             weight='bold',
             bbox=dict(facecolor='#4583b5', edgecolor='#4583b5', boxstyle=f"round,pad=1.2,rounding_size={0.4}"))
 
-    ax.text(0.21, 0.95, f'Female: {df_female.sum()} ({df_female.sum()  / total_population:.1%})',
+    ax.text(0.21, 0.95, f'Female: {df_female["Population"].sum()} ({df_female["Population"].sum()  / total_population:.1%})',
             transform=ax.transAxes,
             fontsize=9,
             ha='right',

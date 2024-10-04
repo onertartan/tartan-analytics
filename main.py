@@ -9,11 +9,15 @@ import plotly.express as px
 
 st.set_page_config(page_title="Tartan Analytics", layout="wide")
 
+if "age_group_keys" not in st.session_state:
+    st.session_state["age_group_keys"] = {"marital_status":["all"] + [f"{i}-{i + 4}" for i in range(15, 90, 5)] + ["90+"],
+                                        "sex_age":["all"]+[f"{i}-{i+4}" for i in range(0, 90, 5)]+["90+"] }
+    st.session_state["age_group_keys"]["birth"]=st.session_state["age_group_keys"]["marital_status"]
 
 current_page = st.navigation({
     "Population": [
-        st.Page("demography-modules/population/sex-age.py", title="Sex-Age ", icon=":material/public:"),
-        st.Page("demography-modules/population/maritial_status.py", title="Sex-Age-Marital status(over age 15) ", icon=":material/wc:"),
+        st.Page("demography-modules/population/sex_age.py", title="Sex-Age ", icon=":material/public:"),
+        st.Page("demography-modules/population/marital_status.py", title="Sex-Age-Marital status(over age 15) ", icon=":material/wc:"),
         st.Page("demography-modules/population/most_common_baby_names.py", title="Most Common Baby Names ", icon=":material/public:"),
         st.Page("demography-modules/population/most_common_names_surnames.py", title="Most Common Names and Surnames", icon=":material/public:"),
         st.Page("demography-modules/population/birth.py", title="Birth",icon=":material/public:")],

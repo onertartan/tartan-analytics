@@ -21,7 +21,7 @@ def get_file_path_by_suffix(folder_name,file_prefix, suffix):
             return os.path.join(folder_path, filename)
 
 
-def feature_choice(col, feature_name, nom_denom_key_suffix, num_sub_cols=None, checkbox_keys=None, page_name=None):
+def feature_choice(col, feature_name, nom_denom_key_suffix, num_sub_cols=None,  page_name=None,checkbox_keys=None,):
     disabled = not st.session_state["display_percentage"] if nom_denom_key_suffix == "denominator" else False
 
     if feature_name == "maritial_status":
@@ -29,8 +29,10 @@ def feature_choice(col, feature_name, nom_denom_key_suffix, num_sub_cols=None, c
     elif feature_name == "sex":
         selected_feature = col.radio("Choose sex", ["All", "Male", "Female"], key=nom_denom_key_suffix+"_"+feature_name,disabled=disabled).lower()
     elif feature_name == "age":
-        if st.session_state[page_name+"_age_checkbox_group"] is None:
-            st.session_state[page_name+"_age_checkbox_group"] = Checkbox_Group(page_name, feature_name, num_sub_cols, checkbox_keys )
+        print("PPP",st.session_state)
+        if page_name+"_age_checkbox_group" not in st.session_state:
+            print("ÜÜÜ")
+            st.session_state[page_name+"_age_checkbox_group"] = Checkbox_Group(page_name, feature_name, num_sub_cols, st.session_state["age_group_keys"][page_name])
         st.session_state[page_name+"_age_checkbox_group"].place_checkboxes(col, nom_denom_key_suffix, disabled)
 
         selected_feature = st.session_state[page_name+"_age_checkbox_group"].get_checked_keys(nom_denom_key_suffix)
