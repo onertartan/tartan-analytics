@@ -87,6 +87,7 @@ def plot_race(df_result,geo_scale):
 
 def plotter_folium_interactive(gdf_result, *args):
     gdf_result = gdf_result.reset_index()
+    print("ĞĞĞĞ:",gdf_result)
     m = gdf_result.explore(
         column="result",  # make choropleth based on "BoroName" column
         tooltip="province",  # show "BoroName" value in tooltip (on hover)

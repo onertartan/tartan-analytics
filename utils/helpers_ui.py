@@ -8,10 +8,16 @@ locale.setlocale(locale.LC_ALL, 'tr_TR.utf8')
 
 def ui_basic_setup_common(num_sub_cols):
 
-    st.markdown( """<style>.block-container{padding-top: 2rem; padding-left: 1rem; padding-right: 2rem; padding-bottom: 0rem; margin-top: 2rem;}</style>""",
-        unsafe_allow_html=True)
-    st.markdown(""" <style>[role=checkbox]{ gap: 3rem; }</style>""", unsafe_allow_html=True)
-
+    st.markdown(""" <style>[role=checkbox]{ gap: 1rem; }</style>""", unsafe_allow_html=True)
+    st.write("""
+            <div class="top-align">
+                <style>
+                    .top-align [data-testid="stHorizontalBlock"] {
+                        align-items: flex-start;
+                    }
+                </style>
+            </div>
+        """, unsafe_allow_html=True)
     cols_title = st.columns(2)
     cols_title[0].write(":red[Select primary parameters.]")
 
@@ -32,7 +38,9 @@ def ui_basic_setup_common(num_sub_cols):
 
 
 def ui_basic_setup_names(page_name, df_data):
+
     basic_sidebar_controls(2018, 2023)
+
     col_1, col_2, col_3 = st.columns([1, 1, 3])
 
     if not st.session_state["clustering_cb_" + page_name]:

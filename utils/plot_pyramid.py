@@ -35,15 +35,29 @@ def plot_pyramid_plotly(df_data,selected_features,page_name):
                    "yaxis": dict(title="Age"),"color":"#1f77b4",
                    "bargroupgap": 0,
                    "bargap": .3}
-    df.loc[df["sex"]=="female","Population"]*=-1
-    fig = px.bar(df, x="Population", y="age_group", orientation='h',color="sex",  animation_frame='year')
-
-    fig.update_layout(barmode='overlay')
-
-    layout_dict = {"title":"Population Pyramid","title_font_size" : 22, "barmode": 'overlay',
+    if isinstance(selected_features["nominator"][-1],list) :
+        n_bars = len(selected_features["nominator"][-1])*2
+    else:
+        n_bars = 2*len(st.session_state["age_group_keys"][page_name])
+    barmode="group"
+    if barmode !="group":
+        df.loc[df["sex"]=="female","Population"]*=-1
+    fig = px.bar(df, x="Population", y="age_group", orientation='h',color="sex",  animation_frame='year' , height=600,
+                 color_discrete_map={
+                     'male': 'light blue',
+                     'female': 'pink'
+                 }
+                 )
+    layout_dict = {"title":"Population Pyramid","title_font_size" : 22, "barmode": 'group',
                        "yaxis":dict(title="Age"),
                         "bargroupgap":0,
-                       "bargap":.3}
+                       "bargap":.03}
+    fig.update_layout(layout_dict)
+   # for idx in range(len(fig.data)):
+      #  print("ÖÖ:",dir(fig.data[idx].xaxis))
+    print("ÖÖ",(fig.data[0]._props["xaxis"]))
+ #   r = range(fig.layout["xaxis"]["range"][0], fig.layout["xaxis"]["range"][1], stepSize=2)
+#    fig.update_layout(xaxis={"tickvals": list(r),   "ticktext": [t if t >= 0 else '' for t in r]})
     # Create the layout
     """
     layout = go.Layout(title="Population Pyramid",title_font_size = 22, barmode = 'overlay',
@@ -89,7 +103,7 @@ def plot_pyramid_matplotlib(df_data,selected_features,page_name):
     ax.set_yticklabels([])
 
     # Set titles and labels
-    fig.suptitle('Population Distribution by Age and Sex', fontsize=14, x=0.06, y=0.98, ha="left")  # Customize title
+    fig.suptitle(f'Population Distribution by Age and Sex in the year {st.session_state["slider_year_1"]}', fontsize=14, x=0.06, y=0.98, ha="left")  # Customize title
     ax.set_xlabel('Population', labelpad=10)
 
     # Remove spines

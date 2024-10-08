@@ -54,8 +54,10 @@ for nom_denom in cols_nom_denom.keys():
     selected_features[nom_denom] = (feature_choice(cols_nom_denom[nom_denom][0], "sex", nom_denom),
                                     feature_choice(cols_nom_denom[nom_denom][1], "age", nom_denom, 4,  page_name) )# Page
 
-st.write("""<style>[data-testid="stHorizontalBlock"]{align-items: center;}</style>""", unsafe_allow_html=True)
+
 col_plot, col_df = st.columns((4, 1), gap="small")
+st.write("""<style>[data-testid="stHorizontalBlock"]{align-items: center;}</style>""", unsafe_allow_html=True)
+
 plot(col_plot, col_df, df_data, gdf_borders, selected_features, geo_scale,page_name)
 
 # Create a Folium map

@@ -9,6 +9,7 @@ import plotly.express as px
 
 st.set_page_config(page_title="Tartan Analytics", layout="wide")
 
+
 if "age_group_keys" not in st.session_state:
     st.session_state["age_group_keys"] = {"marital_status":["all"] + [f"{i}-{i + 4}" for i in range(15, 90, 5)] + ["90+"],
                                         "sex_age":["all"]+[f"{i}-{i+4}" for i in range(0, 90, 5)]+["90+"] }
