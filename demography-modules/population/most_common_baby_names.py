@@ -19,7 +19,7 @@ def get_data():
     gdf_borders = gpd.read_file("data/preprocessed/gdf_borders_ibbs3.geojson")
     return df_data, gdf_borders
 
+st.session_state["page_name"] = "baby names"
 
-page_name = "baby names"
-names_main(page_name, get_data)
+names_main(get_data)
 

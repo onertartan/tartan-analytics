@@ -14,6 +14,5 @@ def get_data():
     gdf_borders = gpd.read_file("data/preprocessed/gdf_borders_ibbs3.geojson")
     return df_data, gdf_borders
 
-
-page_name = "names or surnames"
-names_main(page_name, get_data)
+st.session_state["page_name"] =  "names or surnames"
+names_main(get_data)

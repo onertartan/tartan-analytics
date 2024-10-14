@@ -28,7 +28,8 @@ def plot_result(df_result, ax,names):
   #  ax.legend(title='Names', fontsize=4, bbox_to_anchor=(0.01, 0.01), loc='lower right', fancybox=True, shadow=True)
 
 
-def plot_geopandas(col_plot, df_data, gdf_borders, page_name ):
+def plot_geopandas(col_plot, df_data, gdf_borders ):
+    page_name = st.session_state["page_name"]
     if page_name=="names or surnames" and st.session_state["name_surname_rb"] == "Surname":
         df = df_data["surname"]
     else:

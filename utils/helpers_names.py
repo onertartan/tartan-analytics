@@ -5,7 +5,8 @@ from utils.plot_map_names import plot_geopandas
 from utils.helpers_ui import figure_setup, ui_basic_setup_names
 
 
-def set_session_state_variables(page_name):
+def set_session_state_variables():
+    page_name=st.session_state["page_name"]
     if "clustering_cb_" + page_name not in st.session_state:
         st.session_state["clustering_cb_" + page_name] = False
     if "select_both_sexes_" + page_name not in st.session_state:
@@ -17,19 +18,21 @@ def set_session_state_variables(page_name):
     if "name_surname_rb"  not in st.session_state:
         st.session_state["name_surname_rb"] = "Name"
 
-def names_main(page_name, get_data_func):
-    set_session_state_variables(page_name)
+def names_main( get_data_func):
+    page_name=st.session_state["page_name"]
+    set_session_state_variables()
     df_data, gdf_borders = get_data_func()
-    ui_basic_setup_names(page_name, df_data)
+    ui_basic_setup_names( df_data)
     col_plot, colf_df = st.columns([5, 1])
 
     if st.session_state["clustering_cb_" + page_name]:
         k_means_clustering(col_plot, df_data, gdf_borders, page_name)
     else:
-        plot_geopandas(col_plot, df_data, gdf_borders, page_name)
+        plot_geopandas(col_plot, df_data, gdf_borders)
 
 
-def k_means_clustering(col_plot, df_data, gdf_borders, page_name):
+def k_means_clustering(col_plot, df_data, gdf_borders):
+    page_name=st.session_state["page_name"]
     if page_name == "names or surnames" and st.session_state["name_surname_rb"] == "Surname":
         df_year = df_data["surname"].loc[st.session_state["year_1"]]
     elif st.session_state["select_both_sexes_" + page_name]:

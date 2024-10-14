@@ -154,8 +154,8 @@ def plot_generic(col_plot, col_df, gdf_borders, df_result, geo_scale, plotter_fu
     if fig:
         col_plot.pyplot(fig)
 
-def plot(col_plot, col_df, df_data, gdf_borders, selected_features, geo_scale, page_name):
-
+def plot(col_plot, col_df, df_data, gdf_borders, selected_features, geo_scale):
+    page_name = st.session_state["page_name"]
     if geo_scale == ["district"]:
         geo_scale = geo_scale + ["province"]  # geo_scale = ["province", "district"]
     if st.session_state["visualization_option"] == "Plotly":

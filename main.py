@@ -24,6 +24,7 @@ current_page = st.navigation({
         st.Page("demography-modules/population/birth.py", title="Birth",icon=":material/public:")],
    # "Marriage": [       ],
 })
-
+if "page_name" not in st.session_state:
+    st.session_state["page_name"]="sex_age"
 # current_page is also a Page object you can .run()
 current_page.run()

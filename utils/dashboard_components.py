@@ -11,7 +11,7 @@ def update_selected_slider_and_years(slider_index):
             st.session_state.slider_year_2[1])
 
 
-def basic_sidebar_controls(start_year, end_year, module_name=None):
+def basic_sidebar_controls(start_year, end_year):
     """
        Renders the sidebar controls
        Parameters: starting year, ending year
@@ -40,7 +40,7 @@ def basic_sidebar_controls(start_year, end_year, module_name=None):
         if "selected_tab" not in st.session_state:
             st.session_state["selected_tab"] = "tab_map"
         tabs = [stx.TabBarItemData(id="tab_map", title="Map/Race plot",description="")]
-        if module_name == None:
+        if st.session_state["page_name"] in ["sex_age","marital_status"]:
             st.session_state["selected_tab"] = tabs.append(stx.TabBarItemData(id="tab_pyramid", title="Pop. Pyramid",description="") )
 
      #   tab_map, tab_pyramid= st.tabs(["Map", "Population pyramid"])
@@ -55,7 +55,7 @@ def basic_sidebar_controls(start_year, end_year, module_name=None):
             st.session_state["visualization_option"] = st.radio("Choose visualization option", ["Matplotlib", "Plotly"] )
 
 
-def sidebar_controls(start_year, end_year, module_name=None):  # start_year=2007,end_year=2023
+def sidebar_controls(start_year, end_year):  # start_year=2007,end_year=2023
 
     basic_sidebar_controls(start_year, end_year)
     if "colormap_list" not in st.session_state:

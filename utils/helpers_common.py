@@ -21,7 +21,8 @@ def get_file_path_by_suffix(folder_name,file_prefix, suffix):
             return os.path.join(folder_path, filename)
 
 
-def feature_choice(col, feature_name, nom_denom_key_suffix, num_sub_cols=None,  page_name=None,checkbox_keys=None,):
+def feature_choice(col, feature_name, nom_denom_key_suffix, num_sub_cols=None,  checkbox_keys=None,):
+    page_name = st.session_state["page_name"]
     disabled = not st.session_state["display_percentage"] if nom_denom_key_suffix == "denominator" else False
 
     if feature_name == "maritial_status":

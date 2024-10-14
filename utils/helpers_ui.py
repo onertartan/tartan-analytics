@@ -37,7 +37,8 @@ def ui_basic_setup_common(num_sub_cols):
     return cols_nom_denom
 
 
-def ui_basic_setup_names(page_name, df_data):
+def ui_basic_setup_names(df_data):
+    page_name=st.session_state["page_name"]
 
     basic_sidebar_controls(2018, 2023)
 

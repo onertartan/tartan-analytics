@@ -49,7 +49,8 @@ class Checkbox_Group:
             st.session_state[self.page_name + "_" + "all" + "_" + nom_denom_key_suffix] = False
 
     @staticmethod
-    def age_group_quick_select(page_name):
+    def age_group_quick_select():
+        page_name = st.session_state["page_name"]
         age_group_selection = st.session_state[page_name+"_age_group_selection"]
         print("GGG:", st.session_state["age_group_keys"].keys())
 

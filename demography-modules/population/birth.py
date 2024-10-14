@@ -54,11 +54,11 @@ cols[2].image("images/fertility-rate.jpg")
 
 cols_nom_denom = ui_basic_setup_common(num_sub_cols=2)
 df_data, gdf_borders = get_data(geo_scale_code)
-sidebar_controls(df_data["nominator"].index.get_level_values(0).min(),df_data["nominator"].index.get_level_values(0).max(),"birth_module" )
+sidebar_controls(df_data["nominator"].index.get_level_values(0).min(),df_data["nominator"].index.get_level_values(0).max())
 
+st.session_state["page_name"] = "birth"
 
-page_name = "birth"
-Checkbox_Group.age_group_quick_select(page_name)
+Checkbox_Group.age_group_quick_select()
 
 selected_features = {}
 for nom_denom in cols_nom_denom.keys():
@@ -66,7 +66,7 @@ for nom_denom in cols_nom_denom.keys():
          selected_features[nom_denom] = feature_choice(cols_nom_denom[nom_denom][0], "sex", nom_denom)
      else:                      # from right panel general selection is possible
          selected_features[nom_denom] = (feature_choice(cols_nom_denom[nom_denom][0], "sex", nom_denom),
-                                  feature_choice(cols_nom_denom[nom_denom][1], "age", nom_denom, 3,  page_name) )
+                                  feature_choice(cols_nom_denom[nom_denom][1], "age", nom_denom, 3) )
 
 col_plot, col_df = st.columns([5, 1])
-plot(col_plot, col_df, df_data, gdf_borders,selected_features, geo_scale,page_name)
+plot(col_plot, col_df, df_data, gdf_borders,selected_features, geo_scale)

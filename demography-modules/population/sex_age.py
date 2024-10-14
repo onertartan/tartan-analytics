@@ -9,6 +9,7 @@ from utils.helpers_ui import ui_basic_setup_common
 
 @st.cache_data
 def get_data(geo_scale_code):
+    page_name = st.session_state["page_name"]
     if geo_scale_code is not None: # district
         gdf_borders = gpd.read_file("data/preprocessed/gdf_borders_ibbs3.geojson")
         df = pd.read_csv("data/preprocessed/population/age-sex-ibbs3-2007-2023.csv", index_col=[0, 1],  header=[0, 1])
@@ -39,26 +40,26 @@ cols[1].radio("Age group selection", ["Custom selection","Quick selection for to
                                     key="sex_age_age_group_selection")
 cols[2].image("images/age-dependency.jpg")
 
-page_name = "sex_age"
+st.session_state["page_name"] = "sex_age"
 cols_nom_denom = ui_basic_setup_common(num_sub_cols=2)
 df_data, gdf_borders = get_data(geo_scale_code)
 print("lll",df_data["nominator"])
 sidebar_controls(df_data["nominator"].index.get_level_values(0).min(), df_data["nominator"].index.get_level_values(0).max() )
 
 
-Checkbox_Group.age_group_quick_select(page_name)
+Checkbox_Group.age_group_quick_select()
 
 
 selected_features={}
 for nom_denom in cols_nom_denom.keys():
     selected_features[nom_denom] = (feature_choice(cols_nom_denom[nom_denom][0], "sex", nom_denom),
-                                    feature_choice(cols_nom_denom[nom_denom][1], "age", nom_denom, 4,  page_name) )# Page
+                                    feature_choice(cols_nom_denom[nom_denom][1], "age", nom_denom, 4) )# Page
 
 
 col_plot, col_df = st.columns((4, 1), gap="small")
 st.write("""<style>[data-testid="stHorizontalBlock"]{align-items: center;}</style>""", unsafe_allow_html=True)
 
-plot(col_plot, col_df, df_data, gdf_borders, selected_features, geo_scale,page_name)
+plot(col_plot, col_df, df_data, gdf_borders, selected_features, geo_scale)
 
 # Create a Folium map
 # m = folium.Map(location=[10, 0], zoom_start=2)
