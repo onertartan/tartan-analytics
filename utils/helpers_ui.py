@@ -9,26 +9,30 @@ locale.setlocale(locale.LC_ALL, 'tr_TR.utf8')
 def ui_basic_setup_common(num_sub_cols):
 
     st.markdown(""" <style>[role=checkbox]{ gap: 1rem; }</style>""", unsafe_allow_html=True)
-    st.write("""
+
+    st.markdown("""
             <div class="top-align">
-                <style>
+                <style>              
                     .top-align [data-testid="stHorizontalBlock"] {
                         align-items: flex-start;
                     }
+                
                 </style>
             </div>
         """, unsafe_allow_html=True)
+
     cols_title = st.columns(2)
-    cols_title[0].write(":red[Select primary parameters.]")
+    cols_title[0].markdown("<h3 style='color: red;'>Select primary parameters.</h3>", unsafe_allow_html=True)
+    cols_title[0].markdown("<br><br><br>", unsafe_allow_html=True)
+
 
     # Checkbox to switch between population and percentage display
-    cols_title[1].checkbox("Check to get proportion.", key="display_percentage")
+    cols_title[1].checkbox(":blue[Select secondary parameters](check to get proportion).", key="display_percentage")
     cols_title[1].write("Ratio: primary parameters/secondary parameters.")
     cols_title[1].write("Uncheck to show counts of primary parameters.")
 
-    cols_title[1].write(":blue[Select secondary parameters.]")
     if num_sub_cols == 3:
-        col_weights = [1, 1, 3, 1, 1, 3]
+        col_weights = [1, 1, 4, 1, 1, 4]
     elif num_sub_cols == 2:
         col_weights = [1, 2, 1, 2]
 
@@ -41,7 +45,6 @@ def ui_basic_setup_names(df_data):
     page_name=st.session_state["page_name"]
 
     basic_sidebar_controls(2018, 2023)
-
     col_1, col_2, col_3 = st.columns([1, 1, 3])
 
     if not st.session_state["clustering_cb_" + page_name]:

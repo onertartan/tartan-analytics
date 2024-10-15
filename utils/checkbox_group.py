@@ -51,14 +51,13 @@ class Checkbox_Group:
     @staticmethod
     def age_group_quick_select():
         page_name = st.session_state["page_name"]
-        age_group_selection = st.session_state[page_name+"_age_group_selection"]
         print("GGG:", st.session_state["age_group_keys"].keys())
-
         basic_keys = st.session_state["age_group_keys"][page_name]
         if page_name == "sex_age":
             child_age_groups, elderly_age_groups = (["0-4", "5-9", "10-14"],
                                                     ["65-69", "70-74", "75-79", "80-84","85-89","90+"])
             working_age_groups = list(set(basic_keys) - set(child_age_groups + elderly_age_groups))
+            age_group_selection = st.session_state[page_name + "_age_group_selection"]
 
             if age_group_selection != "Custom selection":
                 if age_group_selection == "Quick selection for total age dependency ratio":

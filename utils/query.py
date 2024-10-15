@@ -12,8 +12,9 @@ def get_geo_df_result(gdf_borders, df_result, geo_scale):
 def get_df_year_and_features(df_data, nom_denom_selection, year, selected_features_dict, geo_scale):
     df_codes = pd.read_csv("data/preprocessed/region_codes.csv", index_col=0)
     df = df_data[nom_denom_selection]
-    print("START:",df.head())
     selected_features = selected_features_dict[nom_denom_selection]
+
+    print("START:\n",df.head(),"\nssselected_features:",selected_features)
     if df.columns.nlevels > 1:  # Check if the DataFrame has multiple column levels
         print("ZZZ:\n",df.loc[year, selected_features].droplevel(1, axis=1).head())
         df = pd.DataFrame(
@@ -25,7 +26,10 @@ def get_df_year_and_features(df_data, nom_denom_selection, year, selected_featur
             df = pd.DataFrame(df.loc[year, selected_features].sum(axis=1))  # .reset_index()
     df.rename(columns={df.columns[-1]: "result"}, inplace=True)
     print("geo_scale:",geo_scale,"GGG:",df.head())
+
     print("\ndf_codes HHH:",df_codes.head())
+    print("ÜĞP:", df.loc[(slice(None), "Kırıkkale", slice(None))])
+
     if geo_scale != ["district"]:
         df = df_codes.merge(df, left_index=True, right_on="province")
         print("\nJJJ:\n",df.head())

@@ -1,4 +1,4 @@
-year,province,district,male,female
+year,province,district,Cinsiyet:Erkek,Cinsiyet:Kız
 2014,Adana,Aladağ,177,160
 2014,Adana,Ceyhan,1535,1453
 2014,Adana,Feke,134,120
@@ -540,7 +540,7 @@ year,province,district,male,female
 2014,Kırklareli,Pehlivanköy,10,14
 2014,Kırklareli,Pınarhisar,85,81
 2014,Kırklareli,Vize,110,121
-2014,Kırıkkale,Bahşili,54,52
+2014,Kırıkkale,Bahşılı,54,52
 2014,Kırıkkale,Balışeyh,57,43
 2014,Kırıkkale,Delice,33,44
 2014,Kırıkkale,Karakeçili,20,27
@@ -1510,7 +1510,7 @@ year,province,district,male,female
 2015,Kırklareli,Pehlivanköy,9,13
 2015,Kırklareli,Pınarhisar,90,75
 2015,Kırklareli,Vize,130,111
-2015,Kırıkkale,Bahşili,58,47
+2015,Kırıkkale,Bahşılı,58,47
 2015,Kırıkkale,Balışeyh,35,34
 2015,Kırıkkale,Delice,31,30
 2015,Kırıkkale,Karakeçili,30,32
@@ -2480,7 +2480,7 @@ year,province,district,male,female
 2016,Kırklareli,Pehlivanköy,9,8
 2016,Kırklareli,Pınarhisar,80,81
 2016,Kırklareli,Vize,133,121
-2016,Kırıkkale,Bahşili,34,47
+2016,Kırıkkale,Bahşılı,34,47
 2016,Kırıkkale,Balışeyh,35,38
 2016,Kırıkkale,Delice,35,35
 2016,Kırıkkale,Karakeçili,21,23
@@ -3452,7 +3452,7 @@ year,province,district,male,female
 2017,Kırklareli,Pehlivanköy,7,5
 2017,Kırklareli,Pınarhisar,72,70
 2017,Kırklareli,Vize,141,109
-2017,Kırıkkale,Bahşili,57,43
+2017,Kırıkkale,Bahşılı,57,43
 2017,Kırıkkale,Balışeyh,27,25
 2017,Kırıkkale,Delice,31,36
 2017,Kırıkkale,Karakeçili,28,23

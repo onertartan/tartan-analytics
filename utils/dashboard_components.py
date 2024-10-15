@@ -17,7 +17,7 @@ def basic_sidebar_controls(start_year, end_year):
        Parameters: starting year, ending year
     """
     # Inject custom CSS to set the width of the sidebar
-    st.markdown("""<style>section[data-testid="stSidebar"] {width: 300px; !important;} </style> """,  unsafe_allow_html=True)
+ #   st.markdown("""<style>section[data-testid="stSidebar"] {width: 300px; !important;} </style> """,  unsafe_allow_html=True)
     with (st.sidebar):
         st.header('Visualization options')
         # Create a slider to select a single year
