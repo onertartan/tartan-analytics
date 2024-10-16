@@ -4,6 +4,7 @@ def get_geo_df_result(gdf_borders, df_result, geo_scale):
     print("\nAAA:\n",gdf_borders.head(),"\nBBB:\n",df_result.head())
     print("\nCCC:\n",gdf_borders.dissolve(by=geo_scale).head())
     print("before:\n",gdf_borders.shape,"\n")
+
     gdf_result = gdf_borders.dissolve(by=geo_scale)[["id","geometry"]].merge(df_result,left_index=True,right_index=True)  # after dissolving index becomes geo_scal,so common index is geo_scale(example:province)
     print("after:\n",gdf_result.shape,"\n")
     print("\nEEE:\n",gdf_result.head())
@@ -14,7 +15,10 @@ def get_df_year_and_features(df_data, nom_denom_selection, year, selected_featur
     df = df_data[nom_denom_selection]
     selected_features = selected_features_dict[nom_denom_selection]
 
-    print("START:\n",df.head(),"\nssselected_features:",selected_features)
+    print("START:\n",df.head(),"\nlenssselected_features:",len(selected_features))
+    if len(selected_features)==1:
+        selected_features=selected_features[0]
+
     if df.columns.nlevels > 1:  # Check if the DataFrame has multiple column levels
         print("ZZZ:\n",df.loc[year, selected_features].droplevel(1, axis=1).head())
         df = pd.DataFrame(

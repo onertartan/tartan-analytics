@@ -3,8 +3,9 @@ from utils.checkbox_group import Checkbox_Group
 from utils.dashboard_components import sidebar_controls
 from utils.helpers_ui import ui_basic_setup_common
 from utils.plot_map_common import plot
-from abc import ABC, abstractmethod
+from abc import ABC
 from utils.helpers_common import feature_choice
+import geopandas as gpd
 
 class BasePage(ABC):
     features = None
@@ -24,6 +25,13 @@ class BasePage(ABC):
     def fun_extras(cols):
         pass
 
+    @staticmethod
+    def get_geo_data(geo_scale):
+        if "district" in geo_scale:
+            return gpd.read_file("data/preprocessed/gdf_borders_district.geojson")
+        else:
+            return gpd.read_file("data/preprocessed/gdf_borders_ibbs3.geojson")
+
     @classmethod
     def render(cls):
         st.markdown("""<style> .main > div { padding-top: 1rem; }</style>""", unsafe_allow_html=True)
@@ -38,16 +46,18 @@ class BasePage(ABC):
 
 
         st.session_state["page_name"] = cls.page_name
-        cols_nom_denom = ui_basic_setup_common(num_sub_cols=2)
-        df_data, gdf_borders = cls.get_data(geo_scale)
-        sidebar_controls(df_data["nominator"].index.get_level_values(0).min(),
-                         df_data["nominator"].index.get_level_values(0).max())
+        cols_nom_denom = ui_basic_setup_common(num_sub_cols=len(cls.features["denominator"]))
+
+        df_data = cls.get_data(geo_scale)
+        gdf_borders = cls.get_geo_data(geo_scale)
+
+        sidebar_controls(df_data["nominator"].index.get_level_values(0).min(), df_data["nominator"].index.get_level_values(0).max())
         Checkbox_Group.age_group_quick_select()
 
         selected_features = {}
         for nom_denom in cols_nom_denom.keys():
-            selected_features[nom_denom] = ()
-            for i, feature in enumerate(cls.features):
+            selected_features[nom_denom] = ()# tuple type is needed for multiindex columns
+            for i, feature in enumerate(cls.features[nom_denom]):
                 selected_features[nom_denom] =   selected_features[nom_denom] +(feature_choice(cols_nom_denom[nom_denom][i], feature, nom_denom),)
 
         st.write("""<style>[data-testid="stHorizontalBlock"]{align-items: top;}</style>""", unsafe_allow_html=True)

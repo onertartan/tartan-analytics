@@ -29,8 +29,8 @@ def feature_choice(col, feature_name, nom_denom_key_suffix, num_sub_cols=4):
     page_name = st.session_state["page_name"]
     disabled = not st.session_state["display_percentage"] if nom_denom_key_suffix == "denominator" else False
 
-    if feature_name == "maritial_status":
-        selected_feature = col.radio("Choose maritial status", ["All", "Never married", "Married", "Divorced", "Widowed"],key=nom_denom_key_suffix+"_"+feature_name,disabled=disabled).lower().replace(" ", "_")
+    if feature_name == "marital_status":
+        selected_feature = col.radio("Choose marital status", ["All", "Never married", "Married", "Divorced", "Widowed"],key=nom_denom_key_suffix+"_"+feature_name,disabled=disabled).lower().replace(" ", "_")
     elif feature_name == "sex":
         selected_feature = col.radio("Choose sex", ["All", "Male", "Female"], key=nom_denom_key_suffix+"_"+feature_name,disabled=disabled).lower()
     elif feature_name == "age":
