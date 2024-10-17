@@ -13,6 +13,8 @@ class Checkbox_Group:
 
 
     def place_checkboxes(self, cols_nom_denom, nom_denom_key_suffix, disabled):
+        print("PAGE::",st.session_state["page_name"])
+        print("keys::",nom_denom_key_suffix)
         cols_nom_denom.write(self.message)
         checkbox_group_sub_cols = cols_nom_denom.columns(self.num_sub_cols +1, gap="small")# extra +1 dummy col is to leave gap on the right
         for i, key_basic in enumerate(self.checked_dict[nom_denom_key_suffix].keys()):

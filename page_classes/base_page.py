@@ -14,9 +14,7 @@ class BasePage(ABC):
     def set_features(cls, features):
         cls.features = features
 
-    @classmethod
-    def set_page_name(cls, page_name):
-        cls.page_name = page_name
+
     @staticmethod
     def get_data(geo_scale):
         pass
@@ -66,4 +64,5 @@ class BasePage(ABC):
 
     @classmethod
     def run(cls):
+        st.session_state["page_name"] = cls.page_name
         cls.render()

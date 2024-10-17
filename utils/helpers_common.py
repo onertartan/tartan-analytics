@@ -25,14 +25,20 @@ def get_file_path_by_suffix(folder_name,file_prefix, suffix):
             return os.path.join(folder_path, filename)
 
 
-def feature_choice(col, feature_name, nom_denom_key_suffix, num_sub_cols=4):
+def feature_choice(col, feature_name, nom_denom_key_suffix, num_sub_cols=3):
     page_name = st.session_state["page_name"]
     disabled = not st.session_state["display_percentage"] if nom_denom_key_suffix == "denominator" else False
-
+    print("FTYUI:",feature_name)
     if feature_name == "marital_status":
         selected_feature = col.radio("Choose marital status", ["All", "Never married", "Married", "Divorced", "Widowed"],key=nom_denom_key_suffix+"_"+feature_name,disabled=disabled).lower().replace(" ", "_")
+    elif feature_name == "education":
+        selected_feature = col.radio("Choose sex",  ['illiterate', 'literate but did not complete any school', 'primary', 'elementary',
+                                                     'secondary school or equivalent', 'high school or equivalent', 'pre-license or bachelor', 'master', 'PhD'],
+                                                     key = nom_denom_key_suffix+"_"+feature_name, disabled=disabled).lower()
     elif feature_name == "sex":
-        selected_feature = col.radio("Choose sex", ["All", "Male", "Female"], key=nom_denom_key_suffix+"_"+feature_name,disabled=disabled).lower()
+        selected_feature = col.radio("Choose education level", ["All", "Male", "Female"],
+                                     key=nom_denom_key_suffix + "_" + feature_name, disabled=disabled).lower()
+
     elif feature_name == "age":
         print("PPP",st.session_state)
         if page_name+"_age_checkbox_group" not in st.session_state:

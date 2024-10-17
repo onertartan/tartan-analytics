@@ -25,7 +25,6 @@ def ui_basic_setup_common(num_sub_cols):
     cols_title[0].markdown("<h3 style='color: red;'>Select primary parameters.</h3>", unsafe_allow_html=True)
     cols_title[0].markdown("<br><br><br>", unsafe_allow_html=True)
 
-
     # Checkbox to switch between population and percentage display
     cols_title[1].checkbox(":blue[Select secondary parameters](check to get proportion).", key="display_percentage")
     cols_title[1].write("Ratio: primary parameters/secondary parameters.")
