@@ -31,7 +31,7 @@ def names_main( get_data_func):
         plot_geopandas(col_plot, df_data, gdf_borders)
 
 
-def k_means_clustering(col_plot, df_data, gdf_borders):
+def k_means_clustering(col_plot, df_data, gdf_borders,page_name):
     page_name=st.session_state["page_name"]
     if page_name == "names or surnames" and st.session_state["name_surname_rb"] == "Surname":
         df_year = df_data["surname"].loc[st.session_state["year_1"]]
@@ -58,7 +58,7 @@ def k_means_clustering(col_plot, df_data, gdf_borders):
     # Define a color map for the categories
     # color_map = {0: "purple", 1: "orange", 2: "green",3:"cyan",4:"red",5:"blue",6:"magenta",7:"gray",8:"yellow"}#female
 
-    # color_map = {0: "orange", 1: "orange", 2: "red",3:"red",4:"orange",5:"magenta",6:"red",7:"orange",8:"orange"}#male-8
+    #color_map = {0: "orange", 1: "orange", 2: "red",3:"red",4:"orange",5:"magenta",6:"red",7:"orange",8:"orange"}#male-8
     #  color_map = {0: "purple", 1: "red", 2: "orange",3:"red",4:"orange",5:"magenta",6:"cyan",7:"yellow",8:"gray"}#female-5
     # color_map = {0: "purple", 1: "orange", 2: "orange",3:"red",4:"orange",5:"red",6:"cyan",7:"yellow",8:"gray"}#female-6
     # color_map = {0: "orange", 1: "red", 2: "red",3:"red",4:"orange",5:"magenta",6:"magenta",7:"orange",8:"gray"}#total-8
@@ -67,8 +67,7 @@ def k_means_clustering(col_plot, df_data, gdf_borders):
     # color_map = {0: "orange", 1: "orange", 2: "purple",3:"red",4:"red",5:"red",6:"cyan",7:"yellow",8:"gray"} #total-6
     # color_map = {0: "orange", 1: "red", 2: "orange",3:"red",4:"orange",5:"magenta",6:"red",7:"orange",8:"orange"}#female-9
 
-    color_map = {0: "red", 1: "purple", 2: "orange", 3: "green", 4: "blue", 5: "magenta", 6: "cyan", 7: "yellow",
-                 8: "gray"}  # original
+    color_map = {0: "red", 1: "purple", 2: "orange", 3: "green", 4: "blue", 5: "magenta", 6: "cyan", 7: "yellow",          8: "gray"}  # original
     #  color_map = {0: "orange", 1: "orange", 2: "red",3:"red",4:"orange",5:"magenta",6:"red",7:"yellow",8:"gray"}
 
     #   color_map = {0: "red", 1: "orange", 2: "red",3:"red",4:"orange",5:"red",6:"red",7:"yellow",8:"gray"}

@@ -4,7 +4,7 @@ def get_geo_df_result(gdf_borders, df_result, geo_scale):
     print("\nAAA:\n",gdf_borders.head(),"\nBBB:\n",df_result.head())
     print("\nCCC:\n",gdf_borders.dissolve(by=geo_scale).head())
     print("before:\n",gdf_borders.shape,"\n")
-
+    print("DDD:",geo_scale)
     gdf_result = gdf_borders.dissolve(by=geo_scale)[["id","geometry"]].merge(df_result,left_index=True,right_index=True)  # after dissolving index becomes geo_scal,so common index is geo_scale(example:province)
     print("after:\n",gdf_result.shape,"\n")
     print("\nEEE:\n",gdf_result.head())
@@ -15,24 +15,23 @@ def get_df_year_and_features(df_data, nom_denom_selection, year, selected_featur
     df = df_data[nom_denom_selection]
     selected_features = selected_features_dict[nom_denom_selection]
 
-    print("START:\n",df.head(),"\nlenssselected_features:",len(selected_features))
+    print("START:\n",df.head(),"\nlenssselected_features:",(selected_features))
     if len(selected_features)==1:
         selected_features=selected_features[0]
 
     if df.columns.nlevels > 1:  # Check if the DataFrame has multiple column levels
-        print("ZZZ:\n",df.loc[year, selected_features].droplevel(1, axis=1).head())
-        df = pd.DataFrame(
-            df.loc[year, selected_features].droplevel(1, axis=1).sum(axis=1))  # .reset_index()
+        df = pd.DataFrame( df.loc[year, selected_features].droplevel(1, axis=1).sum(axis=1))  # .reset_index()
     else:
-        if isinstance(df.loc[year, selected_features],    pd.Series):  # if it is a pandas series(for example it contains single column like sex=male)
+        if isinstance(df.loc[year, selected_features],  pd.Series):  # if it is a pandas series(for example it contains single column like sex=male)
             df = pd.DataFrame(df.loc[year, selected_features].to_frame().sum(axis=1))  # .reset_index()
         else:  # if it is a dataframe, then sum column values along horizontal axis
             df = pd.DataFrame(df.loc[year, selected_features].sum(axis=1))  # .reset_index()
     df.rename(columns={df.columns[-1]: "result"}, inplace=True)
     print("geo_scale:",geo_scale,"GGG:",df.head())
 
+
     print("\ndf_codes HHH:",df_codes.head())
-    print("ÜĞP:", df.loc[(slice(None), "Kırıkkale", slice(None))])
+    print("ÜĞP:", df.loc[(slice(None), "İstanbul", slice(None))])
 
     if geo_scale != ["district"]:
         df = df_codes.merge(df, left_index=True, right_on="province")
