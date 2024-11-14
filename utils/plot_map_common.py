@@ -2,13 +2,26 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 from raceplotly.plots import barplot
-from utils.helpers_ui import figure_setup
 from matplotlib import colors, pyplot as plt
 from streamlit_folium import folium_static
 import folium
 from utils.plot_pyramid import plot_pyramid_plotly, plot_pyramid_matplotlib
 from utils.query import get_df_change, get_geo_df_result, get_df_result
 
+
+def figure_setup(display_change=False):
+    if st.session_state["year_1"] == st.session_state["year_2"] or st.session_state["selected_slider"] == 1:
+        n_rows = 1
+    elif display_change:
+        n_rows = 3
+    else:
+        n_rows = 2
+    fig, axs = plt.subplots(n_rows, 1, squeeze=False, figsize=(10, 4 * n_rows),
+                            gridspec_kw={'wspace': 0, 'hspace': 0.1})  # axs has size (3,1)
+    # fig.subplots_adjust(left=0.2, bottom=0.2, right=0.8, top=0.8, wspace=0.5, hspace=0.5)
+
+    fig.tight_layout()
+    return fig, axs
 
 def resize_folium_map(m):
     # Convert map to HTML string

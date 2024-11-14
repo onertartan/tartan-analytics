@@ -45,15 +45,4 @@ def ui_basic_setup_names(df_data):
                                       sorted(df_data[sex_or_surname]["name"].unique(), key=locale.strxfrm), disabled=disable_when_clustering,key="names_" + page_name)
 
 
-def figure_setup(display_change=False):
-    if st.session_state["year_1"] == st.session_state["year_2"] or st.session_state["selected_slider"] == 1:
-        n_rows = 1
-    elif display_change:
-        n_rows = 3
-    else:
-        n_rows = 2
-    fig, axs = plt.subplots(n_rows, 1, squeeze=False, figsize=(10, 4 * n_rows), gridspec_kw={'wspace': 0, 'hspace':0.1})  # axs has size (3,1)
-    #fig.subplots_adjust(left=0.2, bottom=0.2, right=0.8, top=0.8, wspace=0.5, hspace=0.5)
 
-    fig.tight_layout()
-    return fig, axs

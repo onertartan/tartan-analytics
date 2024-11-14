@@ -6,7 +6,8 @@ import streamlit as st
 from matplotlib import cm
 import numpy as np
 import locale
-from utils.helpers_ui import figure_setup
+
+from utils.plot_map_common import figure_setup
 
 locale.setlocale(locale.LC_ALL, 'tr_TR.utf8')
 

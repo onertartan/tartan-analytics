@@ -1,8 +1,9 @@
 import streamlit as st
-from utils.checkbox_group import Checkbox_Group
+from matplotlib import pyplot as plt
+
 import extra_streamlit_components as stx
 from utils.plot_map_common import plot
-from abc import ABC, abstractmethod
+from abc import ABC
 import geopandas as gpd
 import pandas as pd
 
@@ -89,6 +90,9 @@ class BasePage(ABC):
         else:
             st.session_state["year_1"], st.session_state["year_2"] = int(st.session_state.slider_year_2[0]), int(
                 st.session_state.slider_year_2[1])
+
+
+
     @classmethod
     def ui_basic_setup_common(cls):
 
