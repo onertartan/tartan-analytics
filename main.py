@@ -12,8 +12,8 @@ current_page = st.navigation({
     "Population": [
         st.Page("modules/population/sex_age.py", title="Sex-Age ", icon=":material/public:"),
         st.Page("modules/population/marital_status.py", title="Sex-Age-Marital status(over age 15) ", icon=":material/wc:"),
-        st.Page("modules/population/baby_names_.py", title="Most Common Baby Names ", icon=":material/public:"),
-        st.Page("modules/population/names_surnames_.py", title="Most Common Names and Surnames", icon=":material/public:"),
+        st.Page("modules/population/baby_names.py", title="Most Common Baby Names ", icon=":material/public:"),
+        st.Page("modules/population/names_surnames.py", title="Most Common Names and Surnames", icon=":material/public:"),
         st.Page("modules/population/birth.py", title="Birth", icon=":material/public:")],
     "Elections": [ st.Page("modules/elections/sex_age_edu.py", title="Sex-Age-Edu ", icon=":material/public:"),
                    st.Page("modules/elections/election_correlation.py", title="CORR ", icon=":material/public:")]})

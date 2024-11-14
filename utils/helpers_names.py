@@ -1,7 +1,6 @@
 import pandas as pd
 import streamlit as st
 from sklearn.cluster import KMeans
-from utils.plot_map_names import plot_geopandas
 from utils.helpers_ui import figure_setup, ui_basic_setup_names
 
 
