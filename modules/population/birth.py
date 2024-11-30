@@ -22,6 +22,7 @@ class PageBirthSex(BasePage):
     @staticmethod
     @st.cache_data
     def get_data(geo_scale):
+        print("ADZX:",geo_scale)
         if geo_scale != "district": # not district
             file_path = "data/preprocessed/population/birth-sex-ibbs3-2009-2023.csv"
             df = pd.read_csv(file_path, index_col=[0, 1], header=[0])

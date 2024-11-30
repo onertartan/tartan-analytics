@@ -46,7 +46,7 @@ class PageNames(BasePage):
         # color_map = {0: "orange", 1: "red", 2: "orange",3:"red",4:"orange",5:"magenta",6:"red",7:"orange",8:"orange"}#female-9
 
         color_map = {0: "red", 1: "purple", 2: "orange", 3: "green", 4: "blue", 5: "magenta", 6: "cyan", 7: "yellow",
-                     8: "gray"}  # original
+                     8: "gray",9:"dark blue",10:"white",11:"black"}  # original
         #  color_map = {0: "orange", 1: "orange", 2: "red",3:"red",4:"orange",5:"magenta",6:"red",7:"yellow",8:"gray"}
 
         #   color_map = {0: "red", 1: "orange", 2: "red",3:"red",4:"orange",5:"red",6:"red",7:"yellow",8:"gray"}
@@ -61,11 +61,11 @@ class PageNames(BasePage):
 
     @classmethod
     def render(cls):
-        page_name =cls.page_name
+        page_name = cls.page_name
         cls.set_session_state_variables()
         df_data, gdf_borders = cls.get_data()
 
-        BasePage.basic_sidebar_controls(min(df_data["male"].index.get_level_values(0)),max(df_data["male"].index.get_level_values(0)))
+        BasePage.sidebar_controls_basic_setup(min(df_data["male"].index.get_level_values(0)), max(df_data["male"].index.get_level_values(0)))
         # basic_sidebar_controls(2018, 2023)
         col_1, col_2, col_3 = st.columns([1, 1, 3])
 

@@ -5,9 +5,8 @@ from matplotlib import pyplot as plt, patches
 
 import plotly.express as px
 
-def get_pyramid_dfs(df_data,selected_features,page_name):
-    age_groups_ordered = st.session_state["age_group_keys"][page_name][1:] # exclude the 0th element "all"
-    print("ÇÇ",age_groups_ordered)
+def get_pyramid_dfs(df_data,selected_features):
+
     # Adding Male data to the figure
     df = df_data["nominator"].loc[st.session_state.slider_year_2[0]:st.session_state.slider_year_2[1],selected_features["nominator"]].reset_index().drop(columns=["province"]).groupby("year").sum()
     print("TTT:",df)
@@ -21,10 +20,9 @@ def get_pyramid_dfs(df_data,selected_features,page_name):
     df.rename(columns={df.columns[-1]:"Population"}, inplace=True)
     return df
 
-def plot_pyramid_plotly(df_data,selected_features,page_name):
+def plot_pyramid_plotly(df_data,selected_features):
 
-
-    df  = get_pyramid_dfs(df_data,selected_features,page_name)
+    df = get_pyramid_dfs(df_data,selected_features)
 
     #total_population = df_male.sum() + df_female.sum()
     # Create the male and female bar traces
@@ -77,7 +75,7 @@ def plot_pyramid_plotly(df_data,selected_features,page_name):
     st.plotly_chart(fig)
 
 
-def plot_pyramid_matplotlib(df_data,selected_features,page_name):
+def plot_pyramid_matplotlib(df_data,selected_features):
     cols = st.columns([1,8, 1])
     cols[1].write("Note: First slider is used for year selection.")
     df = df_data["nominator"].loc[st.session_state.slider_year_1, selected_features["nominator"]]

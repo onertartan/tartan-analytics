@@ -39,7 +39,7 @@ class PageElectionCorrelation(BasePage):
         return df_sex_age_edu, df_election
 
     @classmethod
-    def basic_sidebar_controls(cls):
+    def sidebar_controls_basic_setup(cls):
         with (st.sidebar):
             st.header('Select options')
             if "selected_election_year" not in st.session_state:
@@ -51,8 +51,8 @@ class PageElectionCorrelation(BasePage):
     def render(cls):
         df_sex_age_edu, df_election = cls.get_data()
         cls.fun_extras()
-        cols_nom_denom = cls.ui_basic_setup_common()
-        year = cls.basic_sidebar_controls()
+        cols_nom_denom = cls.ui_basic_setup()
+        year = cls.sidebar_controls_basic_setup()
 
         basic_keys = ["all"]+df_election.loc[year].dropna(axis=1).columns[5:].tolist() # Parties start from index 5
         cls.checkbox_group["Party/Alliance"] = Checkbox_Group(cls.page_name, "Party/Alliance", 4, basic_keys)

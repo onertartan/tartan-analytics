@@ -32,7 +32,6 @@ class PageSexAge(BasePage):
         df = df.sort_index()
         df_data = {"nominator": df}#.loc[:, ((slice(None, None), slice(None, None)))]}  ##sort age groups
         df_data["denominator"] = df_data["nominator"]
-
         return df_data
 
 PageSexAge.run()

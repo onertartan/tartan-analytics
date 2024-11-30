@@ -17,9 +17,6 @@ class PageSexAgeEdu(BasePage):
     top_row_cols = st.columns([1])  # first col is for geo_scale, others are optional(extras)
     col_weights = [1, 4, 2, .1,1, 4, 2,]
 
-    @classmethod
-    def fun_extras(cls):
-        pass
 
     @staticmethod
     @st.cache_data

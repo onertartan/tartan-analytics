@@ -9,7 +9,8 @@ class PageSexAgeMaritalStatus(BasePage):
     features = {"nominator":  ["sex", "marital_status", "age"], "denominator": ["sex","marital_status","age"]}
 
     checkbox_group = {"age": Checkbox_Group(page_name, "age", 3, ["all"] + [f"{i}-{i + 4}" for i in range(15, 90, 5)] + ["90+"]),
-                      "marital_status": Checkbox_Group(page_name, "marital_status",  1,["all", "never married", "married", "divorced", "widowed"]),
+                      "marital_status": Checkbox_Group(page_name, "marital_status",  1,
+                                                       ["all", "never married", "married", "divorced", "widowed"],message="Select marital status."),
                       "sex": Checkbox_Group(page_name, "sex", 1, ["all", "male", "female"])}
     top_row_cols = st.columns([1], gap="small")#first col is for geo_scale, others are optional(extras)
     col_weights = [1, 2, 4, .1, 1, 2, 4]
