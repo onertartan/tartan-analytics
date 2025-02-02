@@ -94,9 +94,10 @@ def figure_setup(display_change=False):
 
     return fig, axs
 
-def resize_folium_map(m):
+def resize_folium_map(m,height=450):
     # Convert map to HTML string
     map_html = m._repr_html_()
+
     # Custom HTML with responsive iframe
     html = f"""
     <style>
@@ -123,6 +124,77 @@ def resize_folium_map(m):
     components.html(html, height=450)
 
 def plotter_folium_static(gdf_result, title, geo_scale, *args):
+    st.markdown(f"<h3 style='text-align: center; color: grey;'>{title}</h1>", unsafe_allow_html=True)
+    gdf_result = gdf_result.reset_index()
+    # Create the map
+    m = folium.Map(location=[36.5, 35], zoom_start=6.4, tiles="cartodb positron")
+    # Create the choropleth layer
+    if st.session_state["clustering_cb_" + st.session_state["page_name"]]:
+        # For clustered data
+        folium.GeoJson(
+            data=gdf_result,
+            style_function=lambda feature: {
+                'fillColor': feature['properties']["color"],
+                'color': 'black',
+                'weight': 1,
+                'fillOpacity': 0.7,
+                'line_opacity': 0.2
+            },
+            popup=GeoJsonPopup(
+                fields=[col for col in gdf_result.columns if col not in ['geometry', 'year']],
+                aliases=[col for col in gdf_result.columns if col not in ['geometry', 'year']],
+                localize=True
+            ),
+            tooltip=GeoJsonTooltip(
+                fields=[geo_scale[0], "result"],
+                aliases=[geo_scale[0], "Result"],
+                localize=True
+            )
+        ).add_to(m)
+    else:
+        # For regular choropleth
+        folium.Choropleth(
+            geo_data=gdf_result,
+            name="choropleth",
+            data=gdf_result,
+            columns=geo_scale + ["result"] if "district" not in geo_scale else ["id", "result"],
+            key_on=f'feature.properties.{geo_scale[0]}' if "district" not in geo_scale else "feature.properties.id",
+            fill_color=st.session_state["selected_cmap"],
+            nan_fill_color="black",
+            fill_opacity=0.7,
+            line_opacity=0.2,
+            legend_name="Result"
+        ).add_to(m)
+
+        # Add tooltips
+        style_function = lambda x: {'fillColor': '#ffffff',
+                                    'color': '#000000',
+                                    'fillOpacity': 0.1,
+                                    'weight': 0.1}
+        highlight_function = lambda x: {'fillColor': '#000000',
+                                        'color': '#000000',
+                                        'fillOpacity': 0.50,
+                                        'weight': 0.1}
+
+        NIL = folium.features.GeoJson(
+            gdf_result,
+            style_function=style_function,
+            control=False,
+            highlight_function=highlight_function,
+            tooltip=folium.features.GeoJsonTooltip(
+                fields=[geo_scale[0], 'result'],
+                aliases=[geo_scale[0], 'Result'],
+                style=("background-color: white; color: #333333; font-family: arial; font-size: 12px; padding: 10px;")
+            )
+        )
+        m.add_child(NIL)
+        m.keep_in_front(NIL)
+
+    # Convert to HTML with responsive container
+    resize_folium_map(m)
+
+
+def plotter_folium_static_old(gdf_result, title, geo_scale, *args):
     st.markdown(f"<h3 style='text-align: center; color: grey;'>{title}</h1>", unsafe_allow_html=True)
    # df_result = df_result.reset_index()
     choropleth_map = folium.Map(location=[36.5, 35], zoom_start = 6.4, tiles="cartodb positron")
@@ -195,9 +267,10 @@ def plot_race(df_result,geo_scale):
     st.plotly_chart(fig, theme="streamlit", use_container_width=True)
 
 
-def plotter_folium_interactive(gdf_result, *args):
+def plotter_folium_interactive (gdf_result, *args):
     gdf_result = gdf_result.reset_index()
     print("ĞĞĞĞ:",gdf_result)
+
     m = gdf_result.explore(
         column="result",  # make choropleth based on "BoroName" column
         tooltip="province",  # show "BoroName" value in tooltip (on hover)
@@ -207,11 +280,13 @@ def plotter_folium_interactive(gdf_result, *args):
         columns=[col for col in gdf_result.columns if col != "year"],
         style_kwds=dict(color="black", line_width=.01),  # use black outline
     )
-    folium_static(m)
+
+    folium_static(m, width=1100, height=450)
+
 
 def optimal_k_analysis(df):
     # Assuming data is your dataset (numpy array or Pandas DataFrame)
-    inertias, silhouette_scores, calinski_scores= [], [], []
+    inertias, silhouette_scores, calinski_scores = [], [], []
     # Standardize the data
     scaler = StandardScaler()# MinMaxScaler()
     scaled_data = scaler.fit_transform(df)
@@ -247,7 +322,7 @@ def optimal_k_analysis(df):
     ax1.set_xlabel('Number of Clusters (k)')
     ax1.set_ylabel('Inertia')
     ax1.set_ylim(0)
-    ax1.set_title('Elbow Method')
+    ax1.set_title('Number of clusters analysis')
     if optimal_k_elbow:
         ax1.axvline(x=optimal_k_elbow, color='r', linestyle='--')
 
@@ -273,7 +348,7 @@ def analyze_mortality_data(df):
     male_columns = df.columns[:12]
     female_columns = df.columns[12:24]
     months = [col.split('_')[-1] for col in male_columns]
-
+    print("MORTAL",df)
     # Key statistics
     stats = {
         'Male': {
@@ -537,7 +612,7 @@ def plot_map_generic(col_plot, col_df, gdf_borders, df_result, geo_scale, plotte
 
 
 def plot(col_plot, col_df, df_data, gdf_borders, selected_features, geo_scale ):
-
+    print("123456", geo_scale,df_data["denominator"]["district"])
     if geo_scale == ["district"]:
         geo_scale = geo_scale + ["province"]  # geo_scale = ["province", "district"]
     # Population Pyramid - Plotly
@@ -558,6 +633,7 @@ def plot(col_plot, col_df, df_data, gdf_borders, selected_features, geo_scale ):
                # st.session_state["animation_images_generated"] = False
                # delete_temp_files()
                 years_selected = sorted({st.session_state["year_1"], st.session_state["year_2"]})
+                print("894632",geo_scale,df_data["denominator"]["district"])
                 df_result = get_df_result(df_data, selected_features, geo_scale,years_selected)
                 print("JNHU:",df_result.head())
             else: # In the next step plotter will generate images according to df_result for a range of years
@@ -572,7 +648,6 @@ def plot(col_plot, col_df, df_data, gdf_borders, selected_features, geo_scale ):
                 plot_map_generic(col_plot, col_df, gdf_borders, df_result, geo_scale, plotter_folium_static,years_selected)
             elif st.session_state["visualization_option"] == "Folium-interactive":
                 plot_map_generic(col_plot, col_df, gdf_borders, df_result, geo_scale, plotter_folium_interactive,years_selected)
-                radar()
 
             if st.session_state["animate"]:
                 animate(col_plot)

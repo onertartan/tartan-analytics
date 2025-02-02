@@ -39,7 +39,7 @@ class PageElectionCorrelation(BasePage):
         return df_sex_age_edu, df_election
 
     @classmethod
-    def sidebar_controls_basic_setup(cls):
+    def sidebar_controls_basic_setup(cls,*args):
         with (st.sidebar):
             st.header('Select options')
             if "selected_election_year" not in st.session_state:

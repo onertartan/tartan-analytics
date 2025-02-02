@@ -1,4 +1,7 @@
 from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, MaxAbsScaler
+
 from modules.base_page import BasePage
 import pandas as pd
 import geopandas as gpd
@@ -11,11 +14,12 @@ from utils.plot_map_common import figure_setup
 
 locale.setlocale(locale.LC_ALL, 'tr_TR.utf8')
 
+
 class PageNames(BasePage):
     @classmethod
-    def k_means_clustering(cls,col_plot, df_data, gdf_borders):
+    def k_means_clustering(cls, col_plot, df_data, gdf_borders):
         page_name = cls.page_name
-        if page_name == "names or surnames" and st.session_state["name_surname_rb"] == "Surname":
+        if page_name == "names_surnames" and st.session_state["name_surname_rb"] == "Surname":
             df_year = df_data["surname"].loc[st.session_state["year_1"]]
         elif st.session_state["select_both_sexes_" + page_name]:
             df_year_male, df_year_female = df_data["male"].loc[st.session_state["year_1"]], df_data["female"].loc[st.session_state["year_1"]]
@@ -27,8 +31,31 @@ class PageNames(BasePage):
         else:
             sex = st.session_state["sex_" + page_name].lower()
             df_year = df_data[sex].loc[st.session_state["year_1"]]
+        scaler = MaxAbsScaler()
+        data_scaled = scaler.fit_transform( df_year.loc["Adana", ["count"]] )
+
+
+        # Get unique provinces
+        provinces = df_year.index.get_level_values(0).unique()
+        # Scale counts for each province
+        for province in provinces:
+            # Get counts for current province
+            province_count_sum = df_year.loc[province, 'count'].sum()
+
+            province_counts = df_year.loc[province, 'count'].values.reshape(-1, 1)
+            scaled_counts = scaler.fit_transform(province_counts)            # Fit and transform the counts
+            df_year.loc[province, 'scaled_count_sklearn'] = scaled_counts.flatten()             # Update the DataFrame with scaled values
+
+
+            # Fit and transform the counts
+            # Update the DataFrame with scaled values
+            df_year.loc[province, 'scaled_count'] =df_year.loc[province, "count"] /province_count_sum
+        print("XCV:",df_year.loc["Adana"])
+
+        print("SCAL:",data_scaled)
         df_year.loc[:, "ratio"] = df_year.loc[:, "count"] / df_year.loc[:, "total_count"]
-        df_pivot = pd.pivot_table(df_year, values='ratio', index=df_year.index, columns=['name'],  aggfunc=lambda x: x, dropna=False, fill_value=0)
+        df_pivot = pd.pivot_table(df_year, values='scaled_count', index=df_year.index, columns=['name'],  aggfunc=lambda x: x, dropna=False, fill_value=0)
+ 
         kmeans = KMeans(n_clusters=st.session_state["n_clusters_" + page_name], random_state=0).fit(df_pivot)
 
         df_pivot["clusters"] = kmeans.labels_
@@ -39,14 +66,17 @@ class PageNames(BasePage):
         # color_map = {0: "orange", 1: "orange", 2: "red",3:"red",4:"orange",5:"magenta",6:"red",7:"orange",8:"orange"}#male-8
         #  color_map = {0: "purple", 1: "red", 2: "orange",3:"red",4:"orange",5:"magenta",6:"cyan",7:"yellow",8:"gray"}#female-5
         # color_map = {0: "purple", 1: "orange", 2: "orange",3:"red",4:"orange",5:"red",6:"cyan",7:"yellow",8:"gray"}#female-6
-        # color_map = {0: "orange", 1: "red", 2: "red",3:"red",4:"orange",5:"magenta",6:"magenta",7:"orange",8:"gray"}#total-8
+       #  color_map = {0: "orange", 1: "red", 2: "red",3:"red",4:"orange",5:"magenta",6:"magenta",7:"orange",8:"gray"}#total-8
         # color_map = {0: "red", 1: "purple", 2: "orange",3:"green",4:"blue",5:"magenta",6:"cyan",7:"yellow",8:"gray"}#original
         # color_map = {0: "orange", 1: "orange", 2: "purple",3:"red",4:"red",5:"red",6:"purple",7:"yellow",8:"gray"}#total-7
         # color_map = {0: "orange", 1: "orange", 2: "purple",3:"red",4:"red",5:"red",6:"cyan",7:"yellow",8:"gray"} #total-6
         # color_map = {0: "orange", 1: "red", 2: "orange",3:"red",4:"orange",5:"magenta",6:"red",7:"orange",8:"orange"}#female-9
 
+        # ORIGINAL
         color_map = {0: "red", 1: "purple", 2: "orange", 3: "green", 4: "blue", 5: "magenta", 6: "cyan", 7: "yellow",
-                     8: "gray",9:"dark blue",10:"white",11:"black"}  # original
+                   8: "gray",9:"dark blue",10:"white",11:"black"}  # original
+
+
         #  color_map = {0: "orange", 1: "orange", 2: "red",3:"red",4:"orange",5:"magenta",6:"red",7:"yellow",8:"gray"}
 
         #   color_map = {0: "red", 1: "orange", 2: "red",3:"red",4:"orange",5:"red",6:"red",7:"yellow",8:"gray"}
@@ -60,25 +90,30 @@ class PageNames(BasePage):
         col_plot.pyplot(fig)
 
     @classmethod
+    def fun_extras(cls, *args):
+        pass
+
+    @classmethod
     def render(cls):
         page_name = cls.page_name
         cls.set_session_state_variables()
         df_data, gdf_borders = cls.get_data()
-
-        BasePage.sidebar_controls_basic_setup(min(df_data["male"].index.get_level_values(0)), max(df_data["male"].index.get_level_values(0)))
+        start_year, end_year = df_data["male"].index.get_level_values(0).min(), df_data["male"].index.get_level_values(0).max()
+        BasePage.sidebar_controls_basic_setup(start_year, end_year )
         # basic_sidebar_controls(2018, 2023)
         col_1, col_2, col_3 = st.columns([1, 1, 3])
 
         if not st.session_state["clustering_cb_" + page_name]:
             st.session_state["select_both_sexes_" + page_name] = False
 
-        if page_name == "names or surnames":
-            name_surname = col_1.radio("Select name or surname", ["Name", "Surname"], key="name_surname_rb").lower()
-            if name_surname == "surname":
-                st.session_state["select_both_sexes_" + page_name] = True
-            sex = col_2.radio("Choose sex", ["Male", "Female"],   disabled=st.session_state["select_both_sexes_" + page_name], key="sex_" + page_name).lower()
+        if page_name == "names_surnames":
+             name_surname = col_1.radio("Select name or surname", ["Name", "Surname"], key="name_surname_rb").lower()
+             if name_surname == "surname":
+                 st.session_state["select_both_sexes_" + page_name] = True
+             sex = col_2.radio("Choose sex", ["Male", "Female"],  disabled=st.session_state["select_both_sexes_" + page_name], key="sex_" + page_name).lower()
         else:
-            sex = col_1.radio("Choose sex", ["Male", "Female"],  disabled=st.session_state["select_both_sexes_" + page_name],key="sex_" + page_name).lower()
+             sex = col_1.radio("Choose sex", ["Male", "Female"],  disabled=st.session_state["select_both_sexes_" + page_name],key="sex_" + page_name).lower()
+
 
         st.header(f"Clustering or Displaying {page_name}")
         col_1, col_2, col_3 = st.columns([1, 1, 3])
@@ -96,7 +131,7 @@ class PageNames(BasePage):
         col_3.selectbox("Select a number N to check if the entered name is among the top N names", options=list(range(1, 31)), disabled=disable_top_n_selection,
                         key="top_n_selection_" + page_name)
 
-        sex_or_surname = "surname" if page_name == "Surname" and st.session_state["name_surname_rb"] == "Surname" else sex
+        sex_or_surname = "surname" if page_name == "names_surnames" and st.session_state["name_surname_rb"] == "Surname" else sex
         col_3.multiselect("Select name(s). By default most popular name is shown.",
                           sorted(df_data[sex_or_surname]["name"].unique(), key=locale.strxfrm),
                           disabled=disable_when_clustering, key="names_" + page_name)
@@ -136,7 +171,7 @@ class PageNames(BasePage):
     @staticmethod
     def plot_geopandas(col_plot, df_data, gdf_borders):
         page_name = st.session_state["page_name"]
-        if page_name == "names or surnames" and st.session_state["name_surname_rb"] == "Surname":
+        if page_name == "names_surnames" and st.session_state["name_surname_rb"] == "Surname":
             df = df_data["surname"]
         else:
             sex = st.session_state["sex_" + page_name].lower()

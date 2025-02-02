@@ -20,10 +20,10 @@ class PageSexAgeEdu(BasePage):
 
     @staticmethod
     @st.cache_data
-    def get_data(geo_scale):
-        df = pd.read_csv("data/preprocessed/elections/df_edu.csv", index_col=[0, 1, 2], header=[0, 1, 2])
-        if geo_scale != "district":
-            df = pd.read_csv("data/preprocessed/elections/df_edu.csv", index_col=[0, 1, 2], header=[0, 1, 2]).droplevel(2).groupby(["year", "province"]).sum()
+    def get_data():
+        df = {}
+        df["district"]= pd.read_csv("data/preprocessed/elections/df_edu.csv", index_col=[0, 1, 2], header=[0, 1, 2])
+        df["province"]  = pd.read_csv("data/preprocessed/elections/df_edu.csv", index_col=[0, 1, 2], header=[0, 1, 2]).droplevel(2).groupby(["year", "province"]).sum()
 
         df_data = {"denominator": df, "nominator": df}
         return df_data

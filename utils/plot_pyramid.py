@@ -76,9 +76,10 @@ def plot_pyramid_plotly(df_data,selected_features):
 
 
 def plot_pyramid_matplotlib(df_data,selected_features):
+    print("piram",df_data)
     cols = st.columns([1,8, 1])
     cols[1].write("Note: First slider is used for year selection.")
-    df = df_data["nominator"].loc[st.session_state.slider_year_1, selected_features["nominator"]]
+    df = df_data["nominator"]["province"].loc[st.session_state.slider_year_1, selected_features["nominator"]]
 
     df_male= df["male"].sum().reset_index()
     df_female = df["female"].sum().reset_index()

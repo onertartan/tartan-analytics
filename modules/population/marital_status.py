@@ -13,7 +13,7 @@ class PageSexAgeMaritalStatus(BasePage):
                                                        ["all", "never married", "married", "divorced", "widowed"],message="Select marital status."),
                       "sex": Checkbox_Group(page_name, "sex", 1, ["all", "male", "female"])}
     top_row_cols = st.columns([1], gap="small")#first col is for geo_scale, others are optional(extras)
-    col_weights = [1, 2, 4, .1, 1, 2, 4]
+    col_weights = [1.1, 2, 4, .1, 1.1, 2, 4]
 
     @classmethod
     def fun_extras(cls):
@@ -21,13 +21,13 @@ class PageSexAgeMaritalStatus(BasePage):
 
     @staticmethod
     @st.cache_data
-    def get_data(geo_scale):
-        if geo_scale != "district":
-            file_path = "data/preprocessed/population/age-sex-marital-status-ibbs3-2008-2023.csv"
-            df = pd.read_csv(file_path, index_col=[0, 1], header=[0, 1, 2])
-        else:
-            df = pd.read_csv("data/preprocessed/population/age-sex-marital-status-district-2018-2023.csv",  index_col=[0, 1, 2], header=[0, 1, 2])
-
+    def get_data():
+        df = {}
+        file_path = "data/preprocessed/population/age-sex-marital-status-ibbs3-2008-2023.csv"
+        df["province"] = pd.read_csv(file_path, index_col=[0, 1], header=[0, 1, 2])
+        file_path = "data/preprocessed/population/age-sex-marital-status-district-2018-2023.csv"
+        df["district"] = pd.read_csv(file_path,  index_col=[0, 1, 2], header=[0, 1, 2])
+        df["district"] = df["district"].sort_index()
         df_data = {"nominator": df}#.loc[:, ((  slice(None, None), st.session_state["age_group_keys"][page_name][1:]))]}  # #sort age groups
         df_data["denominator"] = df_data["nominator"]
         return df_data

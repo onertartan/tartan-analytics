@@ -5,25 +5,45 @@ class Checkbox_Group:
         self.feature_name = feature_name
         self.num_sub_cols = num_sub_cols
         self.basic_keys = basic_keys
-        self.checked_dict = {"nominator": {name: False for name in basic_keys},
-                             "denominator": {name: False for name in basic_keys}}
-        self.checked_dict["nominator"]["all"] = True
-        self.checked_dict["denominator"]["all"] = True
+      #  self.checked_dict = {"nominator": {name: False for name in basic_keys},
+      #                       "denominator": {name: False for name in basic_keys}}
+      #  self.checked_dict["nominator"]["all"] = True
+      #  self.checked_dict["denominator"]["all"] = True
+        self.reset_checked_values()
         self.message = message
 
-
+    def reset_checked_values(self):
+        # Initialize session state for checkboxes
+        for nom_denom in ["nominator", "denominator"]:
+            for key_basic in self.basic_keys:
+                key = f"{self.page_name}_{nom_denom}_{self.feature_name}_{key_basic}"
+                if key not in st.session_state:
+                    st.session_state[key] = (key_basic == "all")  # "all" is initially True
     def place_checkboxes(self, cols_nom_denom, nom_denom_key_suffix, disabled,feature_name=""):
         print("PAGE::",st.session_state["page_name"])
         print("keys::",nom_denom_key_suffix)
+        # Custom CSS to reduce checkbox spacing with custom margin
+
         cols_nom_denom.write(self.message)
         checkbox_group_sub_cols = cols_nom_denom.columns(self.num_sub_cols , gap="small")# sub columns for checkboxed
-        for i, key_basic in enumerate(self.checked_dict[nom_denom_key_suffix].keys()):
-            if i == 0:  # all checkbox
+        #print("9999",self.checked_dict)
+        for i, key_basic in enumerate(self.basic_keys):
+
+       #1 for i, key_basic in enumerate(self.checked_dict[nom_denom_key_suffix].keys()):
+            st.markdown(
+                """<style>[data-testid=stVerticalBlock]{gap: 0rem;}</style>""",
+                unsafe_allow_html=True)
+
+            if i == 0:
                 on_change_fun = self.select_all
-            else:
+            else: # if a checkbox other than "all" is clicked, then uncheck the "all" checkbox
                 on_change_fun = self.uncheck_all_option
             key = self.page_name+"_"+nom_denom_key_suffix+"_"+feature_name+"_"+key_basic
-            value = True if key_basic == "all" else False
+            #value = True if key_basic == "all" else False  # 31 OCAK 2024 EN SON DEĞİŞİKLİK ÖNCESİ ORJİNAL
+            #value = st.session_state.get(key, self.checked_dict[nom_denom_key_suffix][key_basic])
+            value = st.session_state.get(key)
+
+           # print("//",value,"//",key_basic,"&&",self.checked_dict[nom_denom_key_suffix][key_basic])
             checkbox_group_sub_cols[i % self.num_sub_cols].checkbox(label=key_basic.capitalize(), key=key,
                                                     value=value,
                                                     disabled=disabled,
@@ -45,10 +65,13 @@ class Checkbox_Group:
         if   st.session_state[self.page_name+"_"+nom_denom_key_suffix+"_"+feature_name+"_all"]:
             for key_basic in  self.basic_keys[1:]:
                 st.session_state[self.page_name+"_"+nom_denom_key_suffix+"_"+feature_name+"_"+key_basic] = False
+                # Update self.checked_dict
+                #1self.checked_dict[nom_denom_key_suffix][key_basic] = False
 
     def uncheck_all_option(self, nom_denom_key_suffix,feature_name):
         if  st.session_state[self.page_name+"_"+nom_denom_key_suffix+"_"+feature_name+"_all"]:
             st.session_state[self.page_name + "_" + nom_denom_key_suffix + "_" + feature_name + "_all"] = False
+            #self.checked_dict[nom_denom_key_suffix]["all"] = False
 
     # @staticmethod
     # def age_group_quick_select():
@@ -75,11 +98,11 @@ class Checkbox_Group:
     #             mid_age_groups = ["15-19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49"]
     #             st.session_state[page_name + "_age_checkbox_group"].set_checkbox_values_for_quick_selection(page_name, basic_keys, mid_age_groups, "denominator")
 
-    @staticmethod
-    def set_checkbox_values_for_quick_selection(page_name, basic_keys, keys_to_check, nom_denom_key_suffix):
-        for key_basic in basic_keys:
-            if key_basic in keys_to_check:
-                val = True
-            else:
-                val = False
-            st.session_state[page_name+"_"+key_basic+"_"+nom_denom_key_suffix] = val
+    # @staticmethod
+    # def set_checkbox_values_for_quick_selection(page_name, basic_keys, keys_to_check, nom_denom_key_suffix):
+    #     for key_basic in basic_keys:
+    #         if key_basic in keys_to_check:
+    #             val = True
+    #         else:
+    #             val = False
+    #         st.session_state[page_name+"_"+key_basic+"_"+nom_denom_key_suffix] = val

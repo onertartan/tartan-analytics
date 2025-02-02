@@ -17,7 +17,7 @@ def get_geo_df_result(gdf_borders, df_result, geo_scale):
         print("EEE,",df_result)
         color_map = {0: "red", 1: "purple", 2: "orange", 3: "darkgreen", 4: "blue", 5: "magenta", 6: "cyan", 7: "yellow",
                      8: "gray", 9: "peachpuff", 10: "lime", 11: "pink", 12: "brown", 13: "lavender"}
-        if False:#geo_scale==["province"]:
+        if False:#geo_scale==["province"]: # in k-means clustering at each animation colors change, a temp code to observe consistent colors
             idx_izmir = df_result.loc["İzmir","clusters"]
             idx_konya = df_result.loc["Konya","clusters"]
             idx_sivas = df_result.loc["Sivas","clusters"]
@@ -40,14 +40,20 @@ def get_geo_df_result(gdf_borders, df_result, geo_scale):
     print("???",set(df_result.index) - set(gdf_borders.dissolve(by=geo_scale)[["id","geometry"]].index))
     return gdf_result
 
-def get_df_year_and_features(df_data, nom_denom_selection, year, selected_features_dict, geo_scale,give_total=True):#ADD sum_option parameter with default val True
+def get_df_year_and_features(df_data, nom_denom_selection, year, selected_features_dict, geo_scale,give_total=True):
     df_codes = pd.read_csv("data/preprocessed/region_codes.csv", index_col=0)
-    print("YYY",year,"df_codesçç",df_codes.head())
-
-    df = df_data[nom_denom_selection]
+    print("YYY",year,"df_codesçç",df_codes.head(),"geo_scale",geo_scale)
+    if "district" in geo_scale:
+        print("1. çekpoint ",nom_denom_selection)
+        df = df_data[nom_denom_selection]["district"]
+        print("1. çekdf",df)
+    else:
+        print("2. çekpoint")
+        df = df_data[nom_denom_selection]["province"]
+    print("nom_denom_selection:",nom_denom_selection,"selected_features_dict:",selected_features_dict)
     selected_features = selected_features_dict[nom_denom_selection]
 
-    print("START:\n",df.head(),"\nlenssselected_features:",(selected_features))
+    print("nom_denom_selection:",nom_denom_selection,"START:\n",df.head(),"\nssselected_features:",selected_features)
     if len(selected_features)==1:
         selected_features=selected_features[0]
     df = pd.DataFrame(df.loc[year, selected_features]) # if it is Pandas Series it is converted to dataframe
@@ -98,12 +104,13 @@ def get_df_change(df_result):
             df1, df2 = df1.align(df2, join="inner", axis=1)  # Align columns
             df1, df2 = df1.align(df2, join="inner", axis=0)  # Align rows
             df_change = df2.copy()
-            df_change.loc[:,df2.select_dtypes(include=['number']).columns]=df2.select_dtypes(include=['number']) - df1.select_dtypes(include=['number'])-df1.select_dtypes(include=['number'])
+            print("PŞM:",df1.head())
+            print("OIK:",df2.head())
+            df_change =df2.select_dtypes(include=['number'])  -df1.select_dtypes(include=['number'])
             print("ÇÖKJ:", df1.shape,df2.shape)
             if st.session_state["display_percentage"]:
                 numeric_cols = df_change.select_dtypes(include=['number']).columns
                 df_change.loc[:, numeric_cols] = df_change.loc[:,numeric_cols] / df1.loc[:,numeric_cols]* 100
-
         else:
             df_change = pd.DataFrame({"result":df_result.loc[st.session_state["year_2"],"result"]- df_result.loc[st.session_state["year_1"],"result"] })
             if st.session_state["display_percentage"]:
@@ -114,7 +121,8 @@ def get_df_change(df_result):
 
 def get_df_result(df_data, selected_features, geo_scale, years,give_total=True):
     k_means =  st.session_state["clustering_cb_"+st.session_state["page_name"]]
-    print("FFFF",st.session_state["clustering_cb_"+st.session_state["page_name"]])
+    print("FFFF",st.session_state["clustering_cb_"+st.session_state["page_name"]],"ÜÜÜ",geo_scale)
+    print("IUIU",df_data["denominator"]["district"])
     df_result = df_nom_result = get_df_year_and_features(df_data, "nominator", years, selected_features, geo_scale,not k_means)
     if st.session_state["display_percentage"]:
         # df_data_nom and df_data_denom is same for maritial_status, sex-age pages, but different for birth

@@ -15,12 +15,14 @@ current_page = st.navigation({
         st.Page("modules/population/sex_age.py", title="Sex-Age ", icon=":material/public:"),
         st.Page("modules/population/marital_status.py", title="Sex-Age-Marital status(over age 15) ", icon=":material/wc:")],
     "Elections": [ st.Page("modules/elections/sex_age_edu.py", title="Sex-Age-Edu ", icon=":material/public:"),
-                   st.Page("modules/elections/election_correlation.py", title="CORR ", icon=":material/public:")]})
+                   st.Page("modules/elections/election_correlation.py", title="Correlations", icon=":material/public:")
+                 #  st.Page("modules/elections/parties_alliances.py", title="Parties & Alliances ", icon=":material/public:")
+                   ]})
 
 if "colormap_list" not in st.session_state:
     st.session_state["colormap"] = {}
     # folium (static)
-    st.session_state["colormap"]["Folium"] =   st.session_state["colormap"]["Folium-interactive"] = ["PiYG", "PRGn", "BrBG", "PuOr", "RdGy", "RdBu", "RdYlBu", "RdYlGn", "Spectral", "Reds",
+    st.session_state["colormap"]["Folium"] =  st.session_state["colormap"]["Folium-interactive"] = ["PiYG", "PRGn", "BrBG", "PuOr", "RdGy", "RdBu", "RdYlBu", "RdYlGn", "Spectral", "Reds",
                                           "Purples", "Blues", "Greens", "Oranges", "Greys", "YlOrRd", "OrRd", "PuRd", "RdPu", "BuPu", "GnBu", "PuBu", "YlGnBu", "PuBuGn",
                                           "BuGn", "YlGn", "Pastel1", "Pastel2", "Paired", "Accent", "Dark2", "Set1", "Set2", "Set3"]
     # matplotlib
@@ -43,6 +45,9 @@ if "elbow" not in st.session_state:
     st.session_state["elbow"] = False
     # Combine them into a single list
 # current_page is also a Page object you can .run()
+
+if "geo_scale" not in st.session_state:
+    st.session_state["geo_scale"] = 'province (ibbs3)'
 current_page.run()
 
 

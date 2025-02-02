@@ -22,13 +22,15 @@ class PageDeathMonth(BasePage):
 
     @staticmethod
     @st.cache_data
-    def get_data(geo_scale):
-        if geo_scale != "district":
-            df = pd.read_csv("data/preprocessed/population/death_sex_month_ibbs3-2009-2023.csv", index_col=[0, 1], header=[0, 1])
-        else:
-            df = pd.read_csv("data/preprocessed/population/death_sex_month_ibbs3-2009-2023.csv", index_col=[0, 1, 2], header=[0, 1])
+    def get_data():
+        df = {}
+        file_path = "data/preprocessed/population/death_sex_month_ibbs3-2009-2023.csv"
+        df["province"] = pd.read_csv(file_path, index_col=[0, 1], header=[0, 1])
+        df["province"] = df["province"].sort_index()
+        file_path = "data/preprocessed/population/death_sex_month_ibbs3-2009-2023.csv"
+        df["district"] = pd.read_csv(file_path, index_col=[0, 1, 2], header=[0, 1])
+        df["district"]  = df["district"].sort_index()
 
-        df = df.sort_index()
         df_data = {"nominator": df} #.loc[:, ((slice(None, None), slice(None, None)))]}  ##sort age groups
         df_data["denominator"] = df_data["nominator"]
         return df_data

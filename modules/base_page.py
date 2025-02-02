@@ -15,6 +15,7 @@ class BasePage(ABC):
     features = None
     page_name = None
     correlation_analysis = False
+    animation_available = True
     geo_scales = ["province (ibbs3)", "sub-region (ibbs2)", "region (ibbs1)", "district"]
     top_row_cols = []
     checkbox_group = {}
@@ -25,7 +26,7 @@ class BasePage(ABC):
         return pd.MultiIndex.from_arrays([df.index.get_level_values(0).astype(str),  df.index.get_level_values(1)], names=df.index.names)
 
     @classmethod
-    def fun_extras(cls):
+    def fun_extras(cls, *args):
         pass
 
     @staticmethod
@@ -35,74 +36,79 @@ class BasePage(ABC):
 
     @staticmethod
     @st.cache_data
-    def get_geo_data(geo_scale=None):
-        if "district" in geo_scale:
-            print("ASDFG:")
-            return gpd.read_file("data/preprocessed/gdf_borders_district.geojson")
-        else:
-            print("ZXCVB")
-            return gpd.read_file("data/preprocessed/gdf_borders_ibbs3.geojson")
+    def get_geo_data():
+        geo_data_dict={}
+        print("ÇŞÇ",st.session_state["geo_scale"])
+        geo_data_dict["district"] =  gpd.read_file("data/preprocessed/gdf_borders_district.geojson")
+        print("ZXCVB")
+        geo_data_dict["province"] = gpd.read_file("data/preprocessed/gdf_borders_ibbs3.geojson")
+        return geo_data_dict
 
     @classmethod
     def render(cls):
-        st.markdown("""<style> .main > div { padding-left:1rem;padding-right:1rem;padding-top: 2rem; }</style>""", unsafe_allow_html=True)
-        geo_scale = cls.top_row_cols[0].radio("Choose geographic scale",cls.geo_scales)
-
-        if geo_scale != "district":
-            geo_scale = geo_scale.split()[0]
-
+        st.markdown("""<style> .main > div {padding-left:1rem;padding-right:1rem;padding-top:4rem;}</style>""", unsafe_allow_html=True)
+        st.session_state["geo_scale"] = cls.top_row_cols[0].radio("Choose geographic scale",cls.geo_scales).split()[0]
+        print("ÇÇÇ:",st.session_state["geo_scale"])
         st.markdown("""<style> [role=radiogroup]{ gap: 0rem; } </style>""", unsafe_allow_html=True)
         cls.fun_extras() # for optional columns at the top row
         cols_nom_denom = cls.ui_basic_setup()
         # get cached data
-        df_data = cls.get_data(geo_scale)
-        gdf_borders = cls.get_geo_data(geo_scale)
-        cls.sidebar_controls(start_year=df_data["nominator"].index.get_level_values(0).min(),end_year= df_data["nominator"].index.get_level_values(0).max())
+        df_data = cls.get_data()
+        print("0. çekpoint",df_data["denominator"]["district"])
+        geo_scale = "province" if st.session_state["geo_scale"]!="district" else "district"
+        gdf_borders = cls.get_geo_data()[geo_scale]
+
+
+        start_year = df_data["nominator"][geo_scale].index.get_level_values(0).min()
+        end_year = df_data["nominator"][geo_scale].index.get_level_values(0).max()
+        cls.sidebar_controls(start_year, end_year)
         st.write("""<style>[data-testid="stHorizontalBlock"]{align-items: top;}</style>""", unsafe_allow_html=True)
 
         with st.form("submit_form"):
             (col_show_results, col_animation) = st.columns(2)
             show_results = col_show_results.form_submit_button("Show results")
-            play_animation = col_animation.form_submit_button("Play animation")
-            col_animation.write("Animation Controls")
-            col_animation.slider("Animation Speed (seconds)", min_value=0.5, max_value=5., value=1., step=1., key="animation_speed")
-            col_animation.checkbox("Auto-play", value=True,key="auto_play")
-            if play_animation:
-                st.session_state["animate"] = True
-            else:
-                st.session_state["animate"] = False
+            if cls.animation_available:
+                play_animation = col_animation.form_submit_button("Play animation")
+                col_animation.write("Animation Controls")
+                col_animation.slider("Animation Speed (seconds)", min_value=0.5, max_value=5., value=1., step=1., key="animation_speed")
+                col_animation.checkbox("Auto-play", value=True,key="auto_play")
+                if play_animation:
+                    st.session_state["animate"] = True
+                else:
+                    st.session_state["animate"] = False
 
             # Run on first load OR when form is submitted
             selected_features = cls.get_selected_features(cols_nom_denom)
-            if show_results or play_animation:
+            if show_results or (cls.animation_available and play_animation):
             #    st.session_state["animation_images_generated"] = False
               #  delete_temp_files()
                 col_plot, col_df = st.columns((4, 1), gap="small")
-                plot(col_plot, col_df, df_data, gdf_borders, selected_features, [geo_scale])
+                print("df_data : LOL",df_data["denominator"]["district"])
+                plot(col_plot, col_df, df_data, gdf_borders, selected_features, [st.session_state["geo_scale"]])
 
 
     @classmethod
     def run(cls):
-
         st.session_state["page_name"] = cls.page_name
         cls.render()
 
     @classmethod
-    def get_selected_features(cls,cols_nom_denom):
+    def get_selected_features(cls, cols_nom_denom):
         selected_features = {}
-        for nom_denom in cols_nom_denom.keys():  # cols_nom_denom is a dict where keys nominator or denominator,values are st.columns
+        for nom_denom in cols_nom_denom.keys():  # cols_nom_denom is a dict whose keys are "nominator" or "denominator" and values are st.columns
             selected_features[nom_denom] = ()  # tuple type is needed for multiindex columns
             for i, feature in enumerate(cls.features[nom_denom]):
-                selected_features[nom_denom] = selected_features[nom_denom] + (
-                cls.get_selected_feature_options(cols_nom_denom[nom_denom][i], feature, nom_denom),)
+                selected_features[nom_denom] = selected_features[nom_denom] + ( cls.get_selected_feature_options(cols_nom_denom[nom_denom][i], feature, nom_denom),)
         #    Checkbox_Group.age_group_quick_select()
-        return  selected_features
+        return selected_features
 
     @classmethod
     def get_selected_feature_options(cls, col, feature_name, nom_denom_key_suffix):
         disabled = not st.session_state["display_percentage"] if nom_denom_key_suffix == "denominator" else False
-        if feature_name in ["marital_status","education","age","Party/Alliance","sex","month"]:
-            cls.checkbox_group[feature_name].place_checkboxes(col, nom_denom_key_suffix, disabled, feature_name )
+        if feature_name in ["marital_status", "education", "age", "Party/Alliance", "sex", "month"]:
+            cls.quick_selection(feature_name,nom_denom_key_suffix)
+            cls.checkbox_group[feature_name].place_checkboxes(col, nom_denom_key_suffix, disabled, feature_name)
+
             selected_feature = cls.checkbox_group[feature_name].get_checked_keys(nom_denom_key_suffix, feature_name)
         return selected_feature
 
@@ -135,10 +141,10 @@ class BasePage(ABC):
         cols_title[0].markdown("<br><br><br>", unsafe_allow_html=True)
 
         # Checkbox to switch between population and percentage display
-        cols_title[1].checkbox(":blue[Select secondary parameters](check to get proportion).", key="display_percentage")
-        cols_title[1].write("Ratio: primary parameters/secondary parameters.")
-        cols_title[1].write("Uncheck to show counts of primary parameters.")
 
+        cols_title[1].markdown("<h3 style='color: blue;'>Select secondary parameters.</h3>", unsafe_allow_html=True)
+        cols_title[1].checkbox("Check to get ratio: primary parameters/secondary parameters.", key="display_percentage")
+        cols_title[1].write("Uncheck to show counts of primary parameters.")
 
         cols_all = st.columns(cls.col_weights)  # There are 2*n columns(for example: 3 for nominator,3 for denominator)
         with cols_all[len(cols_all) // 2]:
@@ -148,7 +154,7 @@ class BasePage(ABC):
                     <style>
                         .divider-vertical-line {
                             border-left: 1px solid rgba(49, 51, 63, 0.2);
-                            height: 320px;
+                            height: 180px;
                             margin: auto;
                         }
                     </style>
@@ -169,13 +175,16 @@ class BasePage(ABC):
         st.session_state["animate"]=True
 
     @classmethod
-    def sidebar_controls_basic_setup(cls, start_year, end_year):
+    def sidebar_controls_basic_setup(cls, *args):
         """
            Renders the sidebar controls
            Parameters: starting year, ending year
         """
         # Inject custom CSS to set the width of the sidebar
         #   st.markdown("""<style>section[data-testid="stSidebar"] {width: 300px; !important;} </style> """,  unsafe_allow_html=True)
+        print("ARGS::",args)
+        start_year = args[0]
+        end_year = args[1]
         with (st.sidebar):
             st.header('Visualization options')
             options= list(range(start_year, end_year + 1)) if cls.page_name!="sex_age_edu_elections" else [2018,2023]
@@ -200,6 +209,9 @@ class BasePage(ABC):
                 st.write("Selected start year:", st.session_state["year_1"], "\nSelected end year:",
                          st.session_state["year_2"])
 
+    @classmethod
+    def sidebar_controls_plot_options_setup(cls, *args):
+        with (st.sidebar):
             if "selected_tab" not in st.session_state:
                 st.session_state["selected_tab"] = "tab_map"
             tabs = [stx.TabBarItemData(id="tab_map", title="Map/Race plot", description="")]
@@ -221,14 +233,33 @@ class BasePage(ABC):
                                                                     ["Matplotlib", "Plotly"]).split(" ")[0]
 
     @classmethod
-    def sidebar_controls(cls,start_year, end_year):  # start_year=2007,end_year=2023
-        cls.sidebar_controls_basic_setup(start_year, end_year)
+    def sidebar_controls(cls,*args):  # start_year=2007,end_year=2023
+        cls.sidebar_controls_basic_setup(*args)
+        if cls.page_name != "names_surnames" and cls.page_name != "baby_names":
+            cls.sidebar_controls_plot_options_setup(*args)
+
         if st.session_state["visualization_option"] !="Raceplotly":
             with st.sidebar:
                 # Dropdown menu for colormap selection
                 st.selectbox("Select a colormap\n (colormaps in the red boxes are available only for matplotlib) ",  st.session_state["colormap"][st.session_state["visualization_option"]], key="selected_cmap")
                 # Display a static image
                 st.image("images/colormaps.jpg")
+
+    @classmethod
+    def quick_selection(cls,feature_name,nom_denom_key_suffix):
+        pass
+
+    @classmethod
+    def set_checkbox_values_for_quick_selection(cls, keys_to_check, nom_denom_key_suffix, feature_name):
+        print("###",keys_to_check)
+        for key in cls.checkbox_group[feature_name].basic_keys:
+            if key in keys_to_check:
+                val = True
+            else:
+                val = False
+            st.session_state[cls.page_name+"_"+nom_denom_key_suffix+"_"+feature_name+"_"+key]=val
+            #cls.checkbox_group[feature_name].checked_dict[nom_denom_key_suffix][key] = val
+       #1 print("$$$",nom_denom_key_suffix,"$$$",cls.checkbox_group[feature_name].checked_dict[nom_denom_key_suffix])
 
     @classmethod
     def k_means_clustering(cls,col_plot, col_df, df_result, gdf_borders, geo_scale):
