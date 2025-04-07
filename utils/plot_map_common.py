@@ -144,12 +144,11 @@ def plotter_folium_static(gdf_result, title, geo_scale, *args):
                 fields=[col for col in gdf_result.columns if col not in ['geometry', 'year']],
                 aliases=[col for col in gdf_result.columns if col not in ['geometry', 'year']],
                 localize=True
-            ),
-            tooltip=GeoJsonTooltip(
-                fields=[geo_scale[0], "result"],
-                aliases=[geo_scale[0], "Result"],
-                localize=True
             )
+            #,    tooltip=GeoJsonTooltip(
+              #  fields=[geo_scale[0], "result"],
+              #  aliases=[geo_scale[0], "Result"],
+              #  localize=True  )
         ).add_to(m)
     else:
         # For regular choropleth
@@ -569,7 +568,7 @@ def plot_map_generic(col_plot, col_df, gdf_borders, df_result, geo_scale, plotte
         title = f'Results for {years_selected[i]}'
         if axs is not None:
             if st.session_state["animate"]:
-                ax= axs[0, 0]
+                ax = axs[0, 0]
             else:
                 ax = axs[i, 0]
         else:

@@ -18,4 +18,6 @@ class PageBabyNames(PageNames):
         gdf_borders = gpd.read_file("data/preprocessed/gdf_borders_ibbs3.geojson")
         return df_data, gdf_borders
 
+
+
 PageBabyNames().run();

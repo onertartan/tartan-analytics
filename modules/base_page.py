@@ -34,6 +34,7 @@ class BasePage(ABC):
     def get_data(geo_scale=None):
         pass
 
+
     @staticmethod
     @st.cache_data
     def get_geo_data():
@@ -174,8 +175,8 @@ class BasePage(ABC):
     def animation_slider_changed(cls):
         st.session_state["animate"]=True
 
-    @classmethod
-    def sidebar_controls_basic_setup(cls, *args):
+    @staticmethod
+    def sidebar_controls_basic_setup( *args):
         """
            Renders the sidebar controls
            Parameters: starting year, ending year
@@ -187,7 +188,10 @@ class BasePage(ABC):
         end_year = args[1]
         with (st.sidebar):
             st.header('Visualization options')
-            options= list(range(start_year, end_year + 1)) if cls.page_name!="sex_age_edu_elections" else [2018,2023]
+            st.write(start_year,end_year)
+            # if ifadesine gerek olmadığı düşünülerek (hata olursa bu if kalktığı için olabilir) metot classmethod'dan static'e dönüştü. Böylelikle higher-education kullanabildi.
+            # options= list(range(start_year, end_year + 1)) if cls.page_name != "sex_age_edu_elections" else [2018,2023]
+            options = list(range(start_year, end_year + 1))
             # Create a slider to select a single year
             st.select_slider("Select a year", options, 2023, on_change=BasePage.update_selected_slider_and_years, args=[1],  key="slider_year_1")
             # Create sliders to select start and end years
@@ -238,7 +242,7 @@ class BasePage(ABC):
         if cls.page_name != "names_surnames" and cls.page_name != "baby_names":
             cls.sidebar_controls_plot_options_setup(*args)
 
-        if st.session_state["visualization_option"] !="Raceplotly":
+        if st.session_state["visualization_option"] != "Raceplotly":
             with st.sidebar:
                 # Dropdown menu for colormap selection
                 st.selectbox("Select a colormap\n (colormaps in the red boxes are available only for matplotlib) ",  st.session_state["colormap"][st.session_state["visualization_option"]], key="selected_cmap")

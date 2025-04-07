@@ -40,7 +40,7 @@ class PageNames(BasePage):
         # Scale counts for each province
         for province in provinces:
             # Get counts for current province
-            province_count_sum = df_year.loc[province, 'count'].sum()
+            province_count_sum_first_30 = df_year.loc[province, 'count'].sum()
 
             province_counts = df_year.loc[province, 'count'].values.reshape(-1, 1)
             scaled_counts = scaler.fit_transform(province_counts)            # Fit and transform the counts
@@ -49,14 +49,15 @@ class PageNames(BasePage):
 
             # Fit and transform the counts
             # Update the DataFrame with scaled values
-            df_year.loc[province, 'scaled_count'] =df_year.loc[province, "count"] /province_count_sum
+            df_year.loc[province, 'scaled_count_top_30'] =df_year.loc[province, "count"] /province_count_sum_first_30
+
+        #print("SCAL:",data_scaled)
+        df_year.loc[:, "ratio"] = df_year.loc[:, "count"] / df_year.loc[:, "total_count"]
         print("XCV:",df_year.loc["Adana"])
 
-        print("SCAL:",data_scaled)
-        df_year.loc[:, "ratio"] = df_year.loc[:, "count"] / df_year.loc[:, "total_count"]
-        df_pivot = pd.pivot_table(df_year, values='scaled_count', index=df_year.index, columns=['name'],  aggfunc=lambda x: x, dropna=False, fill_value=0)
+        df_pivot = pd.pivot_table(df_year, values='ratio', index=df_year.index, columns=['name'],  aggfunc=lambda x: x, dropna=False, fill_value=0)
  
-        kmeans = KMeans(n_clusters=st.session_state["n_clusters_" + page_name], random_state=0).fit(df_pivot)
+        kmeans = KMeans(n_clusters=st.session_state["n_clusters_" + page_name], random_state=42,  init='k-means++',n_init=10).fit(df_pivot)
 
         df_pivot["clusters"] = kmeans.labels_
         gdf_borders = gdf_borders.merge(df_pivot["clusters"], left_on="province", right_on=df_pivot.index)

@@ -17,7 +17,10 @@ current_page = st.navigation({
     "Elections": [ st.Page("modules/elections/sex_age_edu.py", title="Sex-Age-Edu ", icon=":material/public:"),
                    st.Page("modules/elections/election_correlation.py", title="Correlations", icon=":material/public:")
                  #  st.Page("modules/elections/parties_alliances.py", title="Parties & Alliances ", icon=":material/public:")
-                   ]})
+                  ],
+    "Higher Education":[st.Page("modules/higher_education/chronology.py", title="Higher-Education ", icon=":material/public:")]
+
+    })
 
 if "colormap_list" not in st.session_state:
     st.session_state["colormap"] = {}
