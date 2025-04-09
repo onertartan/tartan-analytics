@@ -265,34 +265,4 @@ class BasePage(ABC):
             #cls.checkbox_group[feature_name].checked_dict[nom_denom_key_suffix][key] = val
        #1 print("$$$",nom_denom_key_suffix,"$$$",cls.checkbox_group[feature_name].checked_dict[nom_denom_key_suffix])
 
-    @classmethod
-    def k_means_clustering(cls,col_plot, col_df, df_result, gdf_borders, geo_scale):
-        df_result.to_excel("temp.xlsx")
-        kmeans = KMeans(n_clusters=st.session_state["n_clusters_" + cls.page_name], random_state=0).fit(df_result.iloc[:,5:])#cluster feature columns(cols 0-4 are descriptive cols)
-        df_result["clusters"] = kmeans.labels_
-        gdf_borders = gdf_borders.merge(df_result["clusters"],left_on=geo_scale,right_on=geo_scale)#, left_on="province", right_on=gdf_borders.index)
-        # Define a color map for the categories
-        # color_map = {0: "purple", 1: "orange", 2: "green",3:"cyan",4:"red",5:"blue",6:"magenta",7:"gray",8:"yellow"}#female
-        # color_map = {0: "orange", 1: "orange", 2: "red",3:"red",4:"orange",5:"magenta",6:"red",7:"orange",8:"orange"}#male-8
-        #  color_map = {0: "purple", 1: "red", 2: "orange",3:"red",4:"orange",5:"magenta",6:"cyan",7:"yellow",8:"gray"}#female-5
-        # color_map = {0: "purple", 1: "orange", 2: "orange",3:"red",4:"orange",5:"red",6:"cyan",7:"yellow",8:"gray"}#female-6
-        # color_map = {0: "orange", 1: "red", 2: "red",3:"red",4:"orange",5:"magenta",6:"magenta",7:"orange",8:"gray"}#total-8
-        # color_map = {0: "red", 1: "purple", 2: "orange",3:"green",4:"blue",5:"magenta",6:"cyan",7:"yellow",8:"gray"}#original
-        # color_map = {0: "orange", 1: "orange", 2: "purple",3:"red",4:"red",5:"red",6:"purple",7:"yellow",8:"gray"}#total-7
-        # color_map = {0: "orange", 1: "orange", 2: "purple",3:"red",4:"red",5:"red",6:"cyan",7:"yellow",8:"gray"} #total-6
-        # color_map = {0: "orange", 1: "red", 2: "orange",3:"red",4:"orange",5:"magenta",6:"red",7:"orange",8:"orange"}#female-9
-        color_map = {0: "red", 1: "purple", 2: "orange", 3: "green", 4: "blue", 5: "magenta", 6: "cyan", 7: "yellow", 8: "gray"}  # original
-        color_map = {0: "red", 1: "purple", 2: "orange", 3: "green", 4: "blue", 5: "magenta", 6: "cyan", 7: "yellow",
-                     8: "gray",9:"white",10:"black",11:"pink",12:"brown",13:"lightgreen"}  # original
-        #  color_map = {0: "orange", 1: "orange", 2: "red",3:"red",4:"orange",5:"magenta",6:"red",7:"yellow",8:"gray"}
-        #   color_map = {0: "red", 1: "orange", 2: "red",3:"red",4:"orange",5:"red",6:"red",7:"yellow",8:"gray"}
-        # Map the colors to the GeoDataFrame
-        gdf_borders["color"] = gdf_borders["clusters"].map(color_map)
-        return  gdf_borders
-       # print("csq:", df_result["clusters"] ,gdf_borders)
-        #fig, axs = figure_setup()
-        #gdf_borders.plot(ax=axs[0, 0], color=gdf_borders['color'], legend=True, edgecolor="black", linewidth=.2)
-       # axs[0, 0].axis("off")
-        #axs[0, 0].margins(x=0)
-        #col_plot.pyplot(fig)
 

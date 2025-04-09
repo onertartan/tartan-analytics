@@ -1,5 +1,6 @@
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
+from sklearn.metrics import pairwise_distances_argmin_min
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, MaxAbsScaler
 
 from modules.base_page import BasePage
@@ -14,10 +15,10 @@ from utils.plot_map_common import figure_setup
 
 locale.setlocale(locale.LC_ALL, 'tr_TR.utf8')
 
-
 class PageNames(BasePage):
     @classmethod
     def k_means_clustering(cls, col_plot, df_data, gdf_borders):
+        gdf_borders.set_index("province",inplace=True)
         page_name = cls.page_name
         if page_name == "names_surnames" and st.session_state["name_surname_rb"] == "Surname":
             df_year = df_data["surname"].loc[st.session_state["year_1"]]
@@ -56,31 +57,40 @@ class PageNames(BasePage):
         print("XCV:",df_year.loc["Adana"])
 
         df_pivot = pd.pivot_table(df_year, values='ratio', index=df_year.index, columns=['name'],  aggfunc=lambda x: x, dropna=False, fill_value=0)
- 
-        kmeans = KMeans(n_clusters=st.session_state["n_clusters_" + page_name], random_state=42,  init='k-means++',n_init=10).fit(df_pivot)
+        n_clusters = st.session_state["n_clusters_" + page_name]
+        kmeans = KMeans(n_clusters=n_clusters, random_state=42,  init='k-means++',n_init=10).fit(df_pivot)
+        # Get cluster centroids (shape: n_clusters × n_features)
+        centroids = kmeans.cluster_centers_
+        # After fitting KMeans
+        closest_indices, _ = pairwise_distances_argmin_min(kmeans.cluster_centers_, df_pivot)
+        closest_cities = df_pivot.index[closest_indices].tolist()  # Get city/province names
+        # Get the subset of provinces that are closest to centroids
+        closest_provinces = gdf_borders[gdf_borders.index.isin(closest_cities)]
+        # Compute centroids of their geometries (for marker placement)
+        closest_provinces["centroid"] = closest_provinces.geometry.centroid
 
+
+        print("şşl",gdf_borders.index        )
         df_pivot["clusters"] = kmeans.labels_
-        gdf_borders = gdf_borders.merge(df_pivot["clusters"], left_on="province", right_on=df_pivot.index)
+        gdf_borders = gdf_borders.merge(df_pivot["clusters"],left_index=True,right_index=True)
+        print("ççöö",gdf_borders)
+
         # Define a color map for the categories
-        # color_map = {0: "purple", 1: "orange", 2: "green",3:"cyan",4:"red",5:"blue",6:"magenta",7:"gray",8:"yellow"}#female
-
-        # color_map = {0: "orange", 1: "orange", 2: "red",3:"red",4:"orange",5:"magenta",6:"red",7:"orange",8:"orange"}#male-8
-        #  color_map = {0: "purple", 1: "red", 2: "orange",3:"red",4:"orange",5:"magenta",6:"cyan",7:"yellow",8:"gray"}#female-5
-        # color_map = {0: "purple", 1: "orange", 2: "orange",3:"red",4:"orange",5:"red",6:"cyan",7:"yellow",8:"gray"}#female-6
-       #  color_map = {0: "orange", 1: "red", 2: "red",3:"red",4:"orange",5:"magenta",6:"magenta",7:"orange",8:"gray"}#total-8
-        # color_map = {0: "red", 1: "purple", 2: "orange",3:"green",4:"blue",5:"magenta",6:"cyan",7:"yellow",8:"gray"}#original
-        # color_map = {0: "orange", 1: "orange", 2: "purple",3:"red",4:"red",5:"red",6:"purple",7:"yellow",8:"gray"}#total-7
-        # color_map = {0: "orange", 1: "orange", 2: "purple",3:"red",4:"red",5:"red",6:"cyan",7:"yellow",8:"gray"} #total-6
-        # color_map = {0: "orange", 1: "red", 2: "orange",3:"red",4:"orange",5:"magenta",6:"red",7:"orange",8:"orange"}#female-9
-
         # ORIGINAL
         color_map = {0: "red", 1: "purple", 2: "orange", 3: "green", 4: "blue", 5: "magenta", 6: "cyan", 7: "yellow",
                    8: "gray",9:"dark blue",10:"white",11:"black"}  # original
+        clusters = list(range(n_clusters))
+        color_map = {gdf_borders.loc["İzmir","clusters"]: "red", gdf_borders.loc["Van","clusters"]: "purple"}
+        if n_clusters > 2 and gdf_borders.loc["Konya", "clusters"] not in color_map.keys():
+            color_map[ gdf_borders.loc["Konya","clusters"] ] = "orange"
+        if n_clusters==4 and gdf_borders.loc["Samsun", "clusters"]  not in  color_map.keys():
+            color_map[ gdf_borders.loc["Samsun", "clusters"] ] = "green"
 
+        remaining_clusters = set(clusters- color_map.keys())
+        remaining_colors = ["blue", "magenta", "cyan","yellow", "gray", "dark blue", "white",  "black"]  # original
+        for i,remaining_cluster in enumerate(remaining_clusters):
+            color_map[remaining_cluster] =  remaining_colors[i]
 
-        #  color_map = {0: "orange", 1: "orange", 2: "red",3:"red",4:"orange",5:"magenta",6:"red",7:"yellow",8:"gray"}
-
-        #   color_map = {0: "red", 1: "orange", 2: "red",3:"red",4:"orange",5:"red",6:"red",7:"yellow",8:"gray"}
 
         # Map the colors to the GeoDataFrame
         gdf_borders["color"] = gdf_borders["clusters"].map(color_map)
@@ -88,6 +98,49 @@ class PageNames(BasePage):
         gdf_borders.plot(ax=axs[0, 0], color=gdf_borders['color'], legend=True, edgecolor="black", linewidth=.2)
         axs[0, 0].axis("off")
         axs[0, 0].margins(x=0)
+
+        # Compute centroids of the closest provinces and plot them as markers
+        closest_provinces_centroids = closest_provinces.copy()
+        closest_provinces_centroids["centroid_geometry"] = closest_provinces_centroids.geometry.centroid
+
+        # Create a temporary GeoDataFrame with centroid geometries (points)
+        closest_provinces_points = gpd.GeoDataFrame(
+            closest_provinces_centroids,
+            geometry="centroid_geometry",
+            crs=gdf_borders.crs
+        )
+
+        # Add markers using the centroid points (no fill color change)
+        closest_provinces_points.plot(
+            ax=axs[0, 0],
+
+            facecolor="none",  # Transparent fill
+            markersize=200,
+            edgecolor="black",  # Marker edge color
+            linewidth=1.5,
+            label="Cluster Centers"
+        )
+        # Add province names (from index) at centroids
+        for province in gdf_borders.index:
+            axs[0, 0].annotate(
+                text=province,  # Use index (province name) directly
+                xy=(gdf_borders.loc[province,"geometry"].centroid.x, gdf_borders.loc[province,"geometry"].centroid.y),
+                ha="center",
+                va="center",
+                fontsize=5,
+                color="black",
+                bbox=dict(
+                    boxstyle="round,pad=0.2",
+                    facecolor="white",
+                    edgecolor="none",
+                    alpha=0.6
+                )
+            )
+        # Optional: Add legend
+        axs[0, 0].legend(loc="upper right")
+
+
+
         col_plot.pyplot(fig)
 
     @classmethod
@@ -123,8 +176,8 @@ class PageNames(BasePage):
         col_1.checkbox("Select both sexes", disabled=not st.session_state["clustering_cb_" + page_name], key="select_both_sexes_" + page_name)
         col_1.selectbox("Select K: number of clusters", range(2, 11), key="n_clusters_" + page_name)
         disable_when_clustering = True if clustering_cb else False
-
-        choice = col_3.radio("Or select an displaying option", [f"Show the most common {page_name}", f"Select {page_name} and top-n number to filter"],
+        expression_in_sentence =  "names or surnames" if page_name == "names_surnames" else "baby names"
+        choice = col_3.radio("Or select an displaying option", [f"Show the most common {expression_in_sentence}", f"Select {expression_in_sentence} and top-n number to filter"],
                              horizontal=True, disabled=disable_when_clustering, key="secondary_option_" + page_name)
 
         disable_top_n_selection = not disable_when_clustering and choice == f"Show the most common {page_name}"
@@ -172,11 +225,16 @@ class PageNames(BasePage):
     @staticmethod
     def plot_geopandas(col_plot, df_data, gdf_borders):
         page_name = st.session_state["page_name"]
+        names_or_surnames = "names"
         if page_name == "names_surnames" and st.session_state["name_surname_rb"] == "Surname":
+            names_or_surnames = "surnames"
             df = df_data["surname"]
+            title_prefix = "The most common surnames "
         else:
             sex = st.session_state["sex_" + page_name].lower()
             df = df_data[sex]
+            title_prefix = "The most common "+sex+" names "
+
         display_option = st.session_state["secondary_option_" + page_name]
         names_from_multi_select = st.session_state["names_" + page_name]
         top_n = int(st.session_state["top_n_selection_" + page_name])
@@ -195,7 +253,7 @@ class PageNames(BasePage):
                     lambda x: "%s" % '\n '.join(x)).to_frame().reset_index()
                 df_results.append(df_result)
                 PageNames.plot_result(df_results[i], axs[i, 0], names=most_popular_names_5_year)
-                axs[i, 0].set_title(f'Results for {year}')
+                axs[i, 0].set_title(title_prefix+f'in {year}')
             else:  # top_n option: Select single year, name(s) and top-n number to filter
                 df_year = df.loc[year].reset_index()
                 for name in names_from_multi_select:
@@ -212,7 +270,8 @@ class PageNames(BasePage):
                     df_result_with_nulls = gdf_borders.merge(df_result_not_null[["province", "name"]],
                                                              left_on="province", right_on="province", how="left")
                     PageNames.plot_result(df_result_with_nulls, axs[i, 0], names=sorted(df_result_not_null['name'].unique()))
-                    axs[i, 0].set_title(f'Results for {year}\n top_n = {top_n}')
+
+                    axs[i, 0].set_title(f"Provinces where  selected {names_or_surnames} in the top {top_n} for {year}")
 
             if not df_results:
                 st.write("No results found.")
