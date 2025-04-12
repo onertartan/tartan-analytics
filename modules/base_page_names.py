@@ -70,7 +70,7 @@ class PageNames(BasePage):
         closest_provinces["centroid"] = closest_provinces.geometry.centroid
 
 
-        print("şşl",gdf_borders.index        )
+        print("şşl",gdf_borders.index)
         df_pivot["clusters"] = kmeans.labels_
         gdf_borders = gdf_borders.merge(df_pivot["clusters"],left_index=True,right_index=True)
         print("ççöö",gdf_borders)
@@ -147,6 +147,13 @@ class PageNames(BasePage):
     def fun_extras(cls, *args):
         pass
 
+    def get_ordinal(self, n):
+        if 11 <= (n % 100) <= 13:
+            suffix = 'th'
+        else:
+            suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')
+        return f"{n}{suffix}"
+
     @classmethod
     def render(cls):
         page_name = cls.page_name
@@ -161,12 +168,12 @@ class PageNames(BasePage):
             st.session_state["select_both_sexes_" + page_name] = False
 
         if page_name == "names_surnames":
-             name_surname = col_1.radio("Select name or surname", ["Name", "Surname"], key="name_surname_rb").lower()
-             if name_surname == "surname":
-                 st.session_state["select_both_sexes_" + page_name] = True
-             sex = col_2.radio("Choose sex", ["Male", "Female"],  disabled=st.session_state["select_both_sexes_" + page_name], key="sex_" + page_name).lower()
+            name_surname = col_1.radio("Select name or surname", ["Name", "Surname"], key="name_surname_rb").lower()
+            if name_surname == "surname":
+                st.session_state["select_both_sexes_" + page_name] = True
+            sex = col_2.radio("Choose sex", ["Male", "Female"],  disabled=st.session_state["select_both_sexes_" + page_name], key="sex_" + page_name).lower()
         else:
-             sex = col_1.radio("Choose sex", ["Male", "Female"],  disabled=st.session_state["select_both_sexes_" + page_name],key="sex_" + page_name).lower()
+            sex = col_1.radio("Choose sex", ["Male", "Female"],  disabled=st.session_state["select_both_sexes_" + page_name],key="sex_" + page_name).lower()
 
 
         st.header(f"Clustering or Displaying {page_name}")
@@ -211,9 +218,12 @@ class PageNames(BasePage):
         df_result.plot(ax=ax, color=df_result['color'], legend=True, legend_kwds={"shrink": .6}, edgecolor="black",
                        linewidth=.2)
 
+        bbox = dict( boxstyle="round,pad=0.2",facecolor="white", edgecolor="none", alpha=0.6)
+        va_dictionary= {"Kocaeli":"bottom","Zonguldak":"bottom","Sakarya":"top","Bolu":"top","Giresun":"bottom","Gümüşhane":"bottom","Trabzon":"bottom","Gaziantep":"bottom"}
+        ha_dictionary={}
         df_result.apply(lambda x: ax.annotate(
             text=x["province"].upper() + "\n" + x['name'].title() if isinstance(x['name'], str) else x["province"],
-            size=4, xy=x.geometry.centroid.coords[0], ha='center', va="center"), axis=1)
+            size=4, xy=x.geometry.centroid.coords[0], ha=ha_dictionary.get(x["province"],"center"), va=va_dictionary.get(x["province"],"center"),bbox=bbox), axis=1)
         ax.axis("off")
         ax.margins(x=0)
         # Add a legend
@@ -233,7 +243,8 @@ class PageNames(BasePage):
         else:
             sex = st.session_state["sex_" + page_name].lower()
             df = df_data[sex]
-            title_prefix = "The most common "+sex+" names "
+            baby = "baby " if "baby" in page_name else ""
+            title_prefix = f"The most common {sex} {baby}names "
 
         display_option = st.session_state["secondary_option_" + page_name]
         names_from_multi_select = st.session_state["names_" + page_name]
