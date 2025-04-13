@@ -34,8 +34,8 @@ class PagePartiesAlliances(BasePage):
             st.header('Select options')
             if "selected_election_year" not in st.session_state:
                 st.session_state["selected_election_year"] = 2018
-            st.session_state["year_1"] = st.session_state["selected_election_year"]=st.radio("Select year", options=[2018, 2023], key="election", index=0)
-        basic_keys = ["all"] + df.loc[st.session_state["year_1"]].dropna(axis=1).columns[ 5:].tolist()  # Parties start from index 5
+            st.session_state["year_1"] = st.session_state["selected_election_year"] = st.radio("Select year", options=[2018, 2023], key="election", index=0)
+        basic_keys = ["all"] + df.loc[st.session_state["year_1"]].dropna(axis=1).columns[5:].tolist()  # Parties start from index 5
         cls.checkbox_group["Party/Alliance"] = Checkbox_Group(cls.page_name, "Party/Alliance", 4, basic_keys)
 
     @classmethod

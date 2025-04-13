@@ -10,8 +10,7 @@ class PageNamesSurnames(PageNames):
     @staticmethod
     @st.cache_data
     def get_data():
-        df_data = {"male": pd.read_csv("data/preprocessed/population/most_common_names_male.csv", index_col=[0, 1]),
-                   "female": pd.read_csv("data/preprocessed/population/most_common_names_female.csv", index_col=[0, 1]),
+        df_data = {"name": pd.read_csv("data/preprocessed/population/names.csv", index_col=[0, 1]),
                    "surname": pd.read_csv("data/preprocessed/population/most_common_surnames.csv", index_col=[0, 1])
                    }
 
