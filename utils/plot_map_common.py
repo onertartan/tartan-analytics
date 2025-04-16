@@ -587,7 +587,7 @@ def plot_map_generic(col_plot, col_df, gdf_borders, df_result, geo_scale, plotte
         print("***", st.session_state["elbow"])
 
     if st.session_state["animate"]:
-        st.session_state["animation_images_generated"] = True #generated and saved image for each year calling plotterFunction in the for loop above
+        st.session_state["animation_images_generated"] = True # generated and saved image for each year calling plotterFunction in the for loop above
     elif display_change:
         df_change = get_df_change(df_result)
         gdf_result = get_geo_df_result(gdf_borders, df_change, geo_scale)
@@ -597,7 +597,7 @@ def plot_map_generic(col_plot, col_df, gdf_borders, df_result, geo_scale, plotte
                 start_word = "Relative change in ratio"
             title = f"{start_word} between years {st.session_state.year_1} and {st.session_state.year_2}"
             plotter_func(gdf_result, title, geo_scale, axs[2, 0] if axs is not None else None)
-        if not st.session_state["clustering_cb_"+st.session_state["page_name"]]: # if not k-means clustering show result col
+        if not st.session_state["clustering_cb_"+st.session_state["page_name"]]:  # if not k-means clustering show result col
             print("+++")
             col_df.markdown('<div class="dataframe-margin">', unsafe_allow_html=True)
             col_df.dataframe(df_change.sort_values(by="result", ascending=False))

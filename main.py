@@ -3,6 +3,8 @@ import inspect
 import streamlit as st
 import plotly.express as px
 
+from modules.base_page import BasePage
+
 st.set_page_config(page_title="Tartan Analytics", layout="wide")
 
 
@@ -51,6 +53,8 @@ if "elbow" not in st.session_state:
 
 if "geo_scale" not in st.session_state:
     st.session_state["geo_scale"] = 'province (ibbs3)'
+
+BasePage.load_geo_data()
 current_page.run()
 
 

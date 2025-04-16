@@ -10,6 +10,7 @@ from modules.base_page import BasePage
 
 
 class Chronology:
+    page_name = "high_education_chronology"
     @st.cache_data
     @staticmethod
     def get_data():
@@ -54,15 +55,15 @@ class Chronology:
             uni_types.append("foundation")
 
         if "selected_tab" not in st.session_state:
-            st.session_state["selected_tab"] = "tab_map"
+            st.session_state["selected_tab"+cls.page_name] = "tab_map"
         tabs = [stx.TabBarItemData(id = "tab_map", title="Map plot", description=""),
                 stx.TabBarItemData(id = "tab_bar", title="Bar plot", description="")]
         #   tab_map, tab_pyramid= st.tabs(["Map", "Population pyramid"])
-        st.session_state["selected_tab"] = stx.tab_bar(data=tabs, default="tab_map")
+        st.session_state["selected_tab"+cls.page_name] = stx.tab_bar(data=tabs, default="tab_map")
         df_data = df_data[df_data["type"].isin(uni_types)]  # filter according to uni-type
-        if st.session_state["selected_tab"] == "tab_map":
+        if st.session_state["selected_tab"+cls.page_name] == "tab_map":
             cls.tab_map(df_data, gdf_city_locations)
-        elif st.session_state["selected_tab"] == "tab_bar":
+        elif st.session_state["selected_tab"+cls.page_name] == "tab_bar":
             cls.tab_bar(df_data)
 
 
@@ -148,9 +149,7 @@ class Chronology:
             x_vals = df_year_counts.index
             plt.xticks(x_vals, rotation="vertical")
             font_size = 6
-
             ax.tick_params(axis='both', which='major', labelsize=font_size)
-
             bottom = np.zeros(len(df_year_counts))
 
             for uni_type, count in df_year_counts[["state", "foundation"]].items():
@@ -161,7 +160,7 @@ class Chronology:
             plt.xlabel("Year", size=8)
             for x, (n_state, n_foundation) in zip(range(start_year, end_year + 1),
                                                   df_year_counts[["state", "foundation"]].to_numpy()):
-                if n_state != 0  and  n_foundation != 0:
+                if n_state != 0 and n_foundation != 0:
                     ax.text(x, n_state / 2, str(int(n_state)), ha="center", va="center", fontsize=font_size, c="white", rotation=45)
                     ax.text(x, n_state + n_foundation // 3 + .5, str(int(n_foundation)), ha="center", va="center", fontsize=font_size, rotation=45)
                     ax.text(x, n_state + n_foundation + 2, str(int(n_state + n_foundation)), ha="center", va="bottom", fontsize=font_size)

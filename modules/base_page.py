@@ -19,6 +19,22 @@ class BasePage(ABC):
     geo_scales = ["province (ibbs3)", "sub-region (ibbs2)", "region (ibbs1)", "district"]
     top_row_cols = []
     checkbox_group = {}
+    data = None  # Class-level data storage
+    gdf = {}
+
+    @classmethod
+    def load_data(cls):
+        if cls.data is None:
+            cls.data = cls.get_data()
+        return cls.data
+
+    @classmethod
+    @st.cache_data
+    def get_data(cls, geo_scale=None):
+        """Base implementation (override in subclasses)"""
+        if cls.data is None:
+            raise NotImplementedError("Subclasses must implement get_data")
+        return cls.data
 
     @staticmethod
     def convert_year_index_data_type(df):
@@ -29,21 +45,17 @@ class BasePage(ABC):
     def fun_extras(cls, *args):
         pass
 
-    @staticmethod
-    @st.cache_data
-    def get_data(geo_scale=None):
-        pass
+    # @staticmethod
+    # @st.cache_data
+    # def get_data(geo_scale=None):
+    #     pass
 
 
-    @staticmethod
+    @classmethod
     @st.cache_data
-    def get_geo_data():
-        geo_data_dict={}
-        print("ÇŞÇ",st.session_state["geo_scale"])
-        geo_data_dict["district"] =  gpd.read_file("data/preprocessed/gdf_borders_district.geojson")
-        print("ZXCVB")
-        geo_data_dict["province"] = gpd.read_file("data/preprocessed/gdf_borders_ibbs3.geojson")
-        return geo_data_dict
+    def load_geo_data(cls):
+        cls.gdf["district"] = gpd.read_file("data/preprocessed/gdf_borders_district.geojson")
+        cls.gdf["province"] = gpd.read_file("data/preprocessed/gdf_borders_ibbs3.geojson")
 
     @classmethod
     def render(cls):
@@ -57,7 +69,7 @@ class BasePage(ABC):
         df_data = cls.get_data()
         print("0. çekpoint",df_data["denominator"]["district"])
         geo_scale = "province" if st.session_state["geo_scale"]!="district" else "district"
-        gdf_borders = cls.get_geo_data()[geo_scale]
+        gdf_borders = cls.gdf[geo_scale]
 
 
         start_year = df_data["nominator"][geo_scale].index.get_level_values(0).min()
@@ -91,6 +103,7 @@ class BasePage(ABC):
     @classmethod
     def run(cls):
         st.session_state["page_name"] = cls.page_name
+        cls.load_data()
         cls.render()
 
     @classmethod
@@ -237,7 +250,7 @@ class BasePage(ABC):
                                                                     ["Matplotlib", "Plotly"]).split(" ")[0]
 
     @classmethod
-    def sidebar_controls(cls,*args):  # start_year=2007,end_year=2023
+    def sidebar_controls(cls, *args):  # start_year=2007,end_year=2023
         cls.sidebar_controls_basic_setup(*args)
         if cls.page_name != "names_surnames" and cls.page_name != "baby_names":
             cls.sidebar_controls_plot_options_setup(*args)
