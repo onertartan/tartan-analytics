@@ -12,9 +12,9 @@ def get_geo_df_result(gdf_borders, df_result, geo_scale):
         kmeans = KMeans(n_clusters=st.session_state["n_clusters_" + st.session_state["page_name"]], random_state=0).fit(
         df_result.iloc[:, :-5])  # cluster feature columns(cols 0-4 are descriptive cols)
         df_result["clusters"] = kmeans.labels_
+        print("213455,",df_result)
 
         df_result=df_result[["clusters"]]
-        print("EEE,",df_result)
         color_map = {0: "red", 1: "purple", 2: "orange", 3: "darkgreen", 4: "blue", 5: "magenta", 6: "cyan", 7: "yellow",
                      8: "gray", 9: "peachpuff", 10: "lime", 11: "pink", 12: "brown", 13: "lavender"}
         if False:#geo_scale==["province"]: # in k-means clustering at each animation colors change, a temp code to observe consistent colors

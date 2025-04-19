@@ -14,7 +14,7 @@ import plotly.express as px
 from utils.plot_map_common import figure_setup
 from matplotlib.patches import Patch
 import extra_streamlit_components as stx
-
+import altair as alt
 
 locale.setlocale(locale.LC_ALL, 'tr_TR.utf8')
 
@@ -30,7 +30,7 @@ class PageNames(BasePage):
     HA_POSITIONS = {"Zonguldak": "right", "Adana": "right"}
 
     @classmethod
-    def _create_color_mapping(cls, gdf: gpd.GeoDataFrame, n_clusters: int) -> Dict[int, str]:
+    def create_color_mapping(cls, gdf: gpd.GeoDataFrame, n_clusters: int) -> Dict[int, str]:
         """Generate cluster color mapping with province-based defaults."""
         color_map = {}
         clusters = set(range(n_clusters))
@@ -48,17 +48,24 @@ class PageNames(BasePage):
         return color_map
 
     @classmethod
+    def initialize_multiindex_gdf_clusters(cls,df, year):
+        new_index = pd.MultiIndex.from_product([[year], df.index], names=["year", "city"])
+        cls.gdf_clusters = df.copy()
+        cls.gdf_clusters.index = new_index
+
+    @classmethod
     def k_means_clustering(cls, df,  year):
-        gdf_borders = cls.gdf["province"].set_index("province")
+        cls.gdf_clusters = cls.gdf["province"].set_index("province")
+
         page_name = cls.page_name
-        top_n = st.session_state["n_" + page_name]
+        # top_n = st.session_state["n_" + page_name]  # CANCELED : NOW ALL 30 FEATURES ARE USE IN K-MEANS
         if page_name == "names_surnames" and st.session_state["name_surname_rb"] == "Surname":
             df_year = df["surname"].loc[year]
-            df_year = df_year[df_year["rank"] <= top_n]  # use top-n for clustering (n=30 for all)
+       #     df_year = df_year[df_year["rank"] <= top_n]  # use top-n for clustering (n=30 for all)
         elif len(st.session_state["sex_" + page_name]) != 1:  # if both sexes are selected
             df_year_male, df_year_female = df[df["sex"] == "male"].loc[year], df[df["sex"] == "female"].loc[year]
-            df_year_male = df_year_male[df_year_male["rank"] <= top_n]
-            df_year_female = df_year_female[df_year_female["rank"] <= top_n]
+       #     df_year_male = df_year_male[df_year_male["rank"] <= top_n]
+        #    df_year_female = df_year_female[df_year_female["rank"] <= top_n]
             overlapping_names = set(df_year_male["name"]) & set(df_year_female["name"])
             df_year_male['name'] = df_year_male.apply(lambda x: f"{x['name']}_female" if x['name'] in overlapping_names else x['name'], axis=1)
             df_year_female['name'] = df_year_female.apply(lambda x: f"{x['name']}_male" if x['name'] in overlapping_names else x['name'], axis=1)
@@ -66,7 +73,7 @@ class PageNames(BasePage):
         else:  # single gender selected for names
             sex = st.session_state["sex_" + page_name]
             df_year = df[df["sex"].isin(sex)].loc[year]
-            df_year = df_year[df_year["rank"] <= top_n]
+       #     df_year = df_year[df_year["rank"] <= top_n]
         scaler = MaxAbsScaler()
         #data_scaled = scaler.fit_transform(df_year.loc["Adana", ["count"]])
         #print("SCAL:",data_scaled)
@@ -77,7 +84,6 @@ class PageNames(BasePage):
         for province in provinces:
             # Get counts for current province
             province_count_sum_first_30 = df_year.loc[province, 'count'].sum()
-            print("qqww",(df_year))
             province_counts = (df_year.loc[province, 'count']).values.reshape(-1, 1)
             scaled_counts = scaler.fit_transform(province_counts)                    # Fit and transform the counts
             df_year.loc[province, 'scaled_count_sklearn'] = scaled_counts.flatten()  # Update the DataFrame with scaled values
@@ -88,20 +94,22 @@ class PageNames(BasePage):
         print("XCV:",df_year.loc["Adana"])
 
         df_pivot = pd.pivot_table(df_year, values='ratio', index=df_year.index, columns=['name'],  aggfunc=lambda x: x, dropna=False, fill_value=0)
+        print("ÜĞP",df_pivot)
         n_clusters = st.session_state["n_clusters_" + page_name]
         kmeans = KMeans(n_clusters=n_clusters, random_state=42,  init='k-means++', n_init=10).fit(df_pivot)
+
         # Get cluster centroids (shape: n_clusters × n_features)
         centroids = kmeans.cluster_centers_
         # After fitting KMeans
         closest_indices, _ = pairwise_distances_argmin_min(centroids, df_pivot)
         closest_cities = df_pivot.index[closest_indices].tolist()  # Get city/province names
         # Get the subset of provinces that are closest to centroids
-        closest_provinces = gdf_borders[gdf_borders.index.isin(closest_cities)]
+        cls.gdf_centroids = cls.gdf_clusters [cls.gdf_clusters.index.isin(closest_cities)]
         # Compute centroids of their geometries (for marker placement)
-        closest_provinces["centroid"] = closest_provinces.geometry.centroid
+        cls.gdf_centroids["centroid"] = cls.gdf_centroids.geometry.centroid
         df_pivot["clusters"] = kmeans.labels_
-        gdf_borders = gdf_borders.merge(df_pivot["clusters"], left_index=True, right_index=True)
-        return gdf_borders, closest_provinces
+        cls.gdf_clusters = cls.gdf_clusters.merge(df_pivot["clusters"], left_index=True, right_index=True)
+
 
     @classmethod
     def fun_extras(cls, *args):
@@ -143,26 +151,29 @@ class PageNames(BasePage):
 
     @classmethod
     def preprocess_for_rank_bar_tabs(cls, df):
-        if st.session_state["provinces_" + cls.page_name]:
-            idx = pd.IndexSlice
-            df = df.loc[idx[:, st.session_state["provinces_" + cls.page_name]], :]
-        selected_sex = st.session_state["sex_" + cls.page_name][0]
-        df = df[df["sex"] == selected_sex]
         df.index = df.index.droplevel(1)  # drop provinces from multiindex
-
         df = df.groupby([df.index, "name"]).aggregate({"count": "sum"}).reset_index(level="name")
         df = df.sort_values(by=["year", "count"], ascending=False)
+        if "rank" in st.session_state["selected_tab"+cls.page_name]:  # rank tabs work for cumulative results
+            # Create rank column
+            for year in df.index:
+                df.loc[year, 'rank'] = df.loc[year, 'count'].rank(axis=0, method='min', ascending=False)
 
-        # Create rank column
-        for year in df.index:
-            df.loc[year, 'rank'] = df.loc[year, 'count'].rank(axis=0, method='min', ascending=False)
-        df = df[df['rank'] <= st.session_state["rank_" + cls.page_name]]
-        print("JKL",df)
+        if st.session_state["selected_tab" + cls.page_name] == "rank_bar":
+            # preprocess rank
+            df = df[df['rank'] <= st.session_state["rank_" + cls.page_name]]
+        elif st.session_state["selected_tab" + cls.page_name] == "custom_bar":
+            selected_names = st.session_state["names_" + cls.page_name]
+            df = df[df["name"].isin(selected_names)]
+        print("ÇP13",df)
+
         return df
 
     @classmethod
-    def page_common_tab_elements(cls):
-        col_1, col_2, col_3, _ = st.columns([1, 1, 2, 6])
+    def common_tab_ui(cls):
+        # Common helper function for rendering
+        col_1, col_2, col_3, col_4, _ = st.columns([2, 2, 3, 2, 4])
+        tab_selected = st.session_state["selected_tab" + cls.page_name]
         name_surname = "name"  # single option for baby names dataset
         if cls.page_name == "names_surnames":
             col_2.write()
@@ -171,95 +182,157 @@ class PageNames(BasePage):
         else:
             df = cls.data
         disable = name_surname == "surname"
-        if st.session_state["selected_tab" + cls.page_name] == "tab_map":
+        if tab_selected == "map":
             col_1.write("Select gender(s)")
-            col_1.checkbox("Male", key="male_" + cls.page_name, disabled=disable, value=1)
+            stored_value = st.session_state.get("male_" + cls.page_name, True)
+            st.session_state["male_" + cls.page_name] = col_1.checkbox("Male",  disabled=disable, value=stored_value)
             # if "surnames" option is selected disable gender options
-            col_1.checkbox("Female", key="female_" + cls.page_name, disabled=disable)
+            stored_value = st.session_state.get("female_" + cls.page_name, False)
+            st.session_state["female_" + cls.page_name] = col_1.checkbox("Female", disabled=disable, value=stored_value)
+
             st.session_state["sex_" + cls.page_name] = []
             if st.session_state["male_" + cls.page_name]:
                 st.session_state["sex_" + cls.page_name].append("male")
             if st.session_state["female_" + cls.page_name]:
                 st.session_state["sex_" + cls.page_name].append("female")
-        else:#elif st.session_state["selected_tab" + cls.page_name] == "tab_rank" or  "tab_bar":
+        else: # Use radio buttons for gender in other tabs
             st.session_state["sex_" + cls.page_name] = [col_1.radio("Select gender", options=["Male", "Female"]).lower()]
-            st.session_state["rank_"+cls.page_name] = col_2.selectbox(f"Select rank", range(1, 11), index=9)
-            col_3.multiselect(f"Select provinces (default all)",
-                              sorted(df.index.get_level_values(1).unique(), key=locale.strxfrm),
-                              key="provinces_" + cls.page_name)
+
         # if "surnames" option is selected or not any genders are selected, select both
         if disable or not st.session_state["sex_" + cls.page_name]:
             st.session_state["sex_" + cls.page_name] = ["male", "female"]
         if name_surname != "surname":
             df = df[df['sex'].isin(st.session_state["sex_" + cls.page_name])]
+        if "rank" in tab_selected:  # add rank selectbox if tab_selected == "tab_rank_bump" or tab_selected == "tab_rank_bar":
+            st.session_state["rank_"+cls.page_name] = col_2.selectbox(f"Select rank", range(1, 11), index=9)
+        elif tab_selected == "custom_bar":  # add name selector for custom name selection instead of top-rank names
+            expression_in_sentence = "names or surnames" if cls.page_name == "names_surnames" else "baby names"
+            # names_surnames has extra name-surname radio group overlapping with name selector,if so move the selector to right col
+            empty_col = col_4 if cls.page_name == "names_surnames" else col_2
+            empty_col.multiselect(f"Select {expression_in_sentence}", sorted(df["name"].unique(), key=locale.strxfrm),
+                              key="names_" + cls.page_name)
+        if tab_selected != "map":
+            col_3.radio("Select an option", options=["Use clusters", "Use provinces"]).lower()
+            provinces = sorted(df.index.get_level_values(1).unique(), key=locale.strxfrm)
+          #  if cls.gdf_clusters is None:
+
+            col_3.multiselect(f"Select clusters (default all)", provinces, key="clusters_" + cls.page_name)
+            col_3.multiselect(f"Select provinces (default all)", provinces, key="provinces_" + cls.page_name)
+            col_3.checkbox(f"Show aggregated totals (sum counts for selected provinces)", provinces, key="aggregate_provinces_" + cls.page_name)
+
         return df
+
     @classmethod
     def render(cls):
         # Apply CSS to all radio groups except the first
-        st.markdown("""<style>.stRadio [role="radiogroup"] {gap: 20px;}</style>""", unsafe_allow_html=True)
         header = "Names & Surnames Analysis" if cls.page_name == "names_surnames" else "Baby Names Analysis"
         st.header(header)
         start_year, end_year = cls.data["name"].index.get_level_values(0).min(), cls.data["name"].index.get_level_values(0).max()
         BasePage.sidebar_controls_basic_setup(start_year, end_year)
         if "selected_tab" not in st.session_state:
-            st.session_state["selected_tab"+cls.page_name] = "tab_map"
-        tabs = [stx.TabBarItemData(id="tab_map", title="Map Plot", description=""),
-                stx.TabBarItemData(id="tab_rank", title="Rank Plot", description=""),
-                stx.TabBarItemData(id="tab_bar", title="Bar Graph", description="")]
-        st.session_state["selected_tab"+cls.page_name] = stx.tab_bar(data=tabs, default="tab_map")
-        df = cls.page_common_tab_elements()
+            st.session_state["selected_tab"+cls.page_name] = "map"
+        tabs = [stx.TabBarItemData(id="map", title="Map Plot", description=""),
+                stx.TabBarItemData(id="rank_bump", title="Rank Bump Plot", description=""),
+                stx.TabBarItemData(id="rank_bar", title="Rank Bar Graph", description=""),
+                stx.TabBarItemData(id="custom_bar", title="Custom Name Bar Graph", description="")
+                ]
+
+        st.session_state["selected_tab"+cls.page_name] = stx.tab_bar(data=tabs, default="map")
+        tab_selected = st.session_state["selected_tab"+cls.page_name]
+        df = cls.common_tab_ui()
+
+        if "display_option_"+cls.page_name not in st.session_state:
+            st.session_state["display_option_"+cls.page_name] = 0
+
         col_plot, col_df = st.columns([5, 1])
-        if st.session_state["selected_tab"+cls.page_name] == "tab_map":
-            cls.tab_map(df, col_plot)
-        elif st.session_state["selected_tab"+cls.page_name] == "tab_rank":
-            cls.tab_rank(df, col_plot)
-        else: #st.session_state["selected_tab"+cls.page_name] == "tab_bar":
-            cls.tab_bar(df, col_plot)
+        if tab_selected == "map":
+            cls.tab_map(df)
+        elif tab_selected == "rank_bump":
+            cls.tab_rank_bump(df, col_plot)
+        elif tab_selected == "rank_bar":
+            cls.tab_common(df, col_plot)
+        elif tab_selected == "custom_bar":
+            cls.tab_common(df, col_plot)
 
         # print("YUYU",df_data)
         # cls.bump_chart(df, col_plot)
 
     @classmethod
-    def tab_map(cls,df, col_plot):
-        col_1, col_2, _ = st.columns([2, 1, 5])
+    def tab_map(cls, df):
+        col_1, col_2, _ = st.columns([2.4, 2, 6])
+        st.markdown("""
+            <style>
+            div[data-testid="stRadio"] > div[role="radiogroup"]:nth-child(n+2) {
+                gap: 50px;
+            }
+            </style>
+            """, unsafe_allow_html=True)
         expression_in_sentence = "names or surnames" if cls.page_name == "names_surnames" else "baby names"
-        choice = col_1.radio("Select an  option", options=["Apply K-means clustering using top-n",
-                                                           f"Show the nth most common {expression_in_sentence}",
-                                                           f"Select {expression_in_sentence} and top-n to filter"],
-                             index=1, key="display_option_" + cls.page_name)
-        col_2.selectbox("Select K: number of clusters", range(2, 11), key="n_clusters_" + cls.page_name)
-        col_2.multiselect(f"Select {expression_in_sentence} names", sorted(df["name"].unique(), key=locale.strxfrm),
-                          key="names_" + cls.page_name)
-        col, _ = st.columns([3, 5])
+        options = [
+            "Apply K-means clustering",
+            f"Select {expression_in_sentence} and top-n to filter",
+            f"Show the nth most common {expression_in_sentence}"
+        ]
 
-        options = list(range(2, 31)) if "K-means" in choice else list(range(1, 31))
+        stored_value = st.session_state.get("display_option_" + cls.page_name, options[1])
+        # Convert stored value to index
+        default_index = options.index(stored_value) if stored_value in options else 1
+        st.markdown('<div class="radio-with-gap">', unsafe_allow_html=True)
+        st.session_state["display_option_" + cls.page_name] = col_1.radio("Select an option", options=options, index=default_index)
+        st.markdown('</div>', unsafe_allow_html=True)
+        col_2.selectbox("Select K: number of clusters", range(2, 11), key="n_clusters_" + cls.page_name)
+        col_2.multiselect(f"Select {expression_in_sentence}", sorted(df["name"].unique(), key=locale.strxfrm),
+                          key="names_" + cls.page_name)
+        col, _ = st.columns([2, 5])
+
+        #options = list(range(2, 31)) if "K-means" in choice else list(range(1, 31))
+        options = list(range(1, 31))
         # Ensure current selection is valid for the new options
         key = "n_" + cls.page_name
         if key not in st.session_state or st.session_state[key] not in options:
             st.session_state[key] = options[0]  # Reset to first valid option
-        col.selectbox("Select n ", options=options, key="n_" + cls.page_name)
+        col.selectbox('Choose a number n for the "nth most common" or "top-n" options', options=options, key="n_" + cls.page_name)
         col_plot, col_df = st.columns([5, 1])
         cls.plot_geopandas(col_plot, col_df, df)
 
-
     @classmethod
-    def tab_rank(cls, df, col_plot):
+    def tab_rank_bump(cls, df, col_plot):
         df = cls.preprocess_for_rank_bar_tabs(df)
-
-        print("QLK", df)
+        df = df[df['rank'] <= st.session_state["rank_" + cls.page_name]]
         cls.bump_chart_pyplot(df, col_plot)
         cls.bump_chart_plotly(df, col_plot)
 
     @classmethod
-    def tab_bar(cls, df, col_plot):
+    def tab_rank_bar(cls, df, col_plot):
         df = cls.preprocess_for_rank_bar_tabs(df)
-        cls.bar_plot_name_counts(df, col_plot)
+        names_top_n = df[df['rank'] <= st.session_state["rank_" + cls.page_name]]["name"].to_list()
+        df = df[df["name"].isin(names_top_n)]
+        col_plot.title("Counts by Name and Year")
+        cls.plot_rank_bar(df, col_plot)
+
+    @classmethod
+    def tab_common(cls, df, col_plot,tab_name="rank_bar"):
+        selected_provinces = st.session_state["provinces_" + cls.page_name]
+        plot_method = getattr(cls,"plot_" + tab_name)
+        idx = pd.IndexSlice
+        if selected_provinces:
+            if st.session_state["aggregate_provinces_" + cls.page_name]:
+                idx = pd.IndexSlice
+                df = df.loc[idx[:, st.session_state["provinces_" + cls.page_name]], :]
+                plot_method(cls.preprocess_for_rank_bar_tabs(df), col_plot)
+            else:
+                for province in selected_provinces:
+                    df_province = df.loc[idx[:, province], :]
+                    col_plot.subheader(province)
+                    plot_method(cls.preprocess_for_rank_bar_tabs(df_province), col_plot)
+        else:  # if not any selected, select all provinces
+            plot_method(cls.preprocess_for_rank_bar_tabs(df), col_plot)
 
     @classmethod
     def plot_names(cls, df_result, ax):
         # Create a color map
         df_result["clusters"] = df_result["name"].factorize()[0]
-        color_map = cls._create_color_mapping(df_result.set_index("name"), df_result["name"].nunique())
+        color_map = cls.create_color_mapping(df_result.set_index("name"), df_result["name"].nunique())
 
         # Assign colors to each row in the GeoDataFrame
         df_result['color'] = df_result['clusters'].map(color_map).fillna("gray") #-->GEREK YOK mu
@@ -275,12 +348,12 @@ class PageNames(BasePage):
         ax.axis("off")
         ax.margins(x=0)
         # # Add a table (positioned like a legend)
-        df_count =(df_result['name'].str.split('\n')  # Split names by newline
+        df_count = (df_result['name'].str.split('\n')  # Split names by newline
                     .explode()        # Create separate row for each name
                     .value_counts()   # Count occurrences
                     .rename_axis('name')
                     .reset_index(name='count')
-                )
+                   )
         # Format the DataFrame as a string for the legend
         legend_text = "\n".join(f"{row['name']}: {row['count']}" for _, row in df_count.iterrows())
         # Create list of text entries instead of single multi-line string
@@ -290,7 +363,7 @@ class PageNames(BasePage):
 
         ax.plot([], [], label=legend_text)  # Invisible plot
         # Add custom legend entry with text only (no line)
-        custom_legend = Patch(color='none', label=legend_text,linewidth=0)
+        custom_legend = Patch(color='none', label=legend_text, linewidth=0)
         # Show legend
         ncols = 1+len(legend_entries)//9
         ax.legend(handles=handles, loc='upper right', bbox_to_anchor=(1, 0.165 if ncols>2 else 0.21), fontsize=4,ncols=ncols,  # Two columns
@@ -300,37 +373,37 @@ class PageNames(BasePage):
                   alignment='left'  # Force left-aligned text
                   )
 
-        # Add a legend
+       # Add a legend
        # for name, color in set(zip(df_result['name'], df_result['color'])):
        #     ax.plot([], [], color=color, label=name, linestyle='None', marker='o')
        #     ax.legend(title='Names', fontsize=4, bbox_to_anchor=(0.01, 0.01), loc='lower right', fancybox=True, shadow=True)
 
     @classmethod
-    def plot_clusters(cls, gdf_borders, closest_provinces, ax, year):
+    def plot_clusters(cls, ax, year):
         n_clusters = st.session_state["n_clusters_" + cls.page_name]
         # Define a color map for the categories
         clusters = list(range(n_clusters))
-        color_map = cls._create_color_mapping(gdf_borders, n_clusters)
+        color_map = cls.create_color_mapping(cls.gdf_clusters, n_clusters)
         # Map the colors to the GeoDataFrame
-        gdf_borders["color"] = gdf_borders["clusters"].map(color_map)
-        gdf_borders.plot(ax=ax, color=gdf_borders['color'], legend=True, edgecolor="black", linewidth=.2)
+        cls.gdf_clusters["color"] = cls.gdf_clusters["clusters"].map(color_map)
+        cls.gdf_clusters.plot(ax=ax, color=cls.gdf_clusters['color'], legend=True, edgecolor="black", linewidth=.2)
         ax.axis("off")
         ax.margins(x=0)
         # Compute centroids of the closest provinces and plot them as markers
-        closest_provinces_centroids = closest_provinces.copy()
+        closest_provinces_centroids = cls.gdf_centroids.copy()
         closest_provinces_centroids["centroid_geometry"] = closest_provinces_centroids.geometry.centroid
         # Create a temporary GeoDataFrame with centroid geometries (points)
         closest_provinces_points = gpd.GeoDataFrame(closest_provinces_centroids, geometry="centroid_geometry",
-                                                    crs=gdf_borders.crs)
+                                                    crs=cls.gdf_clusters.crs)
         # Add markers using the centroid points (no fill color change   # Transparent fill)
         closest_provinces_points.plot(ax=ax, facecolor="none", markersize=120, edgecolor="black", linewidth=1.5,
                                       label=f"Closest provinces\nto  cluster centers")
         # Add province names (from index) at centroids
         bbox = dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="none", alpha=0.6)
-        for province in gdf_borders.index:
+        for province in cls.gdf_clusters.index:
             ax.annotate(text=province,  # Use index (province name) directly
-                        xy=(gdf_borders.loc[province, "geometry"].centroid.x,
-                            gdf_borders.loc[province, "geometry"].centroid.y),
+                        xy=(cls.gdf_clusters.loc[province, "geometry"].centroid.x,
+                            cls.gdf_clusters.loc[province, "geometry"].centroid.y),
                         ha=PageNames.HA_POSITIONS.get(province, "center"), va=PageNames.VA_POSITIONS.get(province, "center"), fontsize=5, color="black", bbox=bbox)
 
         # Optional: Add legend
@@ -338,11 +411,11 @@ class PageNames(BasePage):
         ax.legend(loc="upper right", fontsize=6)
 
     @classmethod
-    def get_title(cls):
+    def create_title_for_plot(cls):
         page_name = st.session_state["page_name"]
         rank = st.session_state["n_"+page_name]
         names_or_surnames = "names"
-        selected_gender = "male and female" if len(st.session_state["sex_" + cls.page_name])!=1 else st.session_state["sex_" + cls.page_name][0]
+        selected_gender = "male and female" if len(st.session_state["sex_" + cls.page_name]) != 1 else st.session_state["sex_" + cls.page_name][0]
         # Adjust phrasing based on rank
         if rank == 1:
             title_prefix = "The most common "
@@ -360,8 +433,8 @@ class PageNames(BasePage):
 
     @classmethod
     def plot_geopandas(cls, col_plot, col_df, df):
-        gdf_borders = cls.gdf["province"]
-        title, names_or_surnames = cls.get_title()
+        gdf_borders = BasePage.gdf["province"]
+        title, names_or_surnames = cls.create_title_for_plot()
         display_option = st.session_state["display_option_" + cls.page_name]
         top_n = int(st.session_state["n_" + cls.page_name])
         fig, axs = figure_setup()
@@ -398,9 +471,9 @@ class PageNames(BasePage):
                     cls.plot_names(df_result_with_nulls, axs[i, 0])#, sorted(df_result_not_null['name'].unique()))  -->GEREKLİ Mİ, fonksiyondan parametre kalkmıştı, buradan yollamaya gerek var mı?
                     axs[i, 0].set_title(f"Provinces where selected {names_or_surnames_statement} in the top {top_n} for {year}")
             else:  # K-means
-                df_result, closest_provinces = cls.k_means_clustering(df,  year)
-                cls.plot_clusters(df_result, closest_provinces,  axs[i, 0], year)
-                df_results.append(df_result)
+                cls.k_means_clustering(df,  year)
+                cls.plot_clusters( axs[i, 0], year)
+                df_results.append(cls.gdf_clusters)
 
         if not df_results:
             st.write("No results found.")
@@ -556,43 +629,28 @@ class PageNames(BasePage):
 
         col_plot.plotly_chart(fig)
 
+
+
     @classmethod
-    def bar_plot_name_counts(cls, df, col_plot):
-        """
-        Create a grouped bar plot for name counts over years using a wide-form DataFrame.
-
-        Parameters:
-        - df: DataFrame with 'year' as index and names as columns, values as counts.
-        - col_plot: Streamlit column (or st) to display the chart.
-        """
-        # Create grouped bar chart
-        fig = px.bar(
-            df.reset_index(),
-            x='year',
-            y='count',
-            color='name',
-            barmode='group',
-            labels={'count': 'Count', 'year': 'Year'},
-            title='Name Counts by Year',
-            height=700,
-            width=1300
-        )
-        # Beautify
-        fig.update_layout(
-            xaxis=dict(type='category', tickfont=dict(size=16)),
-            yaxis=dict(title='Count', tickfont=dict(size=16)),
-            title=dict(font=dict(size=36)),
-            legend=dict(font=dict(size=14)),
-            bargap=0.15,
-            bargroupgap=0.1
+    def plot_rank_bar(cls, df, col_plot):
+        print("5555",df)
+        df = df.reset_index()
+        chart = alt.Chart(df).mark_bar().encode(
+            x=alt.X('year:O', title='Year'),
+            y=alt.Y('count:Q', title='Count'),
+            color=alt.Color('name:N', legend=None),  # Remove legend
+            column=alt.Column('name:N', title=None)
+        ).properties(
+            width=150
+        ).configure_header(
+            titleFontSize=20,  # Increase font size for column titles (names)
+            labelFontSize=14
         )
 
-        col_plot.plotly_chart(fig)
+        col_plot.altair_chart(chart)
 
-
-
-
-
-
-
-
+    @classmethod
+    def bar_plot_custom(cls, df, col_plot):
+        pass
+        #chart = cls.bar_plot_rank(df, title=f"Counts by Name and Year - {title}")
+        #st.altair_chart(chart, use_container_width=True)

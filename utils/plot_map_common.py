@@ -635,7 +635,7 @@ def plot(col_plot, col_df, df_data, gdf_borders, selected_features, geo_scale ):
                 print("894632",geo_scale,df_data["denominator"]["district"])
                 df_result = get_df_result(df_data, selected_features, geo_scale,years_selected)
                 print("JNHU:",df_result.head())
-            else: # In the next step plotter will generate images according to df_result for a range of years
+            else: # In the next step plotter will generate images according to df_result for A RANGE OF YEARS
                 years_selected =  list(range(st.session_state["slider_year_2"][0], st.session_state["slider_year_2"][1] + 1))
                 df_result = get_df_result(df_data, selected_features, geo_scale, years_selected)
 

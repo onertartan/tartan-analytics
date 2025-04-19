@@ -21,6 +21,8 @@ class BasePage(ABC):
     checkbox_group = {}
     data = None  # Class-level data storage
     gdf = {}
+    gdf_clusters = None
+    gdf_centroids = None  # closest provinces to centroids
 
     @classmethod
     def load_data(cls):
@@ -51,11 +53,12 @@ class BasePage(ABC):
     #     pass
 
 
-    @classmethod
+    @staticmethod
     @st.cache_data
-    def load_geo_data(cls):
-        cls.gdf["district"] = gpd.read_file("data/preprocessed/gdf_borders_district.geojson")
-        cls.gdf["province"] = gpd.read_file("data/preprocessed/gdf_borders_ibbs3.geojson")
+    def load_geo_data():
+        if BasePage.gdf == {}:
+            BasePage.gdf["district"] = gpd.read_file("data/preprocessed/gdf_borders_district.geojson")
+            BasePage.gdf["province"] = gpd.read_file("data/preprocessed/gdf_borders_ibbs3.geojson")
 
     @classmethod
     def render(cls):
@@ -274,8 +277,6 @@ class BasePage(ABC):
                 val = True
             else:
                 val = False
-            st.session_state[cls.page_name+"_"+nom_denom_key_suffix+"_"+feature_name+"_"+key]=val
+            st.session_state[cls.page_name+"_"+nom_denom_key_suffix+"_"+feature_name+"_"+key] = val
             #cls.checkbox_group[feature_name].checked_dict[nom_denom_key_suffix][key] = val
        #1 print("$$$",nom_denom_key_suffix,"$$$",cls.checkbox_group[feature_name].checked_dict[nom_denom_key_suffix])
-
-
