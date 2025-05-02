@@ -1,10 +1,10 @@
-from modules.base_page import BasePage
+from modules.base_page_common import PageCommon
 from utils.checkbox_group import Checkbox_Group
 import streamlit as st
 import pandas as pd
 
 
-class PageBirthSex(BasePage):
+class PageBirthSex(PageCommon):
     page_name = "birth"
     features = {"nominator":["sex"], "denominator":["sex", "age"]}
     checkbox_group = {"age": Checkbox_Group(page_name, "age", 3,

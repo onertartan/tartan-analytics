@@ -1,13 +1,12 @@
-#from page_classes.population.page_sex_age import PageSexAge
 import locale
-from modules.base_page import BasePage
+from modules.base_page_common import PageCommon
 import pandas as pd
 import streamlit as st
 import calendar
 from utils.checkbox_group import Checkbox_Group
 
 
-class PageDeathMonth(BasePage):
+class PageDeathMonth(PageCommon):
     locale.setlocale(locale.LC_TIME, "en_US.UTF-8")
 
     page_name = "death_month"
@@ -29,10 +28,11 @@ class PageDeathMonth(BasePage):
         df["province"] = df["province"].sort_index()
         file_path = "data/preprocessed/population/death_sex_month_ibbs3-2009-2023.csv"
         df["district"] = pd.read_csv(file_path, index_col=[0, 1, 2], header=[0, 1])
-        df["district"]  = df["district"].sort_index()
+        df["district"] = df["district"].sort_index()
 
         df_data = {"nominator": df} #.loc[:, ((slice(None, None), slice(None, None)))]}  ##sort age groups
         df_data["denominator"] = df_data["nominator"]
         return df_data
 
-PageDeathMonth.run()
+
+PageDeathMonth().run()

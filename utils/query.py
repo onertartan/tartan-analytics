@@ -1,44 +1,7 @@
 import streamlit as st
 import pandas as pd
-from sklearn.cluster import KMeans
 
 
-def get_geo_df_result(gdf_borders, df_result, geo_scale):
-    print("\nAAA:\n",gdf_borders.head(),"\nBBB:\n",df_result.head())
-    print("\nCCC:\n",gdf_borders.dissolve(by=geo_scale).head())
-    print("before:\n",gdf_borders.shape,"\n")
-    print("DDD:",geo_scale)
-    if st.session_state["clustering_cb_" + st.session_state["page_name"]]:
-        kmeans = KMeans(n_clusters=st.session_state["n_clusters_" + st.session_state["page_name"]], random_state=0).fit(
-        df_result.iloc[:, :-5])  # cluster feature columns(cols 0-4 are descriptive cols)
-        df_result["clusters"] = kmeans.labels_
-        print("213455,",df_result)
-
-        df_result=df_result[["clusters"]]
-        color_map = {0: "red", 1: "purple", 2: "orange", 3: "darkgreen", 4: "blue", 5: "magenta", 6: "cyan", 7: "yellow",
-                     8: "gray", 9: "peachpuff", 10: "lime", 11: "pink", 12: "brown", 13: "lavender"}
-        if False:#geo_scale==["province"]: # in k-means clustering at each animation colors change, a temp code to observe consistent colors
-            idx_izmir = df_result.loc["İzmir","clusters"]
-            idx_konya = df_result.loc["Konya","clusters"]
-            idx_sivas = df_result.loc["Sivas","clusters"]
-            idx_van = df_result.loc["Van","clusters"]
-            idx_kastamonu = df_result.loc["Kastamonu","clusters"]
-            color_map = {idx_izmir:"red",idx_van:"purple",idx_konya:"orange",idx_sivas:"blue",idx_kastamonu:"green"}
-            cluster_set_preassigned={idx_izmir,idx_konya,idx_van}
-            cluster_set_all=set(range(0,9))
-            colors={"green","blue","magenta","cyan","yellow","gray","cyan"}
-            for cluster,color in zip(cluster_set_all-cluster_set_preassigned,colors):
-                color_map[cluster]=color
-            print("FCXS:",color_map)
-        df_result["color"] = df_result["clusters"].map(color_map)
-
-    gdf_result = gdf_borders.dissolve(by=geo_scale)[["id","geometry"]].merge(df_result,left_index=True,right_index=True)  # after dissolving index becomes geo_scale,so common index is geo_scale(example:province)
-
-    print("after:\n",gdf_result.shape,"\n")
-    print("\nEEE:\n",gdf_result.head())
-    print("!!!",set(gdf_borders.dissolve(by=geo_scale)[["id","geometry"]].index) - set(df_result.index))
-    print("???",set(df_result.index) - set(gdf_borders.dissolve(by=geo_scale)[["id","geometry"]].index))
-    return gdf_result
 
 def get_df_year_and_features(df_data, nom_denom_selection, year, selected_features_dict, geo_scale,give_total=True):
     df_codes = pd.read_csv("data/preprocessed/region_codes.csv", index_col=0)
@@ -120,7 +83,7 @@ def get_df_change(df_result):
 
 
 def get_df_result(df_data, selected_features, geo_scale, years,give_total=True):
-    k_means =  st.session_state["clustering_cb_"+st.session_state["page_name"]]
+    k_means = st.session_state["clustering_cb_"+st.session_state["page_name"]]
     print("FFFF",st.session_state["clustering_cb_"+st.session_state["page_name"]],"ÜÜÜ",geo_scale)
     print("IUIU",df_data["denominator"]["district"])
     df_result = df_nom_result = get_df_year_and_features(df_data, "nominator", years, selected_features, geo_scale,not k_means)

@@ -1,6 +1,6 @@
 from matplotlib import pyplot as plt
 import numpy as np
-
+from modules.base_page_common import PageCommon
 from modules.base_page import BasePage
 from utils.checkbox_group import Checkbox_Group
 import  streamlit as st
@@ -9,7 +9,7 @@ import seaborn as sns
 import matplotlib.colors as mcolors
 
 
-class PageElectionCorrelation(BasePage):
+class ElectionCorrelation(PageCommon):
     page_name = "election_correlation"
     features = {"nominator": ["sex", "education", "age"],"denominator":["Party/Alliance"]}
 
@@ -124,7 +124,7 @@ class PageElectionCorrelation(BasePage):
         cols_hm[1].pyplot(fig)
 
 
-PageElectionCorrelation.run()
+ElectionCorrelation.run()
 
 
 def custom_correlation_heatmap(correlations, ax=None, vmin=-0.38, vmax=0.38):

@@ -39,11 +39,11 @@ class Chronology:
         df_plot_agg["count"] = df_plot_agg["count"].astype("int")
         return  df_plot_agg.set_geometry("geometry")
 
-    @classmethod
-    def render(cls):
+
+    def render(self):
         #page_name = cls.page_name
         #cls.set_session_state_variables()
-        df_data, gdf_city_locations = cls.get_data()
+        df_data, gdf_city_locations = self.get_data()
         BasePage.sidebar_controls_basic_setup(df_data["year"].min(), df_data["year"].max())
         st.write("Select university type")
         state, foundation = st.checkbox("State universities", True), st.checkbox("Foundation universities", True)
@@ -55,20 +55,20 @@ class Chronology:
             uni_types.append("foundation")
 
         if "selected_tab" not in st.session_state:
-            st.session_state["selected_tab"+cls.page_name] = "tab_map"
+            st.session_state["selected_tab"+self.page_name] = "tab_map"
         tabs = [stx.TabBarItemData(id = "tab_map", title="Map plot", description=""),
                 stx.TabBarItemData(id = "tab_bar", title="Bar plot", description="")]
         #   tab_map, tab_pyramid= st.tabs(["Map", "Population pyramid"])
-        st.session_state["selected_tab"+cls.page_name] = stx.tab_bar(data=tabs, default="tab_map")
+        st.session_state["selected_tab"+self.page_name] = stx.tab_bar(data=tabs, default="tab_map")
         df_data = df_data[df_data["type"].isin(uni_types)]  # filter according to uni-type
-        if st.session_state["selected_tab"+cls.page_name] == "tab_map":
-            cls.tab_map(df_data, gdf_city_locations)
-        elif st.session_state["selected_tab"+cls.page_name] == "tab_bar":
-            cls.tab_bar(df_data)
+        if st.session_state["selected_tab"+self.page_name] == "tab_map":
+            self.tab_map(df_data, gdf_city_locations)
+        elif st.session_state["selected_tab"+self.page_name] == "tab_bar":
+            self.tab_bar(df_data)
 
 
-    @classmethod
-    def plot_map(cls, map_column, df):
+
+    def plot_map(self, map_column, df):
         colormap = cm.StepColormap(
             colors=['white', (123, 211, 234), (138, 255, 139), (0, 163, 0),
                     (254, 246, 92), (255, 141, 15), (253, 112, 107), (226, 6, 43)],  # renkler
@@ -93,8 +93,8 @@ class Chronology:
                            </style>
                          """, unsafe_allow_html=True)
 
-    @classmethod
-    def tab_map(cls, df_data, gdf_city_locations):
+
+    def tab_map(self, df_data, gdf_city_locations):
 
         st.write("Check to show new the cities")
         show_only_new_cities = st.checkbox("Only new cities")
@@ -116,13 +116,13 @@ class Chronology:
         st.title(title)
         map_column, df_column = st.columns([3, 2], gap="small")
         df_result["foundation_year"] = df_result["foundation_year"].astype(str)
-        df_plot = cls.get_df_plot(df_result, gdf_city_locations)
-        cls.plot_map(map_column, df_plot)
+        df_plot = self.get_df_plot(df_result, gdf_city_locations)
+        self.plot_map(map_column, df_plot)
         df_column.dataframe(df_result)
 
 
-    @classmethod
-    def tab_bar(cls, df_data):
+
+    def tab_bar(self, df_data):
         # SLIDER'DAN SEÇİLEN YILLARA GÖRE FİLTRELENECEK
         st.write("**Bar tab requires an period of time and, therefore uses only the second slider.**" )
         st.write("Check to show new the cities")
@@ -138,11 +138,11 @@ class Chronology:
         temp = df_year_counts[(start_year <= df_year_counts.index) & (df_year_counts.index <= end_year)]
         df_result.loc[temp.index] = temp
 
-        cls.plot_bar(df_result, start_year, end_year)
+        self.plot_bar(df_result, start_year, end_year)
 
 
-    @classmethod
-    def plot_bar(cls,df_year_counts, start_year, end_year):
+
+    def plot_bar(self,df_year_counts, start_year, end_year):
         col1, col2, col3 = st.columns( [1,8,1])
         with col2:
             fig, ax = plt.subplots(1, figsize=(9, 6))
@@ -179,9 +179,8 @@ class Chronology:
            # fig.savefig('myimage.jpeg', format='jpeg', dpi=300)
 
 
-    @classmethod
-    def run(cls):
-        cls.render()
+    def run(self):
+        self.render()
 
 
-Chronology.run()
+Chronology().run()

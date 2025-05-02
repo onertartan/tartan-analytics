@@ -1,10 +1,10 @@
-from modules.base_page import BasePage
+from modules.base_page_common import PageCommon
 import pandas as pd
 import streamlit as st
 from utils.checkbox_group import Checkbox_Group
 
 
-class PagePartiesAlliances(BasePage):
+class PagePartiesAlliances(PageCommon):
     page_name = "parties_alliances"
     features = {"nominator":  ["sex", "education", "age"], "denominator": ["sex", "education", "age"]}
     checkbox_group = {"age": Checkbox_Group(page_name, "age", 2,

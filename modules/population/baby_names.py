@@ -7,7 +7,6 @@ import streamlit as st
 class PageBabyNames(PageNames):
     page_name = "baby_names"
 
-
     @staticmethod
     @st.cache_data
     def get_data():
@@ -20,19 +19,5 @@ class PageBabyNames(PageNames):
         df_data = pd.read_csv(file_path, index_col=[0, 1])
         return df_data
 
-    # @classmethod
-    # @st.cache_data
-    # def get_data(cls, geo_scale=None):
-    #     if cls._data is None:  # Ensure single load
-    #         cls._data = {}
-    #         file_path = "data/preprocessed/population/most_common_baby_names_male.csv"
-    #         cls._data["male"] = pd.read_csv(file_path, index_col=[0, 1])
-    #         file_path = "data/preprocessed/population/most_common_baby_names_female.csv"
-    #         cls._data["female"] = pd.read_csv(file_path, index_col=[0, 1])
-    #
-    #         file_path = "data/preprocessed/population/names_baby.csv"
-    #         df_data = pd.read_csv(file_path, index_col=[0, 1])
-    #         gdf_borders = gpd.read_file("data/preprocessed/gdf_borders_ibbs3.geojson")
-    #     return cls._data
 
 PageBabyNames().run()

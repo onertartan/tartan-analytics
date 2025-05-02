@@ -1,3 +1,7 @@
+import io
+
+from PIL.Image import Image
+
 from modules.base_page_names import PageNames
 import pandas as pd
 import geopandas as gpd
@@ -14,6 +18,5 @@ class PageNamesSurnames(PageNames):
                    "surname": pd.read_csv("data/preprocessed/population/most_common_surnames.csv", index_col=[0, 1])
                    }
         return df_data
-
 
 PageNamesSurnames().run()
