@@ -358,10 +358,14 @@ class PageNames(BasePage):
             df_pivot = self.k_means_names(df, df.index.get_level_values(0).unique(), obtain_pivot_only=True)
             df_clusters = df_pivot["clusters"]
             df['clusters'] = df.index.get_level_values("province").map(df_clusters)
-            for cluster in selected_clusters:
-                df_cluster = df[df["clusters"] == cluster]
-                col_plot.subheader(f"Cluster {cluster}")
-                plot_method(self.preprocess_for_rank_bar_tabs(df_cluster), col_plot)
+            if st.session_state["aggregate_totals_" + self.page_name]:
+                df = df[df["clusters"].isin(selected_clusters)]
+                plot_method(self.preprocess_for_rank_bar_tabs(df), col_plot)
+            else:
+                for cluster in selected_clusters:
+                    df_cluster = df[df["clusters"] == cluster]
+                    col_plot.subheader(f"Cluster {cluster}")
+                    plot_method(self.preprocess_for_rank_bar_tabs(df_cluster), col_plot)
             col_df.dataframe(df)
         else:  # if not any selected, select all provinces
             plot_method(self.preprocess_for_rank_bar_tabs(df), col_plot)
@@ -376,7 +380,10 @@ class PageNames(BasePage):
         df_pivot = df_pivot.drop(columns=["clusters"])
         if st.session_state["optimal_k_analysis"]:
             col_df.pyplot(self.optimal_k_analysis(df_pivot))
-            df_pivot["clusters"] = consensus_labels[st.session_state["n_"]]
+        if  st.session_state["use_consensus_labels_"+ self.page_name]:
+            consensus_labels =  st.session_state["consensus_labels_"+ self.page_name]
+            print("333777", consensus_labels, "555222,", df_pivot.shape)
+            df_pivot["clusters"] = consensus_labels[st.session_state["n_clusters_" + self.page_name]]
 
         self.plot_pca(df_pivot, df_clusters, col_plot)
 
@@ -412,12 +419,28 @@ class PageNames(BasePage):
         year_1, year_2 = st.session_state["year_1"], st.session_state["year_2"]
         if "clustering" in display_option:
             df_pivot = self.k_means_names(df, df.index.get_level_values(0).unique())
+            if st.session_state["use_consensus_labels_" + self.page_name]:
+                print("75335", st.session_state["consensus_labels_" + self.page_name], "75338,", df_pivot.shape)
             if st.session_state["optimal_k_analysis"]:
                 col_df.pyplot(self.optimal_k_analysis(df_pivot.drop(columns=["clusters"])))
-                consensus_labels= st.session_state["consensus_labels"]
-                print("333777",consensus_labels.shape,"555222,",df_pivot.shape)
-                df_pivot["clusters"] = consensus_labels[st.session_state["n_clusters_" + self.page_name]]
 
+           # print("512412", st.session_state["consensus_labels_" + self.page_name])
+
+            if st.session_state["use_consensus_labels_" + self.page_name]:
+                n_cluster = st.session_state["n_clusters_" + self.page_name]
+                if not st.session_state["consensus_labels_" + self.page_name]: # run
+                    df_pivot = self.k_means_names(df, df.index.get_level_values(0).unique())
+                    col_df.pyplot(self.optimal_k_analysis(df_pivot.drop(columns=["clusters"])))
+
+                consensus_labels= st.session_state["consensus_labels_" + self.page_name]
+                print("75333",consensus_labels,"75333,",df_pivot.shape)
+                df_pivot["clusters"] = consensus_labels[n_cluster]
+                closest_indices, _ = pairwise_distances_argmin_min(df_pivot.groupby('clusters')[df_pivot.columns[:-1]].mean(), df_pivot[df_pivot.columns[:-1]])
+                closest_cities = df_pivot.index[closest_indices].tolist()  # Get city/province names
+                self.gdf_clusters.loc[df_pivot.index,"clusters"]=df_pivot["clusters"]
+                self.gdf_centroids = self.gdf_clusters[self.gdf_clusters.index.isin(closest_cities)]
+                # Compute centroids of their geometries (for marker placement)
+                self.gdf_centroids["centroid"] = self.gdf_centroids.geometry.centroid
 
             year_in_title = df.index.get_level_values(0).min()
             if df.index.get_level_values(0).max() > year_in_title:
@@ -470,7 +493,6 @@ class PageNames(BasePage):
             else:
                 st.write("No results found.")
 
-
     def plot_names(self, df_result, ax):
         # Create a color map
         df_result["clusters"] = df_result["name"].factorize()[0]
@@ -520,6 +542,19 @@ class PageNames(BasePage):
        #     ax.plot([], [], color=color, label=name, linestyle='None', marker='o')
        #     ax.legend(title='Names', fontsize=4, bbox_to_anchor=(0.01, 0.01), loc='lower right', fancybox=True, shadow=True)
 
+    def get_title_statement(self):
+        # Male Baby Names, Female Names
+        gender = st.session_state["sex_" + self.page_name]
+        if self.page_name == "names_surnames" and st.session_state["name_surname_rb"] == "Surname":
+            title_statement = "Surnames"
+        else:
+            title_statement = "Names"
+        if self.page_name == "baby_names":
+            title_statement = "Baby " + title_statement
+        if len(gender) == 1 and title_statement!="Surnames":
+            gender = gender[0]
+            title_statement = " " + gender.capitalize() + " " + title_statement
+        return title_statement
     def plot_clusters(self,  year_in_title, col_plot):
         fig, ax = plt.subplots(1, 1, figsize=(10, 6))
 
@@ -604,7 +639,10 @@ class PageNames(BasePage):
         ax.margins(x=0.15, y=0.1)  # 10% padding on both axes
         fig.tight_layout(pad=2.0)  # Add padding around figure
         # Customize plot
-        ax.set_title("Rank Evolution Over Years", fontsize=14, pad=20)
+
+
+
+        ax.set_title(f"Rank Evolution of {self.get_title_statement()} Over Years", fontsize=20, pad=20)
         ax.set_xlabel("Year", fontsize=12)
         ax.set_ylabel("Rank", fontsize=12)
         ax.grid(True, alpha=0.3)
@@ -716,10 +754,15 @@ class PageNames(BasePage):
             color=alt.Color('name:N', legend=None),  # Remove legend
             column=alt.Column('name:N', title=None)
         ).properties(
-            width=150
+            width=150,
+        title = {  # Add title configuration
+            "text": f"Frequency of {self.get_title_statement()} by Year",  # Title text
+            "anchor": "middle",  # Center the title
+            "dy": 10,  # Adjust vertical spacing (positive = move down)
+            "fontSize": 20  # Adjust font size
+        }
         ).configure_header(
-            titleFontSize=20,  # Increase font size for column titles (names)
-            labelFontSize=14
+            titleFontSize=24,  # Increase font size for column titles (names)
         )
 
         col_plot.altair_chart(chart)
@@ -826,8 +869,9 @@ class PageNames(BasePage):
         stored_value = st.session_state.get("scaler" + self.page_name, options[0])
         default_index = options.index(stored_value) if stored_value in options else 0
         st.session_state["scaler"] = col_3.radio("Select scaling option", options=options, index=default_index)
-        st.session_state["optimal_k_analysis"] = col_4.checkbox("Enable cluster analysis", False)
-        st.session_state["use_consensus_labels"] = col_4.checkbox("Use consensus labels", False)
+        st.session_state["optimal_k_analysis"] = col_4.button("Run cluster analysis")
+        stored_value = st.session_state.get("use_consensus_labels" + self.page_name, False)
+        col_4.checkbox("Use consensus labels", False,key="use_consensus_labels_"+ self.page_name)
 
 
 

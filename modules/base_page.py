@@ -1,5 +1,6 @@
 import json
-from typing import Dict
+from collections import Counter
+from typing import Dict, List
 import seaborn as sns
 import numpy as np
 from scipy.spatial.distance import pdist, cdist
@@ -31,7 +32,7 @@ class BasePage(ABC):
     def COLORS(self):
         if "COLORS" not in st.session_state:
             st.session_state["COLORS"]=["red", "purple", "orange", "green", "dodgerblue", "magenta", "gold", "darkorange", "darkolivegreen",
-              "cyan",  "gray", "lightblue", "lightgreen", "darkkhaki", "brown", "lime", "orangered", "blue", "mediumpurple", "turquoise"] + list(colormaps["Set2"].colors)+list(colormaps["Dark2"].colors)+list(colormaps["Pastel1"].colors)+["yellow","silver"]
+              "cyan",  "lightblue", "lightgreen", "darkkhaki", "brown", "lime", "orangered", "blue", "mediumpurple", "turquoise"] +list(colormaps["Dark2"].colors)+ list(colormaps["Set2"].colors)+list(colormaps["Pastel1"].colors)+["yellow","silver"]
         return st.session_state["COLORS"]
 
     @property
@@ -88,18 +89,22 @@ class BasePage(ABC):
     def create_color_mapping(self, gdf: gpd.GeoDataFrame, n_clusters: int) -> Dict[int, str]:
         """Generate cluster color mapping with province-based defaults."""
         color_map = {}
-        clusters = set(range(1,n_clusters+1))
-        # Assign predefined province colors
-        print("645645",gdf)
+        used_colors = set()  # Track which colors have been assigned
+        clusters = set(range(1, n_clusters + 1))
 
         for idx, color in self.CLUSTER_COLOR_MAPPING.items():
             if idx in gdf.index:
                 cluster = gdf.loc[idx, "clusters"][0] if isinstance(gdf.loc[idx, "clusters"], pd.Series) else gdf.loc[idx, "clusters"]# it returns multiple values(series) for the same name
-                if cluster not in color_map:
+
+                # Only assign if both cluster is new AND color hasn't been used
+                if cluster not in color_map and color not in used_colors:
                     color_map[cluster] = color
-        # Assign remaining colors
+                    used_colors.add(color)
+
+        # Assign remaining colors to any clusters without colors
+        remaining_colors = [c for c in self.CLUSTER_COLOR_MAPPING.values() if c not in used_colors]
         remaining_clusters = clusters - set(color_map.keys())
-        remaining_colors = list(set(self.COLORS)-set(color_map.values()))
+
         for i, cluster in enumerate(remaining_clusters):
             color_map[cluster] = remaining_colors[i]
         return color_map
@@ -361,87 +366,7 @@ class BasePage(ABC):
             df = pd.DataFrame(df_scaled, index=df.index, columns=df.columns)
         return df
 
-    def optimal_k_analysis2(self, df):
-        # Assuming data is your dataset (numpy array or Pandas DataFrame)
-        labels_all = {}
-        random_states = [28,42, 70,336,1982]
-        k_values = list(range(2, 15))
-        fig, axs = plt.subplots(len(random_states)+1, 3, figsize=(15, 10))
 
-        for i, random_state in enumerate(random_states):
-            labels_all[i], inertias, silhouette_scores, calinski_scores = {},[], [], []
-            print("555777",df)
-            for k in k_values:
-                labels_all[i][k]= []
-                kmeans = KMeans(n_clusters=k, random_state=random_state, init='k-means++', n_init=100)
-                kmeans.fit(df)
-                labels_all[i][k] = kmeans.labels_.squeeze()
-                inertias.append(kmeans.inertia_)
-                # Silhouette score
-                sil_score = silhouette_score(df, kmeans.labels_)
-                silhouette_scores.append(sil_score)
-
-                # Calinski-Harabasz score
-                cal_score = calinski_harabasz_score(df, kmeans.labels_)
-                calinski_scores.append(cal_score)
-            # Find optimal k using elbow method
-            elbow = KneeLocator(k_values, inertias, curve='convex', direction='decreasing')
-            optimal_k_elbow = elbow.elbow
-            # Find optimal k using silhouette score
-            optimal_k_silhouette = k_values[np.argmax(silhouette_scores)]
-            # Find optimal k using Calinski-Harabasz score
-            optimal_k_calinski = k_values[np.argmax(calinski_scores)]
-            # Elbow plot
-            axs[i, 0].plot(k_values, inertias, 'bo-')
-            axs[i, 0].set_xlabel('Number of Clusters (k)')
-            axs[i, 0].set_ylabel('Inertia')
-            axs[i, 0].set_ylim(0)
-            axs[i, 0].set_title('Number of clusters analysis')
-            if optimal_k_elbow:
-                axs[i, 0].axvline(x=optimal_k_elbow, color='r', linestyle='--')
-
-            # Silhouette plot
-            axs[i, 1].plot(k_values, silhouette_scores, 'go-')
-            axs[i, 1].set_xlabel('Number of Clusters (k)')
-            axs[i, 1].set_ylabel('Silhouette Score')
-            axs[i, 1].set_title('Silhouette Score')
-            axs[i, 1].axvline(x=optimal_k_silhouette, color='r', linestyle='--')
-
-            # Calinski-Harabasz plot
-            axs[i, 2].plot(k_values, calinski_scores, 'mo-')
-            axs[i, 2].set_xlabel('Number of Clusters (k)')
-            axs[i, 2].set_ylabel('Calinski-Harabasz Score')
-            axs[i, 2].set_title('Calinski-Harabasz Score')
-            axs[i, 2].axvline(x=optimal_k_calinski, color='r', linestyle='--')
-
-        ari_scores = pd.DataFrame(index=k_values, columns=range(len(random_states)))
-        n_runs = len(random_states)
-        for k in ari_scores.index:
-            for i in range(n_runs):
-                for j in range(i + 1, n_runs):
-                    print("BİÇİM", len(labels_all[i][k]), "İÇERİK",labels_all[i][k])
-
-                    ari = adjusted_rand_score(labels_all[i][k], labels_all[j][k])
-                    ari_scores.loc[k,i]=ari
-
-        axs[-1, 0].set_xlabel('Number of Clusters (k)')
-        axs[-1, 0].set_ylabel('Mean ARI Score')
-        axs[-1, 0].set_title('Mean ARI vs Clusters')
-        axs[-1, 0].plot(ari_scores.index,ari_scores.mean(axis=1))
-        axs[-1, 1].set_xlabel('Number of Clusters (k)')
-        axs[-1, 1].set_ylabel('Standard Deviation of ARI Score')
-        axs[-1, 1].set_title('Standard Deviation of ARI vs Clusters')
-        axs[-1, 1].scatter(ari_scores.index,ari_scores.std(axis=1))
-        return fig
-
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from sklearn.cluster import KMeans
-    from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score, adjusted_rand_score
-    from scipy.spatial.distance import pdist, cdist
-    from kneed import KneeLocator
-
-    # Helper function for Gap Statistic
     def compute_gap_statistic(self, df, k, random_state, n_refs=5):
         kmeans = KMeans(n_clusters=k, random_state=random_state, n_init=100).fit(df)
         observed_inertia = kmeans.inertia_
@@ -483,16 +408,43 @@ class BasePage(ABC):
             return np.inf
         return n * np.log(inertia / n) + k * d * np.log(n)
 
+    def remap_clusters(self, labels: pd.Series,
+                       priority: List[str]) -> pd.Series:
+        """
+        labels:   pd.Series indexed by province name, values are original kmeans.labels_
+        priority: list of province names in the order you want new labels assigned.
+
+        Returns a new pd.Series of same index with relabeled cluster IDs 0,1,2…
+        """
+        new_label_map = {}
+        next_new = 0
+
+        for prov in priority:
+            old_lbl = labels.loc[prov]
+            if old_lbl not in new_label_map:
+                new_label_map[old_lbl] = next_new
+                next_new += 1
+
+        # If you have provinces outside your priority list and want to
+        # give them labels too, you could continue:
+        for old_lbl in sorted(set(labels) - set(new_label_map)):
+            new_label_map[old_lbl] = next_new
+            next_new += 1
+
+        return labels.map(new_label_map).to_list()
+
+
+
     # Main function to analyze optimal k with new metrics
     def optimal_k_analysis(self, df):
-        if "consensus_labels" not in st.session_state:
-            st.session_state["consensus_labels"]= None
-        random_states = range(3)  # 50 random seeds
-        k_values = list(range(2, 5))
+
+        if "consensus_labels_"+self.page_name not in st.session_state:
+            st.session_state["consensus_labels_"+self.page_name] = None
+        random_states = range(100)  # 50 random seeds
+        k_values = list(range(2, 15))
         num_seeds_to_plot = 3
         # Convert df to numpy array if it's a DataFrame
-        X = df.to_numpy() if hasattr(df, 'to_numpy') else df
-        n_samples = X.shape[0]
+        n_samples = df.shape[0]
         # Initialize lists to store metrics for all seeds
         inertias_all = []
         silhouette_scores_all = []
@@ -512,18 +464,28 @@ class BasePage(ABC):
             davies_bouldin_scores = []
             dunn_scores = []
             bic_scores = []
+
+
             for k in k_values:
-                kmeans = KMeans(n_clusters=k, random_state=random_state, n_init=1).fit(df)
+                kmeans = KMeans(n_clusters=k, random_state=random_state, n_init=100).fit(df)
                 labels = kmeans.labels_
                 inertia = kmeans.inertia_
                 inertias.append(inertia)
-                silhouette_scores.append(silhouette_score(X, labels))
-                calinski_scores.append(calinski_harabasz_score(X, labels))
-                gap_scores.append(self.compute_gap_statistic(X, k, random_state))
-                davies_bouldin_scores.append( davies_bouldin_score(X, labels))
+                priority_list = [
+                    "İzmir", "Van", "Afyonkarahisar", "Samsun", "Mardin",
+                    "Şanlıurfa", "Erzurum", "Tunceli", "Hatay"
+                ]
+                labels = self.remap_clusters(pd.Series(labels,index=df.index), priority_list)
+
+
+                silhouette_scores.append(silhouette_score(df, labels))
+                calinski_scores.append(calinski_harabasz_score(df, labels))
+                gap_scores.append(self.compute_gap_statistic(df, k, random_state))
+                davies_bouldin_scores.append( davies_bouldin_score(df, labels))
                 dunn_scores.append(self.dunn_index(df, labels))
                 bic_scores.append(self.approximate_bic(df, k, inertia))
                 labels_all[random_state][k] = labels
+
             inertias_all.append(inertias)
             silhouette_scores_all.append(silhouette_scores)
             calinski_scores_all.append(calinski_scores)
@@ -541,6 +503,7 @@ class BasePage(ABC):
         mean_dunn = np.mean(dunn_scores_all, axis=0)
         mean_bic = np.mean(bic_scores_all, axis=0)
 
+
         # Compute ARI scores
         ari_scores = {k: [] for k in k_values}
         for k in k_values:
@@ -552,7 +515,7 @@ class BasePage(ABC):
         ari_std = [np.std(ari_scores[k]) for k in k_values]
         # Compute Consensus Clustering Stability Metric (Average Consensus Index)
         # Initialize storage for consensus labels
-        consensus_indices = []
+
         consensus_labels_all = {k: None for k in k_values}  # Dictionary to store consensus labels for each k
         consensus_indices = []
         for k in k_values:
@@ -565,6 +528,7 @@ class BasePage(ABC):
                         if labels[i] == labels[j]:
                             consensus_matrix[i, j] += 1
                             consensus_matrix[j, i] += 1
+            print("53755 k=",k,"\nLABB:",labels)
             # Normalize by number of runs
             consensus_matrix /= len(random_states)
             # Compute average consensus index (mean of non-diagonal elements)
@@ -591,6 +555,23 @@ class BasePage(ABC):
             'Approximate BIC',
             'Consensus Index'
         ]
+        df_optimal_k = pd.DataFrame(data=0,index=column_titles,columns=k_values)
+
+        for i, random_state in enumerate(random_states):
+            elbow = KneeLocator(k_values, inertias_all[i], curve='convex', direction='decreasing')
+            elbow=elbow.elbow
+            df_optimal_k.loc['Elbow Analysis',elbow] +=1
+            optimal_k_sil = k_values[np.argmax(silhouette_scores_all[i])]
+            df_optimal_k.loc['Silhouette Score', optimal_k_sil] += 1
+            optimal_k_cal = k_values[np.argmax(calinski_scores_all[i])]
+            df_optimal_k.loc['Calinski-Harabasz Score', optimal_k_cal] += 1
+            optimal_k_db = k_values[np.argmin(davies_bouldin_scores_all[i])]
+            df_optimal_k.loc['Davies-Bouldin Index', optimal_k_db] += 1
+            optimal_k_dunn = k_values[np.argmax(dunn_scores_all[i])]
+            df_optimal_k.loc['Dunn Index', optimal_k_dunn] += 1
+            optimal_k_bic = k_values[np.argmin(bic_scores_all[i])]
+            df_optimal_k.loc['Approximate BIC', optimal_k_bic] += 1
+
 
         # Plot metrics for each seed
         for i, random_state in enumerate(random_states[:num_seeds_to_plot]):
@@ -689,7 +670,7 @@ class BasePage(ABC):
         axs[num_seeds_to_plot+1, 2].set_title(f'Mean: {column_titles[7]}')
 
         # Hide unused subplots in ARI row
-        for j in range(2, 7):
+        for j in range(3, 7):
             axs[num_seeds_to_plot + 1, j].axis('off')
 
         # Set labels and layout
@@ -698,8 +679,8 @@ class BasePage(ABC):
             ax.grid(True)
         fig.tight_layout()
         fig.savefig('kmeans_metrics_analysis.png')
-
-        st.session_state["consensus_labels"] = consensus_labels
+        st.write(df_optimal_k)
+        st.session_state["consensus_labels_"+self.page_name] = consensus_labels_all
         return fig
 
 
