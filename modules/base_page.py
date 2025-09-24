@@ -52,7 +52,7 @@ class BasePage(ABC):
     @property
     def HA_POSITIONS(self):
         if "HA_POSITIONS" not in st.session_state:
-            st.session_state["HA_POSITIONS"] = {"Zonguldak": "right", "Adana": "right"}
+            st.session_state["HA_POSITIONS"] = {"Zonguldak": "right", "Adana": "right","Yalova":"right"}
         return st.session_state["HA_POSITIONS"]
 
     @property
@@ -471,11 +471,13 @@ class BasePage(ABC):
                 labels = kmeans.labels_
                 inertia = kmeans.inertia_
                 inertias.append(inertia)
-                priority_list = [
-                    "İzmir", "Van", "Afyonkarahisar", "Samsun", "Mardin",
-                    "Şanlıurfa", "Erzurum", "Tunceli", "Hatay"
-                ]
-                labels = self.remap_clusters(pd.Series(labels,index=df.index), priority_list)
+                #priority list to force to use same labels for centroids in different random states
+                # it is tried but results didn't change,so same cities are already assigned to same clusters
+                # priority_list = [
+                #     "İzmir", "Van", "Afyonkarahisar", "Samsun", "Mardin",
+                #     "Şanlıurfa", "Erzurum", "Tunceli", "Hatay"
+                # ]
+                # labels = self.remap_clusters(pd.Series(labels,index=df.index), priority_list)
 
 
                 silhouette_scores.append(silhouette_score(df, labels))
@@ -515,6 +517,7 @@ class BasePage(ABC):
         ari_std = [np.std(ari_scores[k]) for k in k_values]
         # Compute Consensus Clustering Stability Metric (Average Consensus Index)
         # Initialize storage for consensus labels
+
 
         consensus_labels_all = {k: None for k in k_values}  # Dictionary to store consensus labels for each k
         consensus_indices = []
@@ -660,6 +663,11 @@ class BasePage(ABC):
         # Plot ARI metrics
         axs[num_seeds_to_plot + 1, 0].plot(k_values, ari_mean, 'bo-')
         axs[num_seeds_to_plot + 1, 0].set_title('Mean ARI vs Clusters')
+        # Annotate each point with its value
+        for k, val in zip(k_values, ari_mean):
+            axs[num_seeds_to_plot + 1, 0].text(k, val, f'{val:.2f}',
+                         ha='center', va='bottom',
+                         bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
         axs[num_seeds_to_plot + 1, 1].scatter(k_values, ari_std, color='g')
         axs[num_seeds_to_plot + 1, 1].set_title('ARI Std vs Clusters')
 

@@ -18,7 +18,6 @@ import plotly.graph_objects as go
 import plotly.express as px
 import extra_streamlit_components as stx
 
-
 class PageCommon(BasePage):
 
     def sidebar_controls_plot_options_setup(self, *args):

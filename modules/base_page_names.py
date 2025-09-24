@@ -247,7 +247,6 @@ class PageNames(BasePage):
            """
         st.components.v1.html(js_code, height=0, width=0)
 
-
         # Apply CSS to all radio groups except the first
         header = "Names & Surnames Analysis" if self.page_name == "names_surnames" else "Baby Names Analysis"
         st.header(header)
@@ -313,7 +312,7 @@ class PageNames(BasePage):
     def tab_2_3_4(self, df, col_plot, col_df,col_2,col_3,col_4):
         tab_selected = st.session_state["selected_tab_" + self.page_name]
         if "rank" in tab_selected:  # add rank selectbox if tab_selected == "tab_rank_bump" or tab_selected == "tab_rank_bar": Tabs 2-3
-            col_2.selectbox(f"Select rank", range(1, 6), index=4, key="rank_" + self.page_name)
+            col_2.selectbox(f"Select rank", range(1, 21), index=4, key="rank_" + self.page_name)
             col_2.radio("Select an option",
                         ["Show Only Years When Names Are in Top-n", "Include All Years for Names Ever in Top-n"],
                         key="include_all_years")
@@ -380,10 +379,10 @@ class PageNames(BasePage):
         df_pivot = df_pivot.drop(columns=["clusters"])
         if st.session_state["optimal_k_analysis"]:
             col_df.pyplot(self.optimal_k_analysis(df_pivot))
-        if  st.session_state["use_consensus_labels_"+ self.page_name]:
-            consensus_labels =  st.session_state["consensus_labels_"+ self.page_name]
-            print("333777", consensus_labels, "555222,", df_pivot.shape)
-            df_pivot["clusters"] = consensus_labels[st.session_state["n_clusters_" + self.page_name]]
+        if st.session_state["use_consensus_labels_" + self.page_name]:
+           consensus_labels = st.session_state["consensus_labels_" + self.page_name]
+           print("333777", consensus_labels, "NUM OF NAMES,", df_pivot.shape)
+           df_pivot["clusters"] = consensus_labels[st.session_state["n_clusters_" + self.page_name]]
 
         self.plot_pca(df_pivot, df_clusters, col_plot)
 
@@ -557,39 +556,72 @@ class PageNames(BasePage):
         return title_statement
     def plot_clusters(self,  year_in_title, col_plot):
         fig, ax = plt.subplots(1, 1, figsize=(10, 6))
-
         n_clusters = st.session_state["n_clusters_" + self.page_name]
         # Define a color map for the categories
         color_map = self.create_color_mapping(self.gdf_clusters, n_clusters)
         # Map the colors to the GeoDataFrame
+        #SEÇİM - BİRİNCİ PARTİ
+        secim = False
+        if secim:
+            file_name = "elections2023.csv"
+            self.gdf_clusters["clusters"]=pd.read_csv(file_name,index_col=0)["cluster"].tolist() # elections1-->1.figure
+            color_map={1:"darkorange",2:"red",3:"purple",4:"gold"}
+        #
+        # #SEÇİM1-SON
         self.gdf_clusters["color"] = self.gdf_clusters["clusters"].map(color_map)
         nan_rows = self.gdf_clusters[self.gdf_clusters.isna().any(axis=1)]
         print("nan rows:",nan_rows,"n_clusters",n_clusters)
+        print(self.gdf_clusters.index)
         self.gdf_clusters.plot(ax=ax, color=self.gdf_clusters['color'], legend=True, edgecolor="black", linewidth=.2)
         ax.axis("off")
         ax.margins(x=0)
-        # Compute centroids of the closest provinces and plot them as markers
-        closest_provinces_centroids = self.gdf_centroids.to_crs("EPSG:4326").copy()
-        closest_provinces_centroids["centroid_geometry"] = closest_provinces_centroids.geometry.centroid
-        # Create a temporary GeoDataFrame with centroid geometries (points)
-        closest_provinces_points = gpd.GeoDataFrame(closest_provinces_centroids, geometry="centroid_geometry",
-                                                    crs=self.gdf_clusters.crs)
-        # Add markers using the centroid points (no fill color change   # Transparent fill)
-        closest_provinces_points.plot(ax=ax, facecolor="none", markersize=120, edgecolor="black", linewidth=1.5,
-                                      label=f"Closest provinces\nto  cluster centers")
+
         # Add province names (from index) at centroids
         bbox = dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="none", alpha=0.6)
         ha_positions,va_positions = self.HA_POSITIONS, self.VA_POSITIONS
-        print("typee",type(ha_positions))
         for province in self.gdf_clusters.index:
             ax.annotate(text=province,  # Use index (province name) directly
                         xy=(self.gdf_clusters.loc[province, "geometry"].centroid.x,
                             self.gdf_clusters.loc[province, "geometry"].centroid.y),
                         ha=ha_positions.get(province, "center"), va=va_positions.get(province, "center"), fontsize=5, color="black", bbox=bbox)
 
-        # Optional: Add legend
-        ax.set_title(f"{n_clusters} Clusters Identified {year_in_title} (K-means)")
-        ax.legend(loc="upper right", fontsize=6)
+
+        if secim:
+            from matplotlib.patches import Patch
+            if file_name == "elections2022.csv":
+                legend_handles = [
+                    Patch(facecolor='darkorange', label='People’s Alliance'),
+                    Patch(facecolor='red', label="Nation's Alliance"),
+                    Patch(facecolor='purple', label="Labour's Alliance")
+                ]
+                title = "2023 Turkish Parliamentary Elections: Provincial Wins by Alliance Blocs"
+            else:
+                legend_handles = [
+                    Patch(facecolor='darkorange', label='People’s Alliance (AKP + MHP)'),
+                    Patch(facecolor='red', label='CHP'),
+                    Patch(facecolor='purple', label='DEM Party')
+                ]
+                title = "2024 Turkish Municipal Council Elections: Provincial Wins by Alliance Blocs and Competing Parties"
+            ax.legend(
+                handles=legend_handles,
+                loc=[.55, .87],
+                fontsize=6,
+                title_fontsize=6,
+                frameon=False  # Remove if you want a background
+            )
+            ax.set_title(title)
+        else:
+            ax.set_title(f"{n_clusters} Clusters Identified {year_in_title} (K-means)")
+            ax.legend(loc="upper right", fontsize=6)
+            # Compute centroids of the closest provinces and plot them as markers
+            closest_provinces_centroids = self.gdf_centroids.to_crs("EPSG:4326").copy()
+            closest_provinces_centroids["centroid_geometry"] = closest_provinces_centroids.geometry.centroid
+            # Create a temporary GeoDataFrame with centroid geometries (points)
+            closest_provinces_points = gpd.GeoDataFrame(closest_provinces_centroids, geometry="centroid_geometry",
+                                                        crs=self.gdf_clusters.crs)
+            # Add markers using the centroid points (no fill color change   # Transparent fill)
+            closest_provinces_points.plot(ax=ax, facecolor="none", markersize=120, edgecolor="black", linewidth=1.5,
+                                          label=f"Closest provinces\nto  cluster centers")
         col_plot.pyplot(fig)
     # Tab-2 plot methods
 
@@ -632,16 +664,14 @@ class PageNames(BasePage):
         max_rank = int(df["rank"].max())
         # Invert y-axis to show #1 at top
         ax.invert_yaxis()
-        ax.set_yticks(range(1, max_rank + 1))  # Force show all ticks 1-10
-        ax.set_ylim(max_rank + 1, 0)  # Add padding to top/bottom
+        ax.set_yticks(range(1, min(51,max_rank+1) ))  # Force show all ticks 1-10
+        ax.set_ylim(min(51,max_rank+1), 0)  # Add padding to top/bottom
+
         ax.set_xticks(df_pivot.index)
         # Add padding around plot content
         ax.margins(x=0.15, y=0.1)  # 10% padding on both axes
         fig.tight_layout(pad=2.0)  # Add padding around figure
         # Customize plot
-
-
-
         ax.set_title(f"Rank Evolution of {self.get_title_statement()} Over Years", fontsize=20, pad=20)
         ax.set_xlabel("Year", fontsize=12)
         ax.set_ylabel("Rank", fontsize=12)
