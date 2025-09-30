@@ -21,7 +21,7 @@ class Migration:
 
     @staticmethod
     @st.cache_data
-    def load_process_data( ):
+    def load_process_data():
         df = pd.read_pickle('data/preprocessed/high_edu.pkl')
         # SELECTING PROVINCES
         df = df[df["General"]["scholarship"] != "AÖ-Ücretli"]  # exclude distant education
@@ -83,12 +83,14 @@ class Migration:
         elif provinces_to:
             # Filter only columns (destination provinces)
             df = df.loc[:, (df.columns.get_level_values(0).isin(provinces_to), slice(None))]
+        else:
+            return df.copy()
         return df
 
     def filter_provinces(self, col_province, option):
         if "migration_data" not in st.session_state:
             st.session_state["migration_data"] = Migration.load_process_data()
-        df_migration, df_migration_ratio, all_provinces, foundation_provinces = st.session_state["migration_data"]
+        df_migration_all, df_migration_ratio_all, all_provinces, foundation_provinces = st.session_state["migration_data"]
 
         provinces_from = col_province.multiselect("Select origin provinces", options=all_provinces)
         if option == "Foundation Only":
@@ -97,9 +99,9 @@ class Migration:
             provinces_to = col_province.multiselect("Select destination provinces", options=all_provinces)
 
         # Filter if provinces are specified
-        df_migration = self.process_helper_filter(df_migration,provinces_from,provinces_to)
-        df_migration_ratio = self.process_helper_filter(df_migration_ratio,provinces_from,provinces_to )
-        return df_migration, df_migration_ratio
+        df_migration_filtered = self.process_helper_filter(df_migration_all,provinces_from,provinces_to)
+        df_migration_ratio_filtered = self.process_helper_filter(df_migration_ratio_all,provinces_from,provinces_to )
+        return df_migration_ratio_all,df_migration_filtered, df_migration_ratio_filtered
 
     def get_summary(self,migration_percentage_dict_filtered):
         upper_levels = ["Combined", "State Only", "Foundation Only", "State vs All", "Foundation vs All"]
@@ -136,46 +138,33 @@ class Migration:
         # Checkbox for self-loops (default: unselected)
         show_self_loops = col_internal_external.checkbox("Show Internal Choice (same province)", value=False)
         option = col_ratio_type.radio("Analysis Type:", options=["Combined", "State Only", "Foundation Only", "State vs All", "Foundation vs All"])
-        df_migration, df_migration_ratio = self.filter_provinces(col_origin, option)
+        df_migration_ratio_all,df_migration_filtered, df_migration_ratio_filtered = self.filter_provinces(col_origin, option)
 
         threshold = col_minimum_ratio.slider("Minimum Migration Value", min_value=0., max_value=100., value=1., step=0.1, help="Show only migration flows above this value", key="mig_threshold")
         layer_type = col_line_type.radio("Select Migration Flow Visualization Type", ["Arc Layer", "Line Layer"], help="Arc Layer shows curved flows, Line Layer shows straight lines" )
         selected_width = col_line_width.slider("Change line width", min_value=1., max_value=5., value=1., step=.1)
-
-        df_migration_ratio = df_migration_ratio.loc[:,(slice(None),option)].droplevel(1,axis=1)*100
+        st.dataframe(df_migration_ratio_filtered.head())
+        if option == "Combined":
+            cols=["Foundation", "State", "All"]
+        if "State" in option:
+            cols = ["State"]
+        elif "Foundation" in option:
+            cols = ["Foundation"]
+        if "All" in option:
+            cols.append("All")
 
         # Filter ratios and counts
-        df_migration_ratio = self.calculate_internal_external_sums(df_migration_ratio, show_self_loops, show_inter_province)
-        df_migration = self.calculate_internal_external_sums_counts(df_migration, show_self_loops, show_inter_province)
-        st.dataframe(df_migration)
+        df_migration_percentage = df_migration_ratio_filtered.loc[:, (slice(None),option)].droplevel(1, axis=1)*100
+        df_migration_percentage = self.calculate_internal_external_sums(df_migration_percentage, show_self_loops, show_inter_province)
+        df_migration_filtered = self.calculate_internal_external_sums_counts(df_migration_filtered, show_self_loops, show_inter_province,cols)
+        st.dataframe(df_migration_percentage.round(2))
 
-        self.network_plot_on_map(df_migration_ratio.copy(), show_inter_province, show_self_loops,layer_type,selected_width,threshold)
-      #  df_migration = self.filter_counts(df_migration, df_migration_ratio.index, list(set(df_migration_ratio.columns)-{"Internal", "External", "Total"}))
-        st.dataframe(df_migration)
+        self.plot_on_map(df_migration_ratio_all,df_migration_ratio_filtered, show_inter_province, show_self_loops, layer_type, selected_width, threshold,option)
 
-
-        st.write("Migration Percentages Above The Threshold")
-        st.dataframe((df_migration_ratio).round(2))
        # self.get_summary(migration_percentage_dict_filtered)
-
-
-        st.dataframe(df_migration)
+        st.dataframe(df_migration_filtered)
 
        # st.dataframe(df_migration[(df_migration > 0).all(axis=1)])
-
-        # st.subheader("Migration Data Tables")
-        # tabs = [stx.TabBarItemData(id="display_ratio_df", title="Outgoing Migration Ratios", description=""),
-        #         stx.TabBarItemData(id="display_absolute_df", title="Migration Counts", description=""),
-        #         stx.TabBarItemData(id="display_summary_df", title="Migration summary", description="")]
-        # st.session_state["selected_tab_df_" + self.page_name] = stx.tab_bar(data=tabs, default="display_ratio_df")
-        # if st.session_state["selected_tab_df_" + self.page_name] == "display_ratio_df":
-        #     st.dataframe(df_migration_percentage.round(2))
-        # elif st.session_state["selected_tab_df_" + self.page_name] == "display_absolute_df":
-        #     option = st.radio("Select university type:", options=["State", "Foundation", "All"])
-        #     df_migration = migration_dict_filtered[option.lower()]
-        #     st.dataframe(df_migration.round(2))
-        # else:
-        #     st.dataframe(self.get_summary(migration_percentage_dict_filtered).round(2))
 
         #self.plot_network(df_migration_ratio)
         # Create and display the CHORD
@@ -192,9 +181,9 @@ class Migration:
         fromto_data = []
         for prov1 in df.index:
             for prov2 in df.columns:
-                    value = df.loc[prov1, prov2]
-                    if df.loc[prov1, prov2] > threshold:  # Only include significant migrations
-                        fromto_data.append([prov1, prov2, value])
+                value = df.loc[prov1, prov2]
+                if df.loc[prov1, prov2] > threshold:  # Only include significant migrations
+                    fromto_data.append([prov1, prov2, value])
 
         # Create from-to table dataframe
         fromto_table_df = pd.DataFrame(fromto_data, columns=["from", "to", "value"])
@@ -216,9 +205,201 @@ class Migration:
         fig = circos.plotfig(figsize=(20, 20))
         col.pyplot(fig)
 
-    def network_plot_on_map(self, df_migration_percentage, show_inter_province, show_self_loops,layer_type,selected_width,threshold):
+    import numpy as np
+
+    import numpy as np
+
+    def slice_polygon(self,center_lonlat, radius_deg, start_azimuth, end_azimuth, steps=30):
+        """closed polygon [ [lon,lat], … ] for a circular sector"""
+        cx, cy = center_lonlat
+        az = np.linspace(start_azimuth, end_azimuth, steps)
+        xs = cx + radius_deg * np.cos(az)
+        ys = cy + radius_deg * np.sin(az)
+        coords = np.column_stack([xs, ys]).tolist()
+        coords.append([cx, cy])  # close at centre
+        return coords
+    def plot_on_map(self,df_migration_ratio_all, df_migration_ratio_filtered, show_inter_province, show_self_loops, layer_type, selected_width, threshold,option):
+        df_migration_percentage_filtered = df_migration_ratio_filtered.loc[:, (slice(None), option)].droplevel(1, axis=1) * 100
+        df_migration_percentage_all = df_migration_ratio_all.loc[:, (slice(None), option)].droplevel(1, axis=1) * 100
+        # User selects layer type
+        shapefile_path = "data/turkey_province_centers.geojson"
+        gdf = gpd.read_file(shapefile_path, encoding='utf-8')
+        city_to_coord = gdf.set_index('province')[['lon', 'lat']].to_dict('index')
+        city_to_coord = {k: [v['lon'], v['lat']] for k, v in city_to_coord.items()}
+        # Add tooltip text to nodes
+        # ScatterplotLayer for province nodes
+        diag = pd.DataFrame({"province": df_migration_percentage_all.index, "percentage": df_migration_percentage_all.values.diagonal()})
+        df_internal = gdf.merge(diag, on="province")
+        df_internal['tooltip_text'] = df_internal.apply(lambda row: f"<b>{row['province']}</b> Internal percentage: {row['percentage']:.1f}%", axis=1)
+
+        df_nodes=df_internal.copy()
+        df_nodes['tooltip_text'] = df_nodes['province'].apply(lambda x: f"<b>{x}</b> Province")
+        df_internal = df_internal.set_index("province")
+        scatter_layer = pdk.Layer(
+            'ScatterplotLayer',
+            data=df_nodes,
+            get_position=['lon', 'lat'],
+            get_radius=3000,
+            get_fill_color=[0, 0, 255, 200],
+            pickable=True
+        )
+        layers = []
+        layers.append(scatter_layer)
+        # Compute initial view state (centered on Turkey)
+        view_state = pdk.ViewState(latitude=39.0, longitude=35.0, zoom=5.2, pitch=0, bearing=0)
+
+        # Add coordinates for non-self-loops
+        if show_inter_province:
+            # Prepare flows data (filtering according to the threshold)
+            df_flows = df_migration_percentage_filtered.copy()
+            df_flows[df_flows < threshold] = 0.
+            df_flows = df_flows.loc[:, (df_flows != 0).any(axis=0)]
+            df_flows = df_flows.reset_index().melt(id_vars='index', var_name='to', value_name='percentage')
+            df_flows.rename(columns={'index': 'from'}, inplace=True)
+            # Split flows into self-loops and non-self-loops
+            non_self_loops = df_flows[df_flows['from'] != df_flows['to']] if show_inter_province else pd.DataFrame()
+            non_self_loops['from_lon'] = non_self_loops['from'].map(lambda c: city_to_coord.get(c, [None, None])[0])
+            non_self_loops['from_lat'] = non_self_loops['from'].map(lambda c: city_to_coord.get(c, [None, None])[1])
+            non_self_loops['to_lon'] = non_self_loops['to'].map(lambda c: city_to_coord.get(c, [None, None])[0])
+            non_self_loops['to_lat'] = non_self_loops['to'].map(lambda c: city_to_coord.get(c, [None, None])[1])
+            # Drop rows with missing coordinates
+            non_self_loops = non_self_loops.dropna(subset=['from_lon', 'from_lat', 'to_lon', 'to_lat'])
+            # Add tooltip text to non-self-loops
+            non_self_loops['tooltip_text'] = non_self_loops.apply(lambda row: f"From <b>{row['from']}</b> to <b>{row['to']}</b>: {row['percentage']:.1f}%", axis=1 )
+            if layer_type == "Arc Layer":
+                flow_layer = pdk.Layer(
+                    'ArcLayer',
+                    data=non_self_loops,
+                    get_source_position=['from_lon', 'from_lat'],
+                    get_target_position=['to_lon', 'to_lat'],
+                    get_source_color=[255, 0, 0, 160],
+                    get_target_color=[0, 255, 0, 160],
+                    get_width=f'{selected_width ** 2}*percentage/25',
+                    pickable=True,
+                    auto_highlight=True
+                )
+            else:  # Line Layer
+                flow_layer = pdk.Layer(
+                    'LineLayer',
+                    data=non_self_loops,
+                    get_source_position=['from_lon', 'from_lat'],
+                    get_target_position=['to_lon', 'to_lat'],
+                    get_color=[255, 165, 0, 160],
+                    get_width=f'{selected_width ** 2}*percentage/25',
+                    pickable=True,
+                    auto_highlight=True
+                )
+            layers.append(flow_layer)
+
+        if show_self_loops:
+
+            df_internal=df_internal.loc[df_internal["percentage"] > threshold]
+            print("bcdbcd")
+            print(df_internal)
+            idx = cols = df_internal.index
+            pie_rows = []  # list of dicts for the PolygonLayer
+            df_migration_percentage_state_vs_all = df_migration_ratio_all.loc[idx, (cols, "State vs All")].droplevel(1, axis=1) * 100
+            df_migration_percentage_foundation_vs_all = df_migration_ratio_all.loc[idx, (cols, "Foundation vs All")].droplevel(1, axis=1) * 100
+            if option != "Combined":
+                self_loop_layer = pdk.Layer(
+                    'ScatterplotLayer',
+                    data=df_internal,
+                    get_position=['lon', 'lat'],
+                    get_radius='percentage * 450',
+                    get_fill_color=[255, 255, 0, 200],
+                    pickable=True,
+                    auto_highlight=True
+                )
+                layers.append(self_loop_layer)
+            else:
+                for city in df_internal.index:
+
+                    lon, lat = city_to_coord[city]
+                    combined_pct = df_internal.loc[city, "percentage"]  # Combined value
+                    state_pct = df_migration_percentage_state_vs_all.loc[city, city]
+                    found_pct = df_migration_percentage_foundation_vs_all.loc[city, city]
+                    if city == "Tunceli":
+                        print("Tunceli",state_pct,found_pct,combined_pct)
+                    # central angles (radians)
+                    state_angle = 2 * np.pi * state_pct / combined_pct
+                    found_angle = 2 * np.pi * found_pct / combined_pct
+                    # STATE slice (start at 0)
+                    r_deg = combined_pct * 500 / 111_000  # km → deg scaling (tune 500)
+                    combined_poly = self.slice_polygon((lon, lat), r_deg, 0, 2 * np.pi)
+                    pie_rows.append({
+                        "polygon": combined_poly,
+                        "tooltip_text": f"<b>{city}</b> Combined-Internal Percentage: {combined_pct:.1f}%",
+                        "fill_color": [237, 174, 73, 255]
+                    })
+                    if found_pct > 0:
+                        state_poly = self.slice_polygon((lon, lat), 0.8*r_deg, 0, state_angle)
+                        pie_rows.append({
+                            "polygon": state_poly,
+                            "tooltip_text": f"<b>{city}</b> State-Internal Percentage: {state_pct:.1f}%",
+                            "fill_color": [0, 100, 0, 255]
+                        })
+                        # FOUNDATION slice (continue after state)
+                        found_poly = self.slice_polygon((lon, lat), 0.8*r_deg, state_angle, state_angle + found_angle)
+                        pie_rows.append({
+                            "polygon": found_poly,
+                            "tooltip_text": f"<b>{city}</b> Foundation-Internal Percentage: {found_pct:.1f}%",
+                            "fill_color": [220, 20, 60, 255]
+                        })
+
+                    pie_df = pd.DataFrame(pie_rows)
+                    # --- PolygonLayer for pie slices ---
+                    pie_layer = pdk.Layer(
+                        "PolygonLayer",
+                        data=pie_df,
+                        get_polygon="polygon",
+                        get_fill_color="fill_color",
+                        get_line_color=[0, 255, 0, 120],
+                        line_width_min_pixels=1,
+                        pickable=True,
+                        auto_highlight=True,
+                        id="pie-slices"
+                    )
+                    layers.append(pie_layer)
+
+            # Simple tooltip that works for all layers
+        tooltip = {
+            "html": "{tooltip_text}",
+            "style": {
+                "background": "grey",
+                "color": "white",
+                "font-family": '"Helvetica Neue", Arial',
+                "z-index": "10000",
+                "font-size": "24px",  # Add this line for bigger text
+
+            }
+        }
+
+        # Create Deck
+        deck = pdk.Deck(
+            layers=layers,
+            initial_view_state=view_state,
+            tooltip=tooltip,
+            map_style='road'
+        )
+
+        # Display in Streamlit
+        # Remove sliders
+        # col_size, _ = st.columns([2, 8])
+        # graph_width = col_size.slider(...)
+        # graph_height = col_size.slider(...)
+
+        # Display chart
+        _, col_deck, _ = st.columns([1, 3, 1])
+        col_deck.pydeck_chart(deck, use_container_width=False)
+
+    def plot_on_map2(self, df_migration_ratio, show_inter_province, show_self_loops, layer_type, selected_width, threshold,option):
+        df_migration_percentage = df_migration_ratio.loc[:, (slice(None), option)].droplevel(1, axis=1) * 100
+        df_migration_percentage = self.calculate_internal_external_sums(df_migration_percentage, show_self_loops, show_inter_province)
         df_migration_percentage[df_migration_percentage < threshold] = 0.
         df_migration_percentage = df_migration_percentage.loc[:, (df_migration_percentage != 0).any(axis=0)]
+        st.write("HEYO")
+        st.dataframe(df_migration_percentage)
+
         # User selects layer type
         shapefile_path = "data/turkey_province_centers.geojson"
         gdf = gpd.read_file(shapefile_path,encoding='utf-8')
@@ -227,10 +408,10 @@ class Migration:
         # Prepare flows data
         flows = df_migration_percentage.reset_index().melt(id_vars='index', var_name='to', value_name='percentage')
         flows.rename(columns={'index': 'from'}, inplace=True)
-
         # Split flows into self-loops and non-self-loops
         self_loops = flows[flows['from'] == flows['to']] if show_self_loops else pd.DataFrame()
         non_self_loops = flows[flows['from'] != flows['to']] if show_inter_province else pd.DataFrame()
+
 
         # Add coordinates for non-self-loops
         if show_inter_province and not non_self_loops.empty:
@@ -255,10 +436,7 @@ class Migration:
             self_loops = self_loops.dropna(subset=['lon', 'lat'])
 
             # Add tooltip text to self-loops
-            self_loops['tooltip_text'] = self_loops.apply(
-                lambda row: f"<b>{row['from']}</b> internal choice: {row['percentage']:.1f}%",
-                axis=1
-            )
+            self_loops['tooltip_text'] = self_loops.apply( lambda row: f"<b>{row['from']}</b> internal choice: {row['percentage']:.1f}%", axis=1 )
 
         # Prepare nodes for scatterplot (provinces)
         nodes_df = pd.DataFrame({
@@ -268,18 +446,10 @@ class Migration:
         })
 
         # Add tooltip text to nodes
-        nodes_df['tooltip_text'] = nodes_df['province'].apply(
-            lambda x: f"<b>{x}</b> Province"
-        )
+        nodes_df['tooltip_text'] = nodes_df['province'].apply( lambda x: f"<b>{x}</b> Province")
 
         # Compute initial view state (centered on Turkey)
-        view_state = pdk.ViewState(
-            latitude=39.0,
-            longitude=35.0,
-            zoom=5.2,
-            pitch=0,
-            bearing=0
-        )
+        view_state = pdk.ViewState( latitude=39.0, longitude=35.0, zoom=5.2, pitch=0, bearing=0)
 
         # Create layers list
         layers = []
@@ -328,36 +498,119 @@ class Migration:
                 data=self_loops,
                 get_position=['lon', 'lat'],
                 get_radius='percentage * 500',
-                get_fill_color=[255, 255, 0, 200],
+                get_fill_color=[255, 255, 0, 120],
                 pickable=True,
                 auto_highlight=True
             )
             layers.append(self_loop_layer)
-            if True:  # show_state_univ and not state_univ_df.empty:
+            # --- Build polygon layers for pie slices ---
+            pie_polygons = []
+
+
+            if option == "Combined":
+                idx, cols = df_migration_percentage.index, df_migration_percentage.columns[3:]  # skip internal, external, total column names
+                df_migration_percentage_state_vs_all = df_migration_ratio.loc[idx, (cols, "State vs All")].droplevel(1, axis=1) * 100
+                df_migration_percentage_state_vs_all = self.calculate_internal_external_sums(
+                    df_migration_percentage_state_vs_all, show_self_loops, show_inter_province)
+
+                flows = df_migration_percentage_state_vs_all.reset_index().melt(id_vars='index', var_name='to', value_name='percentage')
+                flows.rename(columns={'index': 'from'}, inplace=True)
+                # Split flows into self-loops and non-self-loops
+                self_loops = flows[flows['from'] == flows['to']]
+                self_loops['lon'] = self_loops['from'].map(lambda c: city_to_coord.get(c, [None, None])[0])
+                self_loops['lat'] = self_loops['from'].map(lambda c: city_to_coord.get(c, [None, None])[1])
+                self_loops = self_loops.dropna(subset=['lon', 'lat'])
+                self_loops['tooltip_text'] = self_loops.apply( lambda row: f"<b>{row['from']}</b> State: {row['percentage']:.1f}%",    axis=1  )
+
+                # -- state (top) disc ---------------------------------------
                 state_univ_layer = pdk.Layer(
-                    'ScatterplotLayer',
+                    "ScatterplotLayer",
                     data=self_loops,
-                    get_position=['lon', 'lat'],
-                    get_radius='percentage * 100',
-                    get_fill_color=[0, 128, 0, 200],  # Green for state universities
-                    get_pixel_offset=[10, 10],  # Slight offset to avoid overlap
+                    get_position=["lon", "lat"],
+                    get_radius="percentage * 500",
+                    get_fill_color=[200, 0, 0, 255],  # map background colour
                     pickable=True,
-                    auto_highlight=True
+                    auto_highlight=True,
+                    id="state-pie-slice"
                 )
-                layers.append(state_univ_layer)
-            # ScatterplotLayer for private university ratios (if enabled)
-            if False:  # show_private_univ and not private_univ_df.empty:
-                private_univ_layer = pdk.Layer(
-                    'ScatterplotLayer',
-                    data=private_univ_df,
-                    get_position=['lon', 'lat'],
-                    get_radius='private_university_ratio * 500',
-                    get_fill_color=[128, 0, 128, 200],  # Purple for private universities
-                    get_pixel_offset=[-10, -10],  # Opposite offset to avoid overlap
+
+                idx, cols = df_migration_percentage.index,df_migration_percentage.columns[3:] # skip internal, external, total column names
+                df_migration_percentage_foundation_vs_all = df_migration_ratio.loc[idx, (cols, "Foundation vs All")].droplevel(1, axis=1) * 100
+                df_migration_percentage_foundation_vs_all = self.calculate_internal_external_sums(df_migration_percentage_foundation_vs_all,
+                                                                             show_self_loops, show_inter_province)
+                flows = df_migration_percentage_foundation_vs_all.reset_index().melt(id_vars='index', var_name='to',  value_name='percentage')
+                flows.rename(columns={'index': 'from'}, inplace=True)
+                # Split flows into self-loops and non-self-loops
+                self_loops = flows[flows['from'] == flows['to']]
+                self_loops['lon'] = self_loops['from'].map(lambda c: city_to_coord.get(c, [None, None])[0])
+                self_loops['lat'] = self_loops['from'].map(lambda c: city_to_coord.get(c, [None, None])[1])
+                self_loops = self_loops.dropna(subset=['lon', 'lat'])
+                self_loops['tooltip_text'] = self_loops.apply( lambda row: f"<b>{row['from']}</b> Foundation: {row['percentage']:.1f}%",    axis=1  )
+                foundation_univ_layer = pdk.Layer(
+                    "ScatterplotLayer",
+                    data=self_loops,
+                    get_position=["lon", "lat"],
+                    get_radius="percentage * 500",  # scale as you like
+                    get_fill_color=[0, 128, 0, 200],  # green slice
                     pickable=True,
-                    auto_highlight=True
+                    auto_highlight=True,
+                    id="foundation-pie-slice"
                 )
-                layers.append(private_univ_layer)
+
+
+            # order matters: big slice first, small slice second
+               # layers.extend([state_univ_layer,foundation_univ_layer ])
+                pie_rows = []  # list of dicts for the PolygonLayer
+                df_migration_percentage_state_vs_all = df_migration_ratio.loc[idx, (cols, "State vs All")].droplevel(1, axis=1) * 100
+                df_migration_percentage_foundation_vs_all = df_migration_ratio.loc[idx, (cols, "Foundation vs All")].droplevel(1, axis=1) * 100
+
+                for _, row in self_loops.iterrows():
+                    city = row['from']
+                    lon, lat = city_to_coord[city]
+                    combined = row['percentage']  # Combined value
+                    r_deg = combined * 500 / 111_000  # km → deg scaling (tune 500)
+
+                    state_pct = df_migration_percentage_state_vs_all.loc[city, city]
+                    found_pct = df_migration_percentage_foundation_vs_all.loc[city, city]
+
+                    # central angles (radians)
+                    state_angle = 2 * np.pi * state_pct / combined
+                    found_angle = 2 * np.pi * found_pct / combined
+                    st.write("DİKKAT")
+                    st.write(found_pct)
+                    st.write(state_angle)
+                    st.write(found_angle)
+
+                    # STATE slice (start at 0)
+                    state_poly = self.slice_polygon((lon, lat), r_deg, 0, state_angle)
+                    pie_rows.append({
+                        "polygon": state_poly,
+                        "tooltip_text": f"<b>{city}</b> State: {state_pct:.1f}%",
+                        "fill_color": [200, 0, 0, 255]
+                    })
+
+                    # FOUNDATION slice (continue after state)
+                    found_poly = self.slice_polygon((lon, lat), r_deg, state_angle, state_angle + found_angle)
+                    pie_rows.append({
+                        "polygon": found_poly,
+                        "tooltip_text": f"<b>{city}</b> Foundation: {found_pct:.1f}%",
+                        "fill_color": [0, 128, 0, 200]
+                    })
+
+                pie_df = pd.DataFrame(pie_rows)
+                # --- PolygonLayer for pie slices ---
+                pie_layer = pdk.Layer(
+                    "PolygonLayer",
+                    data=pie_df,
+                    get_polygon="polygon",
+                    get_fill_color="fill_color",
+                    get_line_color=[255, 255, 255, 120],
+                    line_width_min_pixels=1,
+                    pickable=True,
+                    auto_highlight=True,
+                    id="pie-slices"
+                )
+                layers.append(pie_layer)
 
         # Simple tooltip that works for all layers
         tooltip = {
@@ -532,9 +785,12 @@ class Migration:
             df = df.sort_values(by="External", ascending=False)
 
         return df
-    def calculate_internal_external_sums_counts(self, df, show_self_loops, show_inter_province):
-        cols = ["State", "Foundation", "All"]
-        internal = pd.concat({name:self.calculate_total_internal(df.loc[:, (slice(None), name)].droplevel(1,axis=1))   for name in cols},  axis=1 )
+    def calculate_internal_external_sums_counts(self, df, show_self_loops, show_inter_province,cols):
+        df=df.loc[:,(slice(None),cols)]
+
+        selected_columns = [(upper, lower) for upper in df.columns.levels[0] for lower in cols if (upper, lower) in df.columns]
+        df = df.reindex(columns=selected_columns)
+        internal = pd.concat({name:self.calculate_total_internal(df.loc[:, (slice(None), name)].droplevel(1,axis=1))  for name in cols},  axis=1 )
         internal = internal.swaplevel(axis=1).sort_index(axis=1)
         if show_self_loops and not show_inter_province:
             return internal
@@ -547,9 +803,5 @@ class Migration:
                 df=pd.concat([internal,external,df],axis=1)
             return df
 
-    def filter_counts(self, df_migration, rows,columns):
-        df_migration = df_migration.loc[rows,columns]
-
-        return df_migration
 
 Migration().run()
