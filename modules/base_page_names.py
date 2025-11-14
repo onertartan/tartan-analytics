@@ -16,25 +16,24 @@ import altair as alt
 from adjustText import adjust_text
 
 locale.setlocale(locale.LC_ALL, 'tr_TR.utf8')
-
-
 class PageNames(BasePage):
 
     def sidebar_controls_plot_options_setup(self, *args):
-        with (st.sidebar):
-            if st.session_state.get("selected_tab_"+self.page_name, "map") == "map":
-                st.session_state["visualization_option"] = st.radio("Choose visualization option",
-                                                                ["Matplotlib", "Folium"]).lower()
+        sidebar = st.sidebar
+        if st.session_state.get("selected_tab_" + self.page_name, "map") == "map":
+            st.session_state["visualization_option"] = sidebar.radio("Choose visualization option",
+                                                                     ["Matplotlib", "Folium"]).lower()
 
     def initialize_multiindex_gdf_clusters(self, df, year):
         new_index = pd.MultiIndex.from_product([[year], df.index], names=["year", "city"])
         self.gdf_clusters = df.copy()
         self.gdf_clusters.index = new_index
-
-    def preprocess_k_means(self, df, year,  transpose_for_name_clustering=False):
+    def preprocess_clustering_new(self, df, transpose_for_name_clustering=False):
         """"
         returns:df_pivot
         """
+        year = df.index.get_level_values(0).unique() # year(s)
+
         page_name = self.page_name
         # top_n = st.session_state["n_" + page_name]  # CANCELED : NOW ALL 30 FEATURES ARE USE IN K-MEANS
         if page_name == "names_surnames" and st.session_state["name_surname_rb"] == "Surname":
@@ -96,27 +95,20 @@ class PageNames(BasePage):
         if transpose_for_name_clustering:
             df_pivot = df_pivot.T
         df_pivot = self.scale(df_pivot)
+        print("pivot tablo",df_pivot)
         return df_pivot
 
-    def k_means_names(self, df, year, obtain_pivot_only=False, transpose_for_name_clustering=False):
-        df_pivot = self.preprocess_k_means(df,year,transpose_for_name_clustering)
+
+    def cluster_names(self,df):
+        pass
+    def k_means_names_new(self, df_pivot):
         n_clusters=st.session_state["n_clusters_" + st.session_state["page_name"]]
         k_means = KMeans(n_clusters=n_clusters, random_state=0,  init='k-means++', n_init=100).fit(df_pivot)
         # After fitting KMeans
         closest_indices, _ = pairwise_distances_argmin_min(k_means.cluster_centers_, df_pivot)
-        closest_cities = df_pivot.index[closest_indices].tolist()  # Get city/province names
         df_pivot["clusters"] = k_means.labels_ + 1  # +1 for displaying clusters to use from 1 not 0
         print("666888", df_pivot[["clusters"]])
-        if obtain_pivot_only:
-            return df_pivot
-        self.gdf_clusters = self.gdf["province"].set_index("province")
-        # Get the subset of provinces that are closest to centroids
-        self.gdf_centroids = self.gdf_clusters[self.gdf_clusters.index.isin(closest_cities)]
-        # Compute centroids of their geometries (for marker placement)
-        self.gdf_centroids["centroid"] = self.gdf_centroids.geometry.centroid
-        self.gdf_clusters = self.gdf_clusters.merge(df_pivot["clusters"], left_index=True, right_index=True)
-        print("7000", self.gdf_clusters.clusters)
-        return df_pivot
+        return df_pivot,closest_indices
 
     @staticmethod
     def get_ordinal(n):
@@ -218,43 +210,16 @@ class PageNames(BasePage):
         return df
 
     def render(self):
-
-        import streamlit as st
-        from PIL import Image
-        import base64
-        import io
-        # Inject html2canvas JavaScript library
-        st.components.v1.html(
-            """
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-            """
-        )
-        # JavaScript to capture the page and download the image
-        js_code = """
-           <script>
-           html2canvas(document.body).then(canvas => {
-               // Adjust scale for resolution (e.g., scale=2 for 2x resolution)
-               const scale = 2; // 2x scaling ≈ 300 DPI (adjust as needed)
-               const imgData = canvas.toDataURL('image/png');
-
-               // Create a download link
-               const link = document.createElement('a');
-               link.download = 'streamlit_page.png';
-               link.href = imgData;
-               link.click();
-           });
-           </script>
-           """
-        st.components.v1.html(js_code, height=0, width=0)
-
         # Apply CSS to all radio groups except the first
         header = "Names & Surnames Analysis" if self.page_name == "names_surnames" else "Baby Names Analysis"
         st.header(header)
         start_year, end_year = self.data["name"].index.get_level_values(0).min(), self.data["name"].index.get_level_values(0).max()
         self.sidebar_controls(start_year, end_year)
+
         if "selected_tab" not in st.session_state:
             st.session_state["selected_tab_"+self.page_name] = "map"
-        tabs = [stx.TabBarItemData(id="map", title="Map Plot and Geographical Clustering", description=""),
+        tabs = [stx.TabBarItemData(id="tab_geo_clustering", title="Geographical Clustering", description=""),
+                stx.TabBarItemData(id="tab_map", title="Map Plot", description=""),
                 stx.TabBarItemData(id="rank_bump", title="Rank Bump Plot", description=""),
                 stx.TabBarItemData(id="rank_bar", title="Rank Bar Plot", description=""),
                 stx.TabBarItemData(id="custom_bar", title="Custom Name Bar Plot", description=""),
@@ -263,53 +228,199 @@ class PageNames(BasePage):
 
         st.session_state["selected_tab_"+self.page_name] = stx.tab_bar(data=tabs, default="map")
         tab_selected = st.session_state["selected_tab_"+self.page_name]
-        col_1, col_2, col_3, col_4, _ = st.columns([2, 2, 1.5, 2, 4])
+        col_1, col_2, col_3, col_4, _ = st.columns([1, 1, 1, 1, 1])
 
-        df = self.common_tab_ui( col_1, col_2)
+        df = self.common_tab_ui(col_1, col_2)
         # if "display_option_"+self.page_name not in st.session_state:
         #     st.session_state["display_option_"+self.page_name] = 0
 
         col_plot, col_df = st.columns([5, 1])
-        if tab_selected == "map":  # Tab-1
-            self.tab_map(df)
-        elif tab_selected in ["rank_bump", "rank_bar", "custom_bar"]:  # Tab 2-3-4
-            self.tab_2_3_4(df, col_plot, col_df, col_2, col_3, col_4)
-        else:  # Tab-5
-            self.tab_name_clustering(df, col_plot,col_df,col_2, col_3,col_4)
+        if tab_selected == "tab_geo_clustering":  # Tab-2
+            self.tab_1_geo_clustering_new(df)
+        elif tab_selected == "tab_map":  # Tab-2
+            self.tab_2_map(df)
+        elif tab_selected in ["rank_bump", "rank_bar", "custom_bar"]:  # Tab 3-4-5
+            self.tab_3_4_5(df, col_plot, col_df, col_2, col_3, col_4)
+        else:  # Tab-6
+            self.tab_name_clustering(df, col_plot, col_df, col_2, col_3,col_4)
+    # Tab-1
+    def run_geo_clustering(self, df):
+        """Preprocess and run k-means clustering."""
+        df_pivot = self.preprocess_clustering_new(df)
+        df_pivot, closest_indices = self.k_means_names_new(df_pivot)
+        return df_pivot, closest_indices
 
-    def tab_map(self, df, *args):
-        # Add this CSS before your radio buttons code
+    def update_cluster_centers(self, df_pivot, closest_indices):
+        """Attach cluster labels to geodata and compute centroids for display."""
+        closest_cities = df_pivot.index[closest_indices].tolist()
+        self.gdf_clusters = self.gdf["province"].set_index("province")
+        self.gdf_clusters = self.gdf_clusters.merge(df_pivot["clusters"], left_index=True, right_index=True)
+        # centroid provinces
+        self.gdf_centroids = self.gdf_clusters[self.gdf_clusters.index.isin(closest_cities)]
+        self.gdf_centroids["centroid"] = self.gdf_centroids.geometry.centroid
 
-        col_1, col_2, col_3, col4 = st.columns([2.4, 2, 1.3, 5])
-        expression_in_sentence = "names or surnames" if self.page_name == "names_surnames" else "baby names"
-        self.load_css("assets/styles.css")
-        options = [
-            "Apply K-means clustering",
-            f"Select {expression_in_sentence} and top-n to filter",
-            f"Show the nth most common {expression_in_sentence}"
-        ]
-        stored_value = st.session_state.get("display_option_" + self.page_name, options[0])
-        # Display options
-        default_index = options.index(stored_value) if stored_value in options else 1
-        st.session_state["display_option_" + self.page_name] = col_1.radio("Select an option", options=options, index=default_index)
-        self.k_means_gui_options(col_2, col_3, col4)
+    def apply_consensus_labels_if_needed(self, df_pivot):
+        """Apply consensus labels to df_pivot if the user selected that option."""
+        page = self.page_name
+        n_cluster = st.session_state["n_clusters_" + page]
+        if not st.session_state["use_consensus_labels_" + page]:
+            return df_pivot
+        # Ensure optimal k analysis has run
+        if not st.session_state["consensus_labels_" + page]:
+            st.write("Optimal k analysis has not been run. Running analysis now...")
+            fig = self.optimal_k_analysis(df_pivot.drop(columns=["clusters"]))
+            st.pyplot(fig)
+        consensus_labels = st.session_state["consensus_labels_" + page]
+        df_pivot["clusters"] = consensus_labels[n_cluster]
+        return df_pivot
 
-        col_2.multiselect(f"Select {expression_in_sentence}", sorted(df["name"].unique(), key=locale.strxfrm),
-                          key="names_" + self.page_name)
-        options = list(range(1, 31))
-        # Ensure current selection is valid for the new options
-        key = "n_" + self.page_name
-        stored_value = st.session_state.get("n_" + self.page_name, options[0])
-        default_index = options.index(stored_value) if stored_value in options else 1
+    def recompute_centroid_provinces(self, df_pivot):
+        """Recompute centroid provinces after clusters changed due to consensus relabel."""
+        features = df_pivot.columns[:-1]  # exclude 'clusters'
+        centroids = df_pivot.groupby('clusters')[features].mean()
+        closest_indices, _ = pairwise_distances_argmin_min(centroids, df_pivot[features])
+        return closest_indices
 
-        if key not in st.session_state or st.session_state[key] not in options:
-            st.session_state[key] = options[0]  # Reset to first valid option
-        st.session_state["n_" + self.page_name] = col_1.selectbox('Choose a number n for the "nth most common" or "top-n" options', options=options, index=default_index)
+    def render_geo_clustering_plots(self, df_pivot, col_plot, col_df, df_original):
+        """Render map, PCA plot, and dataframe of clusters."""
+        df_clusters = df_pivot["clusters"]
+        # Determine year or year range
+        start_year = df_original.index.get_level_values(0).min()
+        end_year = df_original.index.get_level_values(0).max()
+        if start_year == end_year:
+            year_label = f"in {start_year}"
+        else:
+            year_label = f"between {start_year}-{end_year}"
+        # Plot geographic clusters
+        self.plot_clusters(year_label, col_plot)
+        # PCA plot
+        df_features = df_pivot.drop(columns=["clusters"])
+        self.plot_pca(df_features, df_clusters, col_plot)
+        # Show raw cluster assignments
+        col_df.dataframe(df_clusters)
+    # Tab-1 Step-0: Render UI; only proceed if the button was pressed
+    def render_geo_clustering_ui(self):
+        """Render the K-means button + expander and return True if clicked."""
+        col1, col2, col3 = st.columns([2, 1, 1])
+        with col1:
+            clicked = st.button("K-means", use_container_width=True)
+            with st.expander("K-means settings"):
+                exp1, exp2, exp3 = st.columns([2, 1, 2])
+                self.k_means_gui_options(exp1, exp2, exp3)
+        return clicked
+    def tab_1_geo_clustering_new(self, df):
+        """Refactored Tab 1: Geographical Clustering."""
+        # Render UI; only proceed if the button was pressed
+        clicked = self.render_geo_clustering_ui()
+        if not clicked:
+            return
         col_plot, col_df = st.columns([5, 1])
-        self.plot_map(col_plot, col_df, df)
+        # 1. Run clustering
+        df_pivot, closest_indices = self.run_geo_clustering(df)
+        # 2. Update geodata (clusters + centroid provinces)
+        self.update_cluster_centers(df_pivot, closest_indices)
+        # 3. Optional: Optimal K diagnostic
+        if st.session_state["optimal_k_analysis"]:
+            fig = self.optimal_k_analysis(df_pivot.drop(columns=["clusters"]))
+            col_df.pyplot(fig)
 
+        # 4. Apply consensus relabeling if enabled
+        df_pivot = self.apply_consensus_labels_if_needed(df_pivot)
 
-    def tab_2_3_4(self, df, col_plot, col_df,col_2,col_3,col_4):
+        # 5. Recompute centroid provinces if consensus labels changed cluster boundaries
+        if st.session_state["use_consensus_labels_" + self.page_name]:
+            closest_indices = self.recompute_centroid_provinces(df_pivot)
+            self.update_cluster_centers(df_pivot, closest_indices)
+
+        # 6. Render map, PCA, and clusters table
+        self.render_geo_clustering_plots(df_pivot, col_plot, col_df, df)
+    def tab_1_geo_clustering(self, df):
+        # Tab-1 plot methods
+        def plot_geo_clustering(display_option):
+            def reset_cluster_centers(df_pivot, closest_indices):
+                closest_cities = df_pivot.index[closest_indices].tolist()  # Get city/province names
+                self.gdf_clusters = self.gdf["province"].set_index("province")
+                # Get the subset of provinces that are closest to centroids
+                self.gdf_centroids = self.gdf_clusters[self.gdf_clusters.index.isin(closest_cities)]
+                # Compute centroids of their geometries (for marker placement)
+                self.gdf_centroids["centroid"] = self.gdf_centroids.geometry.centroid
+                self.gdf_clusters = self.gdf_clusters.merge(df_pivot["clusters"], left_index=True, right_index=True)
+                print("7000", self.gdf_clusters.clusters)
+            def run_clustering():
+                df_pivot = self.preprocess_clustering_new(df)
+                df_pivot, closest_indices = self.k_means_names_new(df_pivot)  # df_pivot with additional "clusters" column
+                reset_cluster_centers(df_pivot, closest_indices)
+                return df_pivot
+            df_pivot = run_clustering()
+            # if st.session_state["use_consensus_labels_" + self.page_name]: #DEBUG purpose
+            #     print("75335", st.session_state["consensus_labels_" + self.page_name], "75338,", df_pivot.shape)
+            if st.session_state["optimal_k_analysis"]:
+                col_df.pyplot(self.optimal_k_analysis(df_pivot.drop(columns=["clusters"])))
+            if st.session_state["use_consensus_labels_" + self.page_name]:
+                n_cluster = st.session_state["n_clusters_" + self.page_name]
+                if not st.session_state["consensus_labels_" + self.page_name]:  # run
+                    st.write("Optimal k analysis has not been run before. Running optimal k analysis to obtain consensus labels.")
+                    df_pivot = run_clustering() # df_pivot with additional "clusters" column
+                    col_df.pyplot(self.optimal_k_analysis(df_pivot.drop(columns=["clusters"])))
+
+                consensus_labels = st.session_state["consensus_labels_" + self.page_name]
+                print("75333", consensus_labels, "75333,", df_pivot.shape)
+                df_pivot["clusters"] = consensus_labels[n_cluster]
+                closest_indices, _ = pairwise_distances_argmin_min(df_pivot.groupby('clusters')[df_pivot.columns[:-1]].mean(), df_pivot[df_pivot.columns[:-1]])
+                closest_cities = df_pivot.index[closest_indices].tolist()  # Get city/province names
+                self.gdf_clusters.loc[df_pivot.index, "clusters"] = df_pivot["clusters"]
+                self.gdf_centroids = self.gdf_clusters[self.gdf_clusters.index.isin(closest_cities)]
+                # Compute centroids of their geometries (for marker placement)
+                self.gdf_centroids["centroid"] = self.gdf_centroids.geometry.centroid
+
+            year_in_title = df.index.get_level_values(0).min()
+            if df.index.get_level_values(0).max() > year_in_title:
+                year_in_title = f"between {year_in_title}-{df.index.get_level_values(0).max()}"
+            else:
+                year_in_title = f"in {year_in_title}"
+            self.plot_clusters(year_in_title, col_plot)  # ilk ve son yıl için kullanılıyordu
+            df_clusters = df_pivot["clusters"]
+            df_pivot = df_pivot.drop(columns=["clusters"])
+            self.plot_pca(df_pivot, df_clusters, col_plot)
+            col_df.dataframe(df_clusters)
+
+        btn_col1, btn_col2, btn_col3 = st.columns([2, 1, 1])
+        display_option = None
+        with btn_col1:
+            button_clicked = st.button("K-means", use_container_width=True)
+            with st.expander("K-means settings"):
+                exp_col1, exp_col2, exp_col3 = st.columns([2, 1, 2])
+                self.k_means_gui_options(exp_col1, exp_col2, exp_col3)
+                if button_clicked:
+                    display_option = "K-means"
+        col_plot, col_df = st.columns([5, 1])
+        if display_option:
+            plot_geo_clustering(display_option)
+    def tab_2_map(self, df):
+        # Expression depending on page
+        expr = "names or surnames" if self.page_name == "names_surnames" else "baby names"
+        options = list(range(1, 31))  # Options are [1-30]
+        btn_col1, btn_col2 = st.columns([1, 1])
+        plot_value = 0
+        display_option = None
+        button_clicked = btn_col1.button("Select & Filter", use_container_width=True)
+        top_n = btn_col1.selectbox('Choose a number top-n to filter', options, index=1, key="top_n_filter")
+        btn_col1.multiselect(f"Select {expr}", sorted(df["name"].unique(), key=locale.strxfrm), key="names_" + self.page_name)
+        if button_clicked:
+            plot_value = top_n
+            display_option = "top-n to filter"
+        # Use container with custom class
+        button_clicked = btn_col2.button("Nth Common", use_container_width=True)
+        n_most_common = btn_col2.selectbox('Choose a number n for the "nth most common"', options)
+        if button_clicked:
+            plot_value = n_most_common
+            display_option = "nth most common"
+        # --- Plot map ---
+        col_plot, col_df = st.columns([5, 1])
+        # Display results on map if a button is clicked
+        if display_option:
+            self.plot_map(col_plot, col_df, df, plot_value, display_option)
+    def tab_3_4_5(self, df, col_plot, col_df,col_2,col_3,col_4):
         tab_selected = st.session_state["selected_tab_" + self.page_name]
         if "rank" in tab_selected:  # add rank selectbox if tab_selected == "tab_rank_bump" or tab_selected == "tab_rank_bar": Tabs 2-3
             col_2.selectbox(f"Select rank", range(1, 21), index=4, key="rank_" + self.page_name)
@@ -354,7 +465,9 @@ class PageNames(BasePage):
                     plot_method(self.preprocess_for_rank_bar_tabs(df_province), col_plot)
             col_df.dataframe(df)
         elif st.session_state["province_or_cluster"] == "Use clusters" and selected_clusters:
-            df_pivot = self.k_means_names(df, df.index.get_level_values(0).unique(), obtain_pivot_only=True)
+            df_pivot = self.preprocess_clustering_new(df,True)
+            df_pivot, _ = self.k_means_names_new(df_pivot) # _ --> closest indices ( not used here)
+
             df_clusters = df_pivot["clusters"]
             df['clusters'] = df.index.get_level_values("province").map(df_clusters)
             if st.session_state["aggregate_totals_" + self.page_name]:
@@ -369,26 +482,26 @@ class PageNames(BasePage):
         else:  # if not any selected, select all provinces
             plot_method(self.preprocess_for_rank_bar_tabs(df), col_plot)
 
-    def tab_name_clustering(self,df, col_plot,col_df, col_2, col_3, col_4):
+    def tab_name_clustering(self, df, col_plot, col_df, col_2, col_3, col_4):
         # BU COL2 olacak. col_2 parametre olarak eklenebilir veya bu sütunlar sınıfın özelliği yapılabilir.
         self.k_means_gui_options(col_2, col_3, col_4)
-        df_pivot = self.k_means_names(df, df.index.get_level_values(0).unique(), obtain_pivot_only=True,
-                                      transpose_for_name_clustering=True)
-
+        df_pivot = self.preprocess_clustering_new(df, True)
+        df_pivot, _ = self.k_means_names_new(df_pivot)
         df_clusters = df_pivot["clusters"]
         df_pivot = df_pivot.drop(columns=["clusters"])
         if st.session_state["optimal_k_analysis"]:
             col_df.pyplot(self.optimal_k_analysis(df_pivot))
         if st.session_state["use_consensus_labels_" + self.page_name]:
-           consensus_labels = st.session_state["consensus_labels_" + self.page_name]
-           print("333777", consensus_labels, "NUM OF NAMES,", df_pivot.shape)
-           df_pivot["clusters"] = consensus_labels[st.session_state["n_clusters_" + self.page_name]]
+            if "consensus_labels_"+self.page_name not in st.session_state or  st.session_state["consensus_labels_"+self.page_name] == None:
+                st.write("First run cluster analysis.")
+            else:
+                consensus_labels = st.session_state["consensus_labels_" + self.page_name]
+                print("333777", consensus_labels, "NUM OF NAMES,", df_pivot.shape)
+                df_pivot["clusters"] = consensus_labels[st.session_state["n_clusters_" + self.page_name]]
+                self.plot_pca(df_pivot, df_clusters, col_plot)
 
-        self.plot_pca(df_pivot, df_clusters, col_plot)
-
-    def create_title_for_plot(self):
+    def create_title_for_plot(self, rank):
         page_name = st.session_state["page_name"]
-        rank = st.session_state["n_"+page_name]
         names_or_surnames = "names"
         selected_gender = "male and female" if len(st.session_state["sex_" + self.page_name]) != 1 else st.session_state["sex_" + self.page_name][0]
         # Adjust phrasing based on rank
@@ -405,101 +518,61 @@ class PageNames(BasePage):
         else:
             title = title_prefix + selected_gender + " baby names"
         return title, names_or_surnames
+
     # Plot methods of three tabs
-    # Tab-1 plot methods
 
-    def plot_map(self, col_plot, col_df, df):
+
+    def plot_map(self, col_plot, col_df, df, n, display_option):
         gdf_borders = self.gdf["province"]
-        title, names_or_surnames = self.create_title_for_plot()
-        display_option = st.session_state["display_option_" + self.page_name]
-        top_n = int(st.session_state["n_" + self.page_name])
-
+        title, names_or_surnames = self.create_title_for_plot(n)
         df_results = []
         year_1, year_2 = st.session_state["year_1"], st.session_state["year_2"]
-        if "clustering" in display_option:
-            df_pivot = self.k_means_names(df, df.index.get_level_values(0).unique())
-            if st.session_state["use_consensus_labels_" + self.page_name]:
-                print("75335", st.session_state["consensus_labels_" + self.page_name], "75338,", df_pivot.shape)
-            if st.session_state["optimal_k_analysis"]:
-                col_df.pyplot(self.optimal_k_analysis(df_pivot.drop(columns=["clusters"])))
-
-           # print("512412", st.session_state["consensus_labels_" + self.page_name])
-
-            if st.session_state["use_consensus_labels_" + self.page_name]:
-                n_cluster = st.session_state["n_clusters_" + self.page_name]
-                if not st.session_state["consensus_labels_" + self.page_name]: # run
-                    df_pivot = self.k_means_names(df, df.index.get_level_values(0).unique())
-                    col_df.pyplot(self.optimal_k_analysis(df_pivot.drop(columns=["clusters"])))
-
-                consensus_labels= st.session_state["consensus_labels_" + self.page_name]
-                print("75333",consensus_labels,"75333,",df_pivot.shape)
-                df_pivot["clusters"] = consensus_labels[n_cluster]
-                closest_indices, _ = pairwise_distances_argmin_min(df_pivot.groupby('clusters')[df_pivot.columns[:-1]].mean(), df_pivot[df_pivot.columns[:-1]])
-                closest_cities = df_pivot.index[closest_indices].tolist()  # Get city/province names
-                self.gdf_clusters.loc[df_pivot.index,"clusters"]=df_pivot["clusters"]
-                self.gdf_centroids = self.gdf_clusters[self.gdf_clusters.index.isin(closest_cities)]
-                # Compute centroids of their geometries (for marker placement)
-                self.gdf_centroids["centroid"] = self.gdf_centroids.geometry.centroid
-
-            year_in_title = df.index.get_level_values(0).min()
-            if df.index.get_level_values(0).max() > year_in_title:
-                 year_in_title = f"between {year_in_title}-{df.index.get_level_values(0).max()}"
-            else:
-                year_in_title = f"in {year_in_title}"
-            self.plot_clusters(year_in_title, col_plot)  # ilk ve son yıl için kullanılıyordu
-            df_clusters = df_pivot["clusters"]
-            df_pivot = df_pivot.drop(columns=["clusters"])
-            self.plot_pca(df_pivot, df_clusters, col_plot)
-            col_df.dataframe(df_clusters)
-
+        fig, axs = self.figure_setup()
+        for i, year in enumerate(sorted({year_1, year_2})):
+            # Display option 1: Show the nth most common baby names
+            if display_option == "nth most common":
+                df_year_rank = PageNames.preprocess_for_map(df, year, target_rank=n, n_to_top_inclusive=False)
+                df_result = gdf_borders.merge(df_year_rank, left_on="province", right_index=True)
+                df_result = df_result.sort_values(by=['province', 'name'], ascending=[True, True]) # to prevent different orders like "Asel, Defne"  and "Defne, Asel"
+                df_result = df_result.groupby(["geometry", "province"])["name"].apply(
+                    lambda x: "%s" % '\n'.join(x)).to_frame().reset_index()
+                df_results.append(df_result)
+                self.plot_names(df_results[i], axs[i, 0])
+                axs[i, 0].set_title(title + f' in {year}')
+            elif display_option == "top-n to filter":  # Display option 2: Select single year, name(s) and top-n number to filter
+                names_from_multi_select = st.session_state["names_" + self.page_name]
+                df_year = df.loc[year].reset_index()
+                if names_from_multi_select:
+                    df_result = df_year[(df_year["name"].isin(names_from_multi_select)) & (df_year["rank"] <= n)]
+                    # drop "s" if single name or surname selected
+                    names_or_surnames_statement = names_or_surnames[:-1] + " is" if len(names_from_multi_select) == 1 else names_or_surnames + " are"
+                    if df_result.empty:
+                        st.write(f"Selected {names_or_surnames_statement} are not in the top {n} for the year {year}")
+                    df_result_not_null = gdf_borders.merge(df_result, left_on="province", right_on="province")
+                    df_result_not_null = df_result_not_null.groupby(["geometry", "province"])["name"].apply(lambda x: "%s" % '\n '.join(x)).to_frame().reset_index()
+                    df_results.append(df_result_not_null)
+                    df_result_with_nulls = gdf_borders.merge(df_result_not_null[["province", "name"]],
+                                                             left_on="province", right_on="province", how="left")
+                    self.plot_names(df_result_with_nulls, axs[i, 0])#, sorted(df_result_not_null['name'].unique()))  -->GEREKLİ Mİ, fonksiyondan parametre kalkmıştı, buradan yollamaya gerek var mı?
+                    axs[i, 0].set_title(f"Provinces where selected {names_or_surnames_statement} in the top {n} for {year}")
+            # else:  # K-means
+            #     self.k_means_clustering(df,  year)   # ilk ve son yıl için kullanılıyordu artık
+            #     #self.plot_clusters(axs[i, 0], year)  # artık for üstündeki ilk if çalıştığı için kullanılmıyor
+            #     df_results.append(self.gdf_clusters)
+        if axs[0, 0].has_data():
+            col_plot.pyplot(fig)
         else:
-            fig, axs = self.figure_setup()
-            for i, year in enumerate(sorted({year_1, year_2})):
-                # Display option 1: Show the nth most common baby names
-                if "nth most common" in display_option:
-                    df_year_rank = PageNames.preprocess_for_map(df, year, target_rank=top_n, n_to_top_inclusive=False)
-                    df_result = gdf_borders.merge(df_year_rank, left_on="province", right_index=True)
-                    df_result = df_result.sort_values(by=['province', 'name'], ascending=[True, True]) # to prevent different orders like "Asel, Defne"  and "Defne, Asel"
-                    df_result = df_result.groupby(["geometry", "province"])["name"].apply(
-                        lambda x: "%s" % '\n'.join(x)).to_frame().reset_index()
-                    df_results.append(df_result)
-                    self.plot_names(df_results[i], axs[i, 0])
-                    axs[i, 0].set_title(title + f' in {year}')
-                elif "top-n to filter" in display_option:  # Display option 2: Select single year, name(s) and top-n number to filter
-                    names_from_multi_select = st.session_state["names_" + self.page_name]
-                    df_year = df.loc[year].reset_index()
-                    if names_from_multi_select:
-                        df_result = df_year[(df_year["name"].isin(names_from_multi_select)) & (df_year["rank"] <= top_n)]
-                        # drop "s" if single name or surname selected
-                        names_or_surnames_statement = names_or_surnames[:-1] + " is" if len(names_from_multi_select) == 1 else names_or_surnames + " are"
-                        if df_result.empty:
-                            st.write(
-                                f"Selected {names_or_surnames_statement} are not in the top {top_n} for the year {year}")
-                        df_result_not_null = gdf_borders.merge(df_result, left_on="province", right_on="province")
-                        df_result_not_null = df_result_not_null.groupby(["geometry", "province"])["name"].apply(
-                            lambda x: "%s" % '\n '.join(x)).to_frame().reset_index()
-                        df_results.append(df_result_not_null)
-                        df_result_with_nulls = gdf_borders.merge(df_result_not_null[["province", "name"]],
-                                                                 left_on="province", right_on="province", how="left")
-                        self.plot_names(df_result_with_nulls, axs[i, 0])#, sorted(df_result_not_null['name'].unique()))  -->GEREKLİ Mİ, fonksiyondan parametre kalkmıştı, buradan yollamaya gerek var mı?
-                        axs[i, 0].set_title(f"Provinces where selected {names_or_surnames_statement} in the top {top_n} for {year}")
-                # else:  # K-means
-                #     self.k_means_clustering(df,  year)   # ilk ve son yıl için kullanılıyordu artık
-                #     #self.plot_clusters(axs[i, 0], year)  # artık for üstündeki ilk if çalıştığı için kullanılmıyor
-                #     df_results.append(self.gdf_clusters)
-            if axs[0, 0].has_data():
-                col_plot.pyplot(fig)
-            else:
-                st.write("No results found.")
+            st.write("No results found.")
 
+    # Tab-1.1:  nth most common
     def plot_names(self, df_result, ax):
+        # Tab-1.1: Plots nth most common names on map
         # Create a color map
         df_result["clusters"] = df_result["name"].factorize()[0]
         color_map = self.create_color_mapping(df_result.set_index("name"), df_result["name"].nunique())
-
         # Assign colors to each row in the GeoDataFrame
         df_result['color'] = df_result['clusters'].map(color_map).fillna("gray") #-->GEREK YOK mu
-
+        print(df_result)
         # After groupby df_result becomdes Pandas dataframe, we have to convert it to GeoPandas dataframe
         df_result = gpd.GeoDataFrame(df_result, geometry='geometry')
         # Plotting
@@ -522,11 +595,9 @@ class PageNames(BasePage):
         legend_text = "\n".join(f"{row['name']}: {row['count']}" for _, row in df_count.iterrows())
         # Create list of text entries instead of single multi-line string
         legend_entries = [f"{row['name']}: {row['count']}" for _, row in df_count.iterrows()]
-
         # Add custom legend entry with text only (no line): Create invisible handles for each entry
         handles = [Patch(color='none', label=entry, linewidth=0) for entry in legend_entries]
         ax.plot([], [], label=legend_text)  # Invisible plot
-
         # Show legend
         ncols = 1+len(legend_entries)//9
         ax.legend(handles=handles, loc='upper right', bbox_to_anchor=(1, 0.165 if ncols>2 else 0.21), fontsize=4,ncols=ncols,  # Two columns
@@ -554,6 +625,7 @@ class PageNames(BasePage):
             gender = gender[0]
             title_statement = " " + gender.capitalize() + " " + title_statement
         return title_statement
+
     def plot_clusters(self,  year_in_title, col_plot):
         fig, ax = plt.subplots(1, 1, figsize=(10, 6))
         n_clusters = st.session_state["n_clusters_" + self.page_name]
@@ -623,9 +695,10 @@ class PageNames(BasePage):
             closest_provinces_points.plot(ax=ax, facecolor="none", markersize=120, edgecolor="black", linewidth=1.5,
                                           label=f"Closest provinces\nto  cluster centers")
         col_plot.pyplot(fig)
-    # Tab-2 plot methods
 
+    # Tab-2 plot method
     def plot_rank_bump(self, df, col_plot):  # pyplot
+        # 2nd tab: Bump chart using pyplot
         df_pivot = pd.pivot_table(df, values='rank', index=df.index, columns=['name'],
                                   aggfunc=lambda x: x, dropna=False)
         fig, ax = plt.subplots(figsize=(10, 6))  # Explicit figure creation
@@ -701,11 +774,12 @@ class PageNames(BasePage):
 
             y_offset_tracker_first[first_rank] += 1
             y_offset_tracker_last[final_rank] += 1
-
         col_plot.pyplot(fig)
 
+    # Tab-2 plot method (potential alternative using plotly)
+    def plot_rank_bump_plotly(self, df, col_plot):
+        # 2nd tab: Bump chart using plotly (alternative not used yet)
 
-    def bump_chart_plotly(self, df, col_plot):
         # Prepare data in long format (from your pivot table)
         max_rank = int(df["rank"].max())
 
@@ -774,8 +848,8 @@ class PageNames(BasePage):
         col_plot.plotly_chart(fig)
 
     # Tab-3-4 plot methods
-
     def plot_rank_bar(self, df, col_plot):
+        # 3rd tab & 4th tab: Bar plot for ranking and custom names
         print("5555",df)
         df = df.reset_index()
         chart = alt.Chart(df).mark_bar().encode(
@@ -886,23 +960,109 @@ class PageNames(BasePage):
         # ax.set_zlabel('PC3')
         col_plot.pyplot(fig)
 
-    def k_means_gui_options(self, col_2, col_3,col_4):
+    def k_means_gui_options(self, col_1, col_2, col_3):
         # Num clusters
         options = list(range(2, 11))
         stored_value = st.session_state.get("n_clusters_" + self.page_name, options[0])
         default_index = options.index(stored_value) if stored_value in options else 0
-        st.session_state["n_clusters_" + self.page_name] = col_2.selectbox("Select K: number of clusters",
+        st.session_state["n_clusters_" + self.page_name] = col_1.selectbox("Select K: number of clusters",
                                                                            options=options, index=default_index)
 
         # scaler
         options = ["MaxAbsScaler", "MinMaxScaler", "StandardScaler", "No scaling"]
         stored_value = st.session_state.get("scaler" + self.page_name, options[0])
         default_index = options.index(stored_value) if stored_value in options else 0
-        st.session_state["scaler"] = col_3.radio("Select scaling option", options=options, index=default_index)
-        st.session_state["optimal_k_analysis"] = col_4.button("Run cluster analysis")
+        st.session_state["scaler"] = col_2.radio("Select scaling option", options=options, index=default_index)
+        st.session_state["optimal_k_analysis"] = col_3.button("Run cluster analysis")
         stored_value = st.session_state.get("use_consensus_labels" + self.page_name, False)
-        col_4.checkbox("Use consensus labels", False,key="use_consensus_labels_"+ self.page_name)
+        use_consensus_labels =col_3.checkbox("Use consensus labels", False,key="use_consensus_labels_"+ self.page_name)
 
 
 
 
+    def k_means_names(self, df, year, obtain_pivot_only=False, transpose_for_name_clustering=False):
+        df_pivot = self.preprocess_clustering(df, year, transpose_for_name_clustering)
+        n_clusters=st.session_state["n_clusters_" + st.session_state["page_name"]]
+        k_means = KMeans(n_clusters=n_clusters, random_state=0,  init='k-means++', n_init=100).fit(df_pivot)
+        # After fitting KMeans
+        closest_indices, _ = pairwise_distances_argmin_min(k_means.cluster_centers_, df_pivot)
+        closest_cities = df_pivot.index[closest_indices].tolist()  # Get city/province names
+        df_pivot["clusters"] = k_means.labels_ + 1  # +1 for displaying clusters to use from 1 not 0
+        print("666888", df_pivot[["clusters"]])
+        if obtain_pivot_only:
+            return df_pivot
+        self.gdf_clusters = self.gdf["province"].set_index("province")
+        # Get the subset of provinces that are closest to centroids
+        self.gdf_centroids = self.gdf_clusters[self.gdf_clusters.index.isin(closest_cities)]
+        # Compute centroids of their geometries (for marker placement)
+        self.gdf_centroids["centroid"] = self.gdf_centroids.geometry.centroid
+        self.gdf_clusters = self.gdf_clusters.merge(df_pivot["clusters"], left_index=True, right_index=True)
+        print("7000", self.gdf_clusters.clusters)
+        return df_pivot
+    def preprocess_clustering(self, df, year, transpose_for_name_clustering=False):
+        """"
+        returns:df_pivot
+        """
+        page_name = self.page_name
+        # top_n = st.session_state["n_" + page_name]  # CANCELED : NOW ALL 30 FEATURES ARE USE IN K-MEANS
+        if page_name == "names_surnames" and st.session_state["name_surname_rb"] == "Surname":
+            df_year = df.loc[year]
+        #     df_year = df_year[df_year["rank"] <= top_n]  # use top-n for clustering (n=30 for all)
+        elif len(st.session_state["sex_" + page_name]) != 1:  # if both sexes are selected
+            df_year_male, df_year_female = df[df["sex"] == "male"].loc[year], df[df["sex"] == "female"].loc[year]
+            #     df_year_male = df_year_male[df_year_male["rank"] <= top_n]
+            #    df_year_female = df_year_female[df_year_female["rank"] <= top_n]
+            overlapping_names = set(df_year_male["name"]) & set(df_year_female["name"])
+            df_year_male['name'] = df_year_male.apply(
+                lambda x: f"{x['name']}_female" if x['name'] in overlapping_names else x['name'], axis=1)
+            df_year_female['name'] = df_year_female.apply(
+                lambda x: f"{x['name']}_male" if x['name'] in overlapping_names else x['name'], axis=1)
+            df_year = pd.concat([df_year_male, df_year_female])
+        else:  # single gender selected for names
+            sex = st.session_state["sex_" + page_name]
+            df_year = df[df["sex"].isin(sex)].loc[year]
+        #     df_year = df_year[df_year["rank"] <= top_n]
+        # data_scaled = scaler.fit_transform(df_year.loc["Adana", ["count"]])
+        # print("SCAL:",data_scaled)
+        print("QQmhtr", df_year.index)
+
+        if isinstance(df_year.index, pd.MultiIndex):  # If applying temporal clustering (multiple years given as year)
+            print("ÖNCEÖNCE", df_year)
+            df_year = df_year.droplevel(0)  # Drop the first level year(position 0)
+            print("!!==")
+            print("SORNA", df_year)
+
+        print("axcas", df_year.index)
+        print("bxcas", df_year)
+
+        # Get unique cumulative total counts over years(for each province)
+        total_counts = df[["total_count"]].groupby(level=["year", "province"]).first()
+        total_counts = total_counts.groupby("province").sum()
+        df_year = df_year.groupby([df_year.index, 'name']).agg({'count': 'sum'})
+        # Merge
+        df_year = df_year.merge(total_counts, left_index=True, right_index=True, how="outer")
+        df_year = df_year.reset_index().set_index("province")
+        print("yenni SONUÇÇÇ:", df_year)
+        # # Scale counts for each province
+        # for province in provinces:
+        #     # Get counts for current province
+        #     province_count_sum_first_30 = df_year.loc[province, 'count'].sum()
+        #     province_counts = (df_year.loc[province, 'count']).values.reshape(-1, 1)
+        #     scaled_counts = scaler.fit_transform(province_counts)                    # Fit and transform the counts
+        #     df_year.loc[province, 'scaled_count_sklearn'] = scaled_counts.flatten()  # Update the DataFrame with scaled values
+        #     # Fit and transform the counts
+        #     # Update the DataFrame with scaled values
+        #   #  df_year.loc[province, 'scaled_count_top_30'] = df_year.loc[province, "count"] / province_count_sum_first_30
+
+        print("yenni:", df_year)
+        df_year.loc[:, "ratio"] = df_year.loc[:, "count"] / df_year.loc[:, "total_count"]
+        print("XCV:", df_year)
+
+        df_pivot = pd.pivot_table(df_year, values='ratio', index=df_year.index, columns=['name'], aggfunc=lambda x: x,
+                                  dropna=False, fill_value=0)
+
+        if transpose_for_name_clustering:
+            df_pivot = df_pivot.T
+        df_pivot = self.scale(df_pivot)
+        print("pivot tablo",df_pivot)
+        return df_pivot

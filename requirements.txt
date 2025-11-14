@@ -16,4 +16,5 @@ seaborn == 0.13.2
 kneed
 adjustText
 numpy == 2.3.2
-pyarrow = 21.0.0
+pyarrow == 21.0.0
+pyvis

@@ -49,9 +49,10 @@ current_page = st.navigation({
                    st.Page("modules/elections/election_correlation.py", title="Correlations", icon=":material/public:")
                  #  st.Page("modules/elections/parties_alliances.py", title="Parties & Alliances ", icon=":material/public:")
                   ],
-    "Higher Education": [st.Page("modules/higher_education/chronology.py", title="Chronology", icon=":material/public:"),
-                         st.Page("modules/higher_education/migration.py", title="Migration",
-                                 icon=":material/public:"), ]
+    "Higher Education": [st.Page("modules/higher_education/timeline_view.py", title="Timeline View", icon=":material/public:"),
+                         st.Page("modules/higher_education/migration.py", title="Migration",icon=":material/public:"),
+                         st.Page("modules/higher_education/quota_occupancy.py", title="Quota Occupancy", icon=":material/public:")
+                         ]
 
     })
 current_page.run()

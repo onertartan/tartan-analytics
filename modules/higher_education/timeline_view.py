@@ -18,8 +18,7 @@ class Chronology:
     def get_data():
         df_years_universities = pd.read_csv("data/preprocessed/higher-education/df_years_universities.csv",
                                             usecols=["city", "uni_name", "foundation_year", "type", "region", "year"])
-        gdf_city_locations = gpd.read_file("data/preprocessed/higher-education/gdf_city_locations.json").set_index(
-            "city")  # we did not include city column above, since we have here in gdf_city_locations(we will out merge two dfs)
+        gdf_city_locations = gpd.read_file("data/preprocessed/higher-education/gdf_city_locations.json").set_index("city")  # we did not include city column above, since we have here in gdf_city_locations(we will out merge two dfs)
         return df_years_universities, gdf_city_locations
 
     def join_unis_of_city(x):
@@ -156,24 +155,25 @@ class Chronology:
 
     def tab_map(self, df_data, gdf_city_locations):
 
-        st.write("Check to show new the cities")
-        show_only_new_cities = st.checkbox("Only new cities")
-        inserted_expression = "Provinces universities founded" if show_only_new_cities else "Provinces with universities"
+        st.write("Check to show new the provinces")
+        show_only_new_provinces = st.checkbox("Only new provinces")
+        inserted_expression = "Provinces universities founded" if show_only_new_provinces else "Provinces with universities"
         if st.session_state.selected_slider == 1:
             mask = (st.session_state["year_1"] == df_data["year"])
             title = f"{inserted_expression} in the year {st.session_state['year_1']}"
             df_data.drop("year", axis=1, inplace=True)
         else:  # elif st.session_state.selected_slider == 2:
-            inserted_expression = "Provinces where universities founded" if show_only_new_cities else "Provinces where universities founded first time"
+#            inserted_expression = "Provinces where universities founded" if show_only_new_provinces else "Provinces where universities founded first time"
+            inserted_expression = "Provinces where universities founded first time" if show_only_new_provinces else "Provinces where universities founded"
+
             title = f"{inserted_expression} between the years {st.session_state['year_1']} and {st.session_state['year_2']} (inclusive)"
             df_data.drop("year", axis=1, inplace=True)
             df_data = df_data.drop_duplicates()
             mask = (st.session_state["year_1"] <= df_data["foundation_year"]) & (df_data["foundation_year"] <= st.session_state["year_2"])
         df_result = df_data.loc[mask].sort_values(by="foundation_year").set_index("city")
         cities_to_exclude = df_data[(df_data["foundation_year"] < st.session_state["year_1"] )]["city"].unique()
-        if show_only_new_cities:
+        if show_only_new_provinces:
             df_result = df_result[~df_result.index.isin(cities_to_exclude)]
-
 
         st.title(title)
         map_column, df_column = st.columns([3, 2], gap="small")
@@ -186,9 +186,9 @@ class Chronology:
 
     def tab_bar(self, df_data):
         # SLIDER'DAN SEÇİLEN YILLARA GÖRE FİLTRELENECEK
-        st.write("**Bar tab requires an period of time and, therefore uses only the second slider.**" )
-        st.write("Check to show new the cities")
-        show_only_new_cities = st.checkbox("Only new cities")
+        st.write("**Bar tab requires an period of time and, therefore uses only the second slider.**")
+        st.write("Check to show new the provinces")
+        show_only_new_cities = st.checkbox("Only new provinces")
         selected_index = "foundation_year" if show_only_new_cities else "year"
         if show_only_new_cities:
             df_data.drop("year", axis=1, inplace=True)
@@ -196,7 +196,7 @@ class Chronology:
         df_year_counts = df_data[[selected_index, "type"]].value_counts().to_frame()
         df_year_counts = df_year_counts.reset_index().pivot_table(index=selected_index, columns='type', values='count', fill_value=0)
         start_year, end_year = int(st.session_state.slider_year_2[0]), int(st.session_state.slider_year_2[1])
-        df_result = pd.DataFrame(0, index=range(start_year,end_year+1), columns=["foundation","state"])
+        df_result = pd.DataFrame(0, index=range(start_year,end_year+1), columns=["foundation", "state"])
         temp = df_year_counts[(start_year <= df_year_counts.index) & (df_year_counts.index <= end_year)]
         df_result.loc[temp.index] = temp
 
@@ -205,7 +205,7 @@ class Chronology:
 
 
     def plot_bar(self,df_year_counts, start_year, end_year):
-        col1, col2, col3 = st.columns( [1,8,1])
+        col1, col2, col3 = st.columns([1, 8, 1])
         with col2:
             fig, ax = plt.subplots(1, figsize=(9, 6))
             x_vals = df_year_counts.index

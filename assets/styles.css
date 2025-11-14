@@ -6,57 +6,24 @@
 }
 */
 
-/* Blue border for the first radio button in col_1 */
-div[data-testid='column']:nth-child(1) div.stRadio > div[role='radiogroup'] > label:nth-child(1) {
-    border: 2px solid #0000FF !important; /* Blue border */
-    padding: 5px !important;
-    border-radius: 4px !important;
-    margin-bottom: 80px !important;
-}
-/* Red border for the second radio button in col_1 */
-div[data-testid='column']:nth-child(1) div.stRadio > div[role='radiogroup'] > label:nth-child(2) {
-    border: 2px solid #FF0000 !important; /* Red border */
-    padding: 5px !important;
-    border-radius: 4px !important;
-    margin-bottom: 50px
-
-}
-/* Green border for the third radio button in col_1 */
-div[data-testid='column']:nth-child(1) div.stRadio > div[role='radiogroup'] > label:nth-child(3) {
-    border: 2px solid #00FF00 !important; /* Red border */
-    padding: 5px !important;
-    border-radius: 4px !important;
-    margin-bottom: 20px;
-}
-/* Green border and red outline for the selectbox in col_1 */
-div[data-testid='column']:nth-child(1) div.stSelectbox:nth-child(1) {
-    border: 2px solid #00FF00 !important; /* Green border */
-    outline: 2px solid #FF0000 !important; /* Red outline (simulates second border) */
-    outline-offset: 2px !important; /* Space between border and outline */
-    padding: 6px !important;
-    border-radius: 4px !important;
+/* Column borders */
+.blue-border {
+    border: 2px solid blue;
+    border-radius: 8px;
+    padding: 10px;
+    margin: 5px;
 }
 
-/* Blue border for the first selector (selectbox) in col_2 */
-div[data-testid='column']:nth-child(2) div.stSelectbox:nth-child(1) {
-    margin-top: 10px !important; /* Add margin-top */
-    margin-bottom: 40px !important; /* Add margin-top */
-    border: 2px solid #0000FF !important; /* Blue border */
-    padding: 5px !important;
-    border-radius: 4px !important;
-}
-/* Red border for the second selector (multiselect) in col_2 */
-div[data-testid='column']:nth-child(2) div.stMultiSelect:nth-child(1) {
-    margin-top: 0px !important; /* Add margin-top */
-    border: 2px solid #FF0000 !important; /* Red border */
-    padding: 5px !important;
-    border-radius: 4px !important;
+.red-border {
+    border: 2px solid red;
+    border-radius: 8px;
+    padding: 10px;
+    margin: 5px;
 }
 
-/* Blue border for the entire radio button group in col_3 */
-div[data-testid='column']:nth-child(3) div.stRadio {
-    margin-top: 10px !important; /* Add margin-top */
-    border: 2px solid #0000FF !important; /* Blue border */
-    padding: 5px !important;
-    border-radius: 4px !important;
+.green-border {
+    border: 2px solid green;
+    border-radius: 8px;
+    padding: 10px;
+    margin: 5px;
 }
