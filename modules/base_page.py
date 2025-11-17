@@ -4,7 +4,8 @@ from typing import Dict, List
 import seaborn as sns
 import numpy as np
 from scipy.spatial.distance import pdist, cdist
-from sklearn.metrics import silhouette_score, calinski_harabasz_score, adjusted_rand_score, davies_bouldin_score
+from sklearn.metrics import silhouette_score, calinski_harabasz_score, adjusted_rand_score, davies_bouldin_score, \
+    pairwise_distances_argmin_min
 from kneed import KneeLocator
 import streamlit as st
 import extra_streamlit_components as stx
@@ -433,9 +434,6 @@ class BasePage(ABC):
 
         return labels.map(new_label_map).to_list()
 
-
-
-    # Main function to analyze optimal k with new metrics
     def optimal_k_analysis(self, df):
 
         if "consensus_labels_"+self.page_name not in st.session_state:
@@ -691,4 +689,165 @@ class BasePage(ABC):
         st.session_state["consensus_labels_"+self.page_name] = consensus_labels_all
         return fig
 
+    # methods used in base_page_names
 
+    def apply_consensus_labels_if_needed(self, df_pivot):
+        """Apply consensus labels to df_pivot if the user selected that option."""
+        page = self.page_name
+        n_cluster = st.session_state["n_clusters_" + page]
+        if not st.session_state["use_consensus_labels_" + page]:
+            return df_pivot
+        # Ensure optimal k analysis has run
+        if not st.session_state["consensus_labels_" + page]:
+            st.write("Optimal k analysis has not been run. Running analysis now...")
+            fig = self.optimal_k_analysis(df_pivot.drop(columns=["clusters"]))
+            st.pyplot(fig)
+        consensus_labels = st.session_state["consensus_labels_" + page]
+        df_pivot["clusters"] = consensus_labels[n_cluster]
+        return df_pivot
+
+    def recompute_centroid_provinces(self, df_pivot):
+        """Recompute centroid provinces after clusters changed due to consensus relabel.
+        The last column of df_pivot must be 'clusters', first len(df_pivot.columns-1) columns are features."""
+        features = df_pivot.columns[:-1]  # exclude 'clusters'
+        centroids = df_pivot.groupby('clusters')[features].mean()
+        closest_indices, _ = pairwise_distances_argmin_min(centroids, df_pivot[features])
+        return closest_indices
+
+    def update_cluster_centers(self, df_pivot, closest_indices):
+        """Attach cluster labels to geodata and compute centroids for display."""
+        self.gdf_clusters = self.gdf["province"].set_index("province")
+        self.gdf_clusters = self.gdf_clusters.merge(df_pivot["clusters"], left_index=True, right_index=True)
+        # centroid provinces
+        self.gdf_centroids = self.gdf_clusters[self.gdf_clusters.index.isin(closest_indices)]
+        self.gdf_centroids["centroid"] = self.gdf_centroids.geometry.centroid
+    # CLUSTERING GUIs and METHODS
+
+    def k_means(self, df_pivot):
+        k_means = KMeans(n_clusters=st.session_state["n_clusters_" + self.page_name], random_state=0, init='k-means++', n_init=100).fit(df_pivot)
+        # After fitting KMeans
+        closest_indices, _ = pairwise_distances_argmin_min(k_means.cluster_centers_, df_pivot)
+        closest_indices = df_pivot.index[closest_indices].tolist()
+        print("closest_indicesX",closest_indices)
+        df_pivot["clusters"] = k_means.labels_ + 1  # +1 for displaying clusters to use from 1 not 0
+        print("666888", df_pivot[["clusters"]])
+        return df_pivot, closest_indices
+
+    def gmm(self, df_pivot):
+        from sklearn.mixture import GaussianMixture
+        gmm = GaussianMixture(n_components=self.gmm_k,
+                              covariance_type=self.gmm_cov,
+                              n_init=self.gmm_n_init,
+                              random_state=42)
+        gmm.fit(df_pivot)
+        proba = gmm.predict_proba(df_pivot)  # shape (n_provinces, k)
+        labels = gmm.predict(df_pivot)  # hard labels for Silhouette, Dunn, etc.
+        df_pivot["clusters"] = labels + 1  # +1 for displaying clusters to use from 1 not 0
+        closest_indices = df_pivot.index[proba.argmax(axis=0)].tolist()  # e.g. ['İzmir', 'Van', 'Samsun', 'Antalya']
+        return df_pivot, closest_indices
+
+    # ---------- 1. GUI ----------------------------------------------------------
+
+    def common_cluster_params(self):
+        # scaler
+        col1,col2=st.columns([2,8])
+        options = ["MaxAbsScaler", "MinMaxScaler", "StandardScaler", "No scaling"]
+        stored_value = st.session_state.get("scaler" + self.page_name, options[0])
+        default_index = options.index(stored_value) if stored_value in options else 0
+        st.session_state["scaler"] = col1.radio("Select scaling option", options=options, index=default_index)
+        st.session_state["optimal_k_analysis"] = col2.checkbox("Run cluster analysis")
+        col2.checkbox("Use consensus labels", False, key="use_consensus_labels_" + self.page_name)
+
+    def common_cluster_params_kmeans_gmm(self, main_col1):
+        st.session_state["n_clusters_" + self.page_name] = main_col1.number_input("Number of clusters / components", 2, 15, 6)
+        st.session_state["n_init_"+self.page_name] = main_col1.number_input("Random restarts (n_init)", 1, 100, 10)
+
+
+    def k_means_gui_options(self, col_1, col_2, col_3):
+        pass
+    def gmm_gui_options(self, exp1, exp2, exp3):
+            self.gmm_k = exp1.number_input("Components", min_value=2, max_value=15, value=6)
+            self.gmm_cov = exp2.selectbox("Covariance", options=["diag", "full", "tied", "spherical"])
+            self.gmm_n_init = exp3.number_input("Restarts", min_value=1, max_value=50, value=10)
+
+    def render_geo_clustering_ui(self):
+        """Render K-means + other-method buttons and return the chosen algo."""
+        self.common_cluster_params()
+
+        col1, col2, col3 = st.columns([1, 1, 1])
+        kmeans_clicked = col1.button("K-means", use_container_width=True)
+        gmm_clicked = col2.button("GMM", use_container_width=True)
+        main_col_1, _ = st.columns([2, 1])
+        self.common_cluster_params_kmeans_gmm(main_col_1)
+        with col1:
+            with st.expander("K-means settings"):
+                exp1, exp2, exp3 = st.columns([1, 1, 1])
+                self.k_means_gui_options(exp1, exp2, exp3)
+        with col2:
+            with st.expander("GMM settings"):
+                exp1, exp2, exp3 = st.columns([1, 1, 1])
+                self.gmm_gui_options(exp1, exp2, exp3)  # add your own helper
+        with col3:
+            dbscan_clicked = st.button("DBSCAN", use_container_width=True)
+            with st.expander("DBSCAN settings"):
+                exp1, exp2, exp3 = st.columns([1, 1, 1])
+                self.dbscan_gui_options(exp1, exp2, exp3)  # add your own helper
+
+        # return which algorithm was selected
+        if kmeans_clicked:
+            return "kmeans"
+        if gmm_clicked:
+            return "gmm"
+        if dbscan_clicked:
+            return "dbscan"
+        return None
+
+
+    def dbscan_gui_options(self, exp1, exp2, exp3):
+        """
+        exp1, exp2, exp3 are the three columns you already pass in.
+        """
+        self.db_eps = exp1.number_input("ε (eps)",
+                                        min_value=0.05, max_value=2.0,
+                                        value=0.25, step=0.05,
+                                        help="Max distance for neighbourhood")
+        self.db_min = exp2.number_input("minPts",
+                                        min_value=2, max_value=20,
+                                        value=5, step=1,
+                                        help="Min points to form a core region")
+        # optional metric (keep Euclidean unless you need something else)
+        self.db_metric = exp3.selectbox("Metric", options=["euclidean", "cosine"])
+
+    # ---------- 2. CLUSTERING ---------------------------------------------------
+    def dbscan(self, df_pivot):
+        pass
+        from sklearn.cluster import DBSCAN
+        #
+        # 2. fit DBSCAN
+        db = DBSCAN(eps=self.db_eps,
+                    min_samples=self.db_min,
+                    metric=self.db_metric).fit(X)
+
+        labels = db.labels_  # -1 means noise
+        n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+        n_noise = list(labels).count(-1)
+
+        # 3. safety: if everything is noise, fall back
+        if n_clusters == 0:
+            st.warning("DBSCAN found no clusters; falling back to k=2.")
+            n_clusters = 2
+            labels = np.full(df_pivot.shape[0], 1)  # dummy single cluster
+            closest = [df_pivot.index[0]]  # arbitrary rep
+        else:
+            # 4. representative province for each cluster (highest core-sample score)
+            core_mask = db.core_sample_indices_  # indices of core points
+            core_labels = labels[core_mask]  # their cluster ids
+            closest = []
+            for cid in range(n_clusters):
+                # pick first core point of that cluster
+                pick = core_mask[core_labels == cid][0]
+                closest.append(df_pivot.index[pick])
+
+        # 5. store in dataframe (noise → cluster 0 so we can still colour it)
+        df_pivot["clusters"] = labels + 1  # -1→0, 0→1, …, k→k+1
+        return df_pivot, closest
