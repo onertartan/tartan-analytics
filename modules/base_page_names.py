@@ -235,14 +235,17 @@ class PageNames(BasePage):
             self.tab_name_clustering(df, col_plot, col_df, col_2, col_3,col_4)
 
     # Tab-1 Step-0: Render UI and return button name if clicked
-
-    def run_geo_clustering(self,df_pivot,clustering_algorithm):
-        if clustering_algorithm=="kmeans":
-            df_pivot, closest_indices = self.k_means(df_pivot)
-        elif clustering_algorithm =="gmm":
-            df_pivot, closest_indices = self.gmm(df_pivot)
-
+    def run_geo_clustering(self, df_pivot, clustering_algorithm):
+        # 1. Define the mapping (Dispatch Dictionary)
+        # Maps algorithm name (string) to the corresponding class method (function)
+        algorithm_map = {"kmeans": self.kmeans, "gmm": self.gmm, "dbscan": self.dbscan }
+        # 2. Look up the method
+        # Use .get() for safe access and provide a default error if the key isn't found
+        clustering_method = algorithm_map[clustering_algorithm]
+        # 3. Call the selected method
+        df_pivot, closest_indices = clustering_method(df_pivot)
         return df_pivot, closest_indices
+
     # Tab-1 Step:6
     def render_geo_clustering_plots(self, df_pivot, col_plot, col_df, df_original):
         """Tab-1 Step-6: Render map, PCA plot, and dataframe of clusters."""
@@ -358,7 +361,7 @@ class PageNames(BasePage):
             col_df.dataframe(df)
         elif st.session_state["province_or_cluster"] == "Use clusters" and selected_clusters:
             df_pivot = self.preprocess_clustering(df, True)
-            df_pivot, _ = self.k_means(df_pivot) # _ --> closest indices ( not used here)
+            df_pivot, _ = self.kmeans(df_pivot) # _ --> closest indices ( not used here)
 
             df_clusters = df_pivot["clusters"]
             df['clusters'] = df.index.get_level_values("province").map(df_clusters)
@@ -375,9 +378,10 @@ class PageNames(BasePage):
             plot_method(self.preprocess_for_rank_bar_tabs(df), col_plot)
 
     def tab_name_clustering(self, df, col_plot, col_df, col_2, col_3, col_4):
-        self.k_means_gui_options(col_2, col_3, col_4)
+        with col_2:
+            self.gui_options_kmeans()
         df_pivot = self.preprocess_clustering(df, True)
-        df_pivot, _ = self.k_means(df_pivot)
+        df_pivot, _ = self.kmeans(df_pivot)
         df_clusters = df_pivot["clusters"]
         df_pivot = df_pivot.drop(columns=["clusters"])
         if st.session_state["optimal_k_analysis"]:

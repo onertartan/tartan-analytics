@@ -240,8 +240,7 @@ class PageCommon(BasePage):
                     self.animate(col_plot)
 
 
-    def plot_map_generic(self,col_plot, col_df, gdf_borders, df_result, geo_scale, plotter_func, years_selected, fig=None,
-                         axs=None):
+    def plot_map_generic(self,col_plot, col_df, gdf_borders, df_result, geo_scale, plotter_func, years_selected, fig=None, axs=None):
         # Add CSS for layout control
         st.markdown(""" <style>[role=checkbox]{ gap: 1rem; }</style>""", unsafe_allow_html=True)
         display_change = (st.session_state["year_1"] != st.session_state["year_2"])
@@ -264,8 +263,7 @@ class PageCommon(BasePage):
                 ax = None
             with col_plot:
                 col_df.markdown('<div class="dataframe-margin">', unsafe_allow_html=True)
-                plotter_func(gdf_result, title, geo_scale,
-                             ax)  # plot map or save figure for each year if the state of animate is True
+                plotter_func(gdf_result, title, geo_scale, ax)  # plot map or save figure for each year if the state of animate is True
                 col_df.markdown('</div>', unsafe_allow_html=True)
 
             if not st.session_state["animate"] and not st.session_state["clustering_cb_" + st.session_state["page_name"]]:
@@ -275,7 +273,6 @@ class PageCommon(BasePage):
                 print("**0**",st.session_state["clustering_cb_" + st.session_state["page_name"]])
                 print("-----",df_result.iloc[:, :-5])
                 col_df.pyplot(self.optimal_k_analysis())
-            print("***", st.session_state["elbow"])
 
         if st.session_state["animate"]:
             # generated and saved image for each year calling plotterFunction in the for loop above
@@ -301,7 +298,6 @@ class PageCommon(BasePage):
                 print("--x-")
                 fig, _ = self.optimal_k_analysis(df_result.iloc[:, :-5])
                 col_df.pyplot(fig)
-            print("***", st.session_state["elbow"])
         if fig and not st.session_state["animate"]:
             col_plot.pyplot(fig)
 

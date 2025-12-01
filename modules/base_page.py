@@ -267,11 +267,12 @@ class BasePage(ABC):
         cols_clustering[1].selectbox("Select K: number of clusters", range(2, 15), key="n_clusters_" + self.page_name)
 
        # scaler
-        options = ["MaxAbsScaler", "MinMaxScaler", "StandardScaler", "No scaling"]
-        stored_value = st.session_state.get("scaler" + self.page_name, options[0])
-        default_index = options.index(stored_value) if stored_value in options else 0
-        st.session_state["scaler"]=cols_clustering[2].radio("Select scaling option",options=options, index=default_index)
-        cols_clustering[3].checkbox("Elbow Method", key="elbow")
+        self.gui_common_clustering()
+     #   options = ["MaxAbsScaler", "MinMaxScaler", "StandardScaler", "No scaling"]
+     #   stored_value = st.session_state.get("scaler" + self.page_name, options[0])
+     #   default_index = options.index(stored_value) if stored_value in options else 0
+     #   st.session_state["scaler"]=cols_clustering[2].radio("Select scaling option",options=options, index=default_index)
+     #   cols_clustering[3].checkbox("Elbow Method", key="elbow")
         return cols_nom_denom
 
 
@@ -355,8 +356,8 @@ class BasePage(ABC):
         # fig.subplots_adjust(left=0.2, bottom=0.2, right=0.8, top=0.8, wspace=0.5, hspace=0.5)
         return fig, axs
 
-    def scale(self,df):
-        scaler_name = st.session_state.get("scaler", "MaxAbsScaler")
+    def scale(self, df):
+        scaler_name = st.session_state.get("scaler_"+self.page_name, "MaxAbsScaler")
         if scaler_name != "No scaling":
             scaler_class = getattr(preprocessing, scaler_name)
             scaler = scaler_class()
@@ -438,7 +439,7 @@ class BasePage(ABC):
 
         if "consensus_labels_"+self.page_name not in st.session_state:
             st.session_state["consensus_labels_"+self.page_name] = None
-        random_states = range(100)  # 50 random seeds
+        random_states = range(st.session_state["number_of_seeds"])  # 50 random seeds
         k_values = list(range(2, 15))
         num_seeds_to_plot = 3
         # Convert df to numpy array if it's a DataFrame
@@ -465,7 +466,7 @@ class BasePage(ABC):
 
 
             for k in k_values:
-                kmeans = KMeans(n_clusters=k, random_state=random_state, n_init=100).fit(df)
+                kmeans = KMeans(n_clusters=k, random_state=random_state, n_init=st.session_state["n_init_" + self.page_name]).fit(df)
                 labels = kmeans.labels_
                 inertia = kmeans.inertia_
                 inertias.append(inertia)
@@ -698,7 +699,7 @@ class BasePage(ABC):
         if not st.session_state["use_consensus_labels_" + page]:
             return df_pivot
         # Ensure optimal k analysis has run
-        if not st.session_state["consensus_labels_" + page]:
+        if (not "consensus_labels_" + page in st.session_state) or (not st.session_state["consensus_labels_" + page]):
             st.write("Optimal k analysis has not been run. Running analysis now...")
             fig = self.optimal_k_analysis(df_pivot.drop(columns=["clusters"]))
             st.pyplot(fig)
@@ -723,8 +724,9 @@ class BasePage(ABC):
         self.gdf_centroids["centroid"] = self.gdf_centroids.geometry.centroid
     # CLUSTERING GUIs and METHODS
 
-    def k_means(self, df_pivot):
-        k_means = KMeans(n_clusters=st.session_state["n_clusters_" + self.page_name], random_state=0, init='k-means++', n_init=100).fit(df_pivot)
+    def kmeans(self, df_pivot):
+        k_means = KMeans(n_clusters=st.session_state["n_clusters_" + self.page_name], random_state=0, init='k-means++',
+                         n_init=st.session_state["n_init_" + self.page_name]).fit(df_pivot)
         # After fitting KMeans
         closest_indices, _ = pairwise_distances_argmin_min(k_means.cluster_centers_, df_pivot)
         closest_indices = df_pivot.index[closest_indices].tolist()
@@ -748,75 +750,72 @@ class BasePage(ABC):
 
     # ---------- 1. GUI ----------------------------------------------------------
 
-    def common_cluster_params(self):
+    def gui_common_clustering(self):
         # scaler
-        col1,col2=st.columns([2,8])
+        col1, col2, _ = st.columns([2,2,6])
         options = ["MaxAbsScaler", "MinMaxScaler", "StandardScaler", "No scaling"]
-        stored_value = st.session_state.get("scaler" + self.page_name, options[0])
+        stored_value = st.session_state.get("scaler_" + self.page_name, options[0])
         default_index = options.index(stored_value) if stored_value in options else 0
         st.session_state["scaler"] = col1.radio("Select scaling option", options=options, index=default_index)
         st.session_state["optimal_k_analysis"] = col2.checkbox("Run cluster analysis")
+        st.session_state["number_of_seeds"]= col2.number_input("Number of seeds", min_value=1, max_value=100, value=10)
         col2.checkbox("Use consensus labels", False, key="use_consensus_labels_" + self.page_name)
 
-    def common_cluster_params_kmeans_gmm(self, main_col1):
-        st.session_state["n_clusters_" + self.page_name] = main_col1.number_input("Number of clusters / components", 2, 15, 6)
-        st.session_state["n_init_"+self.page_name] = main_col1.number_input("Random restarts (n_init)", 1, 100, 10)
+    def gui_options_kmeans_gmm_common(self, key):
+        st.session_state["n_clusters_" + self.page_name] = st.number_input("Number of clusters / components", 2, 15, 6, key="n_clusters_"+key)
+        st.session_state["n_init_" + self.page_name] = st.number_input("Random restarts (n_init)", 1, 100, 10, key="n_init_"+key)
 
+    def gui_options_kmeans(self):
+        self.gui_options_kmeans_gmm_common("k-means")
 
-    def k_means_gui_options(self, col_1, col_2, col_3):
-        pass
-    def gmm_gui_options(self, exp1, exp2, exp3):
-            self.gmm_k = exp1.number_input("Components", min_value=2, max_value=15, value=6)
-            self.gmm_cov = exp2.selectbox("Covariance", options=["diag", "full", "tied", "spherical"])
-            self.gmm_n_init = exp3.number_input("Restarts", min_value=1, max_value=50, value=10)
+    def gui_options_gmm(self):
+            self.gui_options_kmeans_gmm_common("gmm")
+            self.gmm_k = st.number_input("Components", min_value=2, max_value=15, value=6)
+            self.gmm_cov = st.selectbox("Covariance", options=["diag", "full", "tied", "spherical"])
+            self.gmm_n_init =st.number_input("Restarts", min_value=1, max_value=50, value=10)
+
 
     def render_geo_clustering_ui(self):
-        """Render K-means + other-method buttons and return the chosen algo."""
-        self.common_cluster_params()
-
-        col1, col2, col3 = st.columns([1, 1, 1])
-        kmeans_clicked = col1.button("K-means", use_container_width=True)
-        gmm_clicked = col2.button("GMM", use_container_width=True)
-        main_col_1, _ = st.columns([2, 1])
-        self.common_cluster_params_kmeans_gmm(main_col_1)
-        with col1:
-            with st.expander("K-means settings"):
-                exp1, exp2, exp3 = st.columns([1, 1, 1])
-                self.k_means_gui_options(exp1, exp2, exp3)
-        with col2:
-            with st.expander("GMM settings"):
-                exp1, exp2, exp3 = st.columns([1, 1, 1])
-                self.gmm_gui_options(exp1, exp2, exp3)  # add your own helper
-        with col3:
-            dbscan_clicked = st.button("DBSCAN", use_container_width=True)
-            with st.expander("DBSCAN settings"):
-                exp1, exp2, exp3 = st.columns([1, 1, 1])
-                self.dbscan_gui_options(exp1, exp2, exp3)  # add your own helper
-
-        # return which algorithm was selected
-        if kmeans_clicked:
-            return "kmeans"
-        if gmm_clicked:
-            return "gmm"
-        if dbscan_clicked:
-            return "dbscan"
-        return None
+        self.gui_common_clustering()
+        # 1. Configuration: Map algorithm keys to their Labels and UI Methods
+        # Adding a new algorithm later only requires adding one line here.
+        algos = {
+            "kmeans": {"label": "K-means", "gui_func": self.gui_options_kmeans},
+            "gmm": {"label": "GMM", "gui_func": self.gui_options_gmm},
+            "dbscan": {"label": "DBSCAN", "gui_func": self.dbscan_gui_options},
+        }
+        # 2. Create the exact number of columns needed
+        cols = st.columns(len(algos))
+        selected_algo = None
+        # 3. Iterate through columns and config simultaneously
+        for col, (key, config) in zip(cols, algos.items()):
+            with col:
+                # A. The Trigger Button
+                # We use a unique key for each button so Streamlit doesn't get confused
+                if st.button(config["label"], use_container_width=True, key=f"btn_{key}"):
+                    selected_algo = key
+                # B. The Settings (inside Expander, per your design)
+                # Users can tweak these sliders without triggering a run immediately.
+                with st.expander(f"{config['label']} settings"):
+                    config["gui_func"]()
+        # 4. Return the selected key (e.g., "kmeans") OR None
+        return selected_algo
 
 
-    def dbscan_gui_options(self, exp1, exp2, exp3):
+    def dbscan_gui_options(self):
         """
         exp1, exp2, exp3 are the three columns you already pass in.
         """
-        self.db_eps = exp1.number_input("ε (eps)",
+        self.db_eps = st.number_input("ε (eps)",
                                         min_value=0.05, max_value=2.0,
                                         value=0.25, step=0.05,
                                         help="Max distance for neighbourhood")
-        self.db_min = exp2.number_input("minPts",
+        self.db_min = st.number_input("minPts",
                                         min_value=2, max_value=20,
                                         value=5, step=1,
                                         help="Min points to form a core region")
         # optional metric (keep Euclidean unless you need something else)
-        self.db_metric = exp3.selectbox("Metric", options=["euclidean", "cosine"])
+        self.db_metric = st.selectbox("Metric", options=["euclidean", "cosine"])
 
     # ---------- 2. CLUSTERING ---------------------------------------------------
     def dbscan(self, df_pivot):
@@ -826,7 +825,7 @@ class BasePage(ABC):
         # 2. fit DBSCAN
         db = DBSCAN(eps=self.db_eps,
                     min_samples=self.db_min,
-                    metric=self.db_metric).fit(X)
+                    metric=self.db_metric).fit(df_pivot)
 
         labels = db.labels_  # -1 means noise
         n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
