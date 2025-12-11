@@ -1,8 +1,4 @@
-import numpy as np
-from matplotlib.colors import BoundaryNorm
-from sklearn.cluster import KMeans
-from sklearn.decomposition import PCA
-from sklearn.metrics import pairwise_distances_argmin_min
+from adjustText import adjust_text
 from modules.base_page import BasePage
 import pandas as pd
 import geopandas as gpd
@@ -13,33 +9,65 @@ import plotly.express as px
 from matplotlib.patches import Patch
 import extra_streamlit_components as stx
 import altair as alt
-from adjustText import adjust_text
+from sklearn.preprocessing import normalize
 
 locale.setlocale(locale.LC_ALL, 'tr_TR.utf8')
+
+
 class PageNames(BasePage):
 
     def sidebar_controls_plot_options_setup(self, *args):
         sidebar = st.sidebar
         if st.session_state.get("selected_tab_" + self.page_name, "map") == "map":
-            st.session_state["visualization_option"] = sidebar.radio("Choose visualization option",
-                                                                     ["Matplotlib", "Folium"]).lower()
+            st.session_state["visualization_option"] = sidebar.radio("Choose visualization option",  ["Matplotlib", "Folium"]).lower()
 
-    def initialize_multiindex_gdf_clusters(self, df, year):
+    def initialize_multiindex_gdf_clusters(self, df: object, year: object) -> object:
         new_index = pd.MultiIndex.from_product([[year], df.index], names=["year", "city"])
         self.gdf_clusters = df.copy()
         self.gdf_clusters.index = new_index
-    def preprocess_clustering(self, df, transpose_for_name_clustering=False):
+
+    # Overridden method
+    def scale(self, df, total_counts):
+        scaler_method = st.session_state.get("scaler_" + self.page_name, "Share of Top 30 (L1 Norm)")
+        if "L1" in scaler_method:  # == "Share of Top 30 (L1 Norm)" in tab_geo_clustering or in name_clustering
+            df_scaled = normalize(df, axis=1, norm='l1')
+        elif scaler_method == "Share of Total Births":
+            # 1. Clean the total_counts series
+            # This groups by the Index Name (Province) and takes the first value found.
+            # It reduces the duplicates down to exactly  81 unique provinces.
+            total_counts_unique = total_counts.groupby(level=0).first()
+            # 2. Perform the division
+            # axis=0 ensures we divide row-by-row (matching the province index)
+            df_scaled = df.div(total_counts_unique, axis=0)
+        elif "L2" in scaler_method:
+            df_scaled = normalize(df, axis=1, norm='l2')
+        #elif: TF-IDF
+        df = pd.DataFrame(df_scaled, index=df.index, columns=df.columns)
+        return df
+    # GUI
+    # Overridden method
+    def gui_clustering_up_col1(self):
+        # First column of upper part in clustering showing scaling options
+        options = ["Share of Top 30 (L1 Norm)",  # Denominator = Sum of the 30 columns
+                "Share of Total Births",  # Denominator = Total births in province (External data)
+                "TF-IDF",  # Best for emphasizing unique/rare names
+                "L2 Normalization" ] # Best for pure cosine pattern matching
+        stored_value = st.session_state.get("scaler_" + self.page_name, options[0])
+        default_index = options.index(stored_value) if stored_value in options else 0
+        st.session_state["scaler_" + self.page_name] = st.radio("Select scaling option", options=options, index=default_index)
+
+    # OVERRIDEN METHOD
+    def preprocess_clustering(self, df):
         """"
         returns:df_pivot
         """
         year = df.index.get_level_values(0).unique() # year(s)
-
         page_name = self.page_name
         # top_n = st.session_state["n_" + page_name]  # CANCELED : NOW ALL 30 FEATURES ARE USE IN K-MEANS
-        if page_name == "names_surnames" and st.session_state["name_surname_rb"] == "Surname":
+        if page_name == "names_surnames" and "name_surname_rb" in st.session_state and st.session_state["name_surname_rb"] == "surname":
             df_year = df.loc[year]
         #     df_year = df_year[df_year["rank"] <= top_n]  # use top-n for clustering (n=30 for all)
-        elif len(st.session_state["sex_" + page_name]) != 1:  # if both sexes are selected
+        elif st.session_state["sex_" + page_name] == ["male", "female"]:  # if both sexes are selected
             df_year_male, df_year_female = df[df["sex"] == "male"].loc[year], df[df["sex"] == "female"].loc[year]
             #     df_year_male = df_year_male[df_year_male["rank"] <= top_n]
             #    df_year_female = df_year_female[df_year_female["rank"] <= top_n]
@@ -52,50 +80,21 @@ class PageNames(BasePage):
         else:  # single gender selected for names
             sex = st.session_state["sex_" + page_name]
             df_year = df[df["sex"].isin(sex)].loc[year]
-        #     df_year = df_year[df_year["rank"] <= top_n]
-        # data_scaled = scaler.fit_transform(df_year.loc["Adana", ["count"]])
-        # print("SCAL:",data_scaled)
-        print("QQmhtr", df_year.index)
-
         if isinstance(df_year.index, pd.MultiIndex):  # If applying temporal clustering (multiple years given as year)
-            print("ÖNCEÖNCE", df_year)
-            df_year = df_year.droplevel(0)  # Drop the first level year(position 0)
-            print("!!==")
-            print("SORNA", df_year)
-
-        print("axcas", df_year.index)
-        print("bxcas", df_year)
-
-        # Get unique cumulative total counts over years(for each province)
+             df_year = df_year.droplevel(0)  # Drop the first level year(position 0)
+          # Get unique cumulative total counts over years(for each province)
         total_counts = df[["total_count"]].groupby(level=["year", "province"]).first()
         total_counts = total_counts.groupby("province").sum()
         df_year = df_year.groupby([df_year.index, 'name']).agg({'count': 'sum'})
         # Merge
         df_year = df_year.merge(total_counts, left_index=True, right_index=True, how="outer")
         df_year = df_year.reset_index().set_index("province")
-        print("yenni SONUÇÇÇ:", df_year)
-        # # Scale counts for each province
-        # for province in provinces:
-        #     # Get counts for current province
-        #     province_count_sum_first_30 = df_year.loc[province, 'count'].sum()
-        #     province_counts = (df_year.loc[province, 'count']).values.reshape(-1, 1)
-        #     scaled_counts = scaler.fit_transform(province_counts)                    # Fit and transform the counts
-        #     df_year.loc[province, 'scaled_count_sklearn'] = scaled_counts.flatten()  # Update the DataFrame with scaled values
-        #     # Fit and transform the counts
-        #     # Update the DataFrame with scaled values
-        #   #  df_year.loc[province, 'scaled_count_top_30'] = df_year.loc[province, "count"] / province_count_sum_first_30
-
-        print("yenni:", df_year)
-        df_year.loc[:, "ratio"] = df_year.loc[:, "count"] / df_year.loc[:, "total_count"]
-        print("XCV:", df_year)
-
-        df_pivot = pd.pivot_table(df_year, values='ratio', index=df_year.index, columns=['name'], aggfunc=lambda x: x,
+        df_pivot = pd.pivot_table(df_year, values='count', index=df_year.index, columns=['name'], aggfunc=lambda x: x,
                                   dropna=False, fill_value=0)
-
-        if transpose_for_name_clustering:
+        total_counts = df_year.loc[:, "total_count"]
+        df_pivot = self.scale(df_pivot, total_counts)
+        if st.session_state["selected_tab_" + self.page_name] == "tab_name_clustering":  # transpose_for_name_clustering:
             df_pivot = df_pivot.T
-        df_pivot = self.scale(df_pivot)
-        print("pivot tablo",df_pivot)
         return df_pivot
 
     @staticmethod
@@ -156,140 +155,120 @@ class PageNames(BasePage):
             df = df[df["name"].isin(selected_names)]
         return df
 
-    def common_tab_ui(self, col_1, col_2):
+    def render_gender_name_surname_filters(self):
         """ Common helper function for rendering
          'Names and Surnames' page and 'Baby Names' pages
         """
-        tab_selected = st.session_state["selected_tab_" + self.page_name]
-        name_surname = "name"  # single option for baby names dataset
+        col_1, col_2 = st.columns([1, 8])
+        name_surname_selection = "name"
         # data is a dictionary whose keys are names and surnames, values are corresponding dataframes
+        # --- 1. Name/Surname Selection ---
         if self.page_name == "names_surnames":
-            col_2.write()
-            name_surname = col_2.radio("Select name or surname", ["Name", "Surname"], key="name_surname_rb").lower()
-            df = self.data[name_surname.lower()]
-        else:
-            df = self.data
+            # Using a key here is good practice
+            name_surname_selection = col_2.radio(
+                "Select name or surname",
+                ["Name", "Surname"],
+                key="name_surname_selection"
+            ).lower()
+            st.session_state["name_surname_rb"] = name_surname_selection
 
+        # --- 2. Date Filtering ---
+        # Ensure year_1 and year_2 exist in session state
         selected_years = range(st.session_state["year_1"], st.session_state["year_2"] + 1)
-        idx = pd.IndexSlice
-        df = df.loc[idx[selected_years, :], :]
 
-        disable = name_surname == "surname"
-        if tab_selected == "map" or tab_selected == "name_clustering": #TAB1 or TAB5
-            col_1.write("Select gender(s)")
-            stored_value = st.session_state.get("male_" + self.page_name, True)
-            st.session_state["male_" + self.page_name] = col_1.checkbox("Male",  disabled=disable, value=stored_value)
-            # if "surnames" option is selected disable gender options
-            stored_value = st.session_state.get("female_" + self.page_name, False)
-            st.session_state["female_" + self.page_name] = col_1.checkbox("Female", disabled=disable, value=stored_value)
+        # --- 3. Gender Selection Logic ---
+        disable = (name_surname_selection == "surname")
 
-            st.session_state["sex_" + self.page_name] = []
-            if st.session_state["male_" + self.page_name]:
-                st.session_state["sex_" + self.page_name].append("male")
-            if st.session_state["female_" + self.page_name]:
-                st.session_state["sex_" + self.page_name].append("female")
-        else: # Use radio buttons for gender in other tabs 2-3-4
-            st.session_state["sex_" + self.page_name] = [col_1.radio("Select gender", options=["Male", "Female"]).lower()]
+        # Define keys for clarity
+        gender_list_state_key = "sex_" + self.page_name
+        widget_key = "gender_radio_widget_" + self.page_name
 
-        # if "surnames" option is selected or not any genders are selected, select both
-        if disable or not st.session_state["sex_" + self.page_name]:
-            st.session_state["sex_" + self.page_name] = ["male", "female"]
-        if name_surname != "surname":
-            df = df[df['sex'].isin(st.session_state["sex_" + self.page_name])]
+        # 1. One-time Initialization
+        # If the widget hasn't been initialized yet, set its initial value
+        # based on the existing list data (if any).
+        if widget_key not in st.session_state:
+            # Default to "Both"
+            initial_val = "Both"
+            # If we have previous list data, sync the widget to match it
+            if gender_list_state_key in st.session_state:
+                current_list = st.session_state[gender_list_state_key]
+                if current_list == ["male"]:
+                    initial_val = "Male"
+                elif current_list == ["female"]:
+                    initial_val = "Female"
 
-        return df
+            st.session_state[widget_key] = initial_val
+
+        # 2. Render Widget
+        gender_selection = col_1.radio(  "Select Gender", ["Both", "Male", "Female"], key=widget_key,label_visibility="collapsed",disabled=disable )
+        # 3. Update the Data List based on the Widget's new value
+        if gender_selection == "Male":
+            st.session_state[gender_list_state_key] = ["male"]
+        elif gender_selection == "Female":
+            st.session_state[gender_list_state_key] = ["female"]
+        else:
+            st.session_state[gender_list_state_key] = ["male", "female"]
+
+        # --- 4. Override for Surnames ---
+        # If surname is selected, we force both genders (or ignore gender column)
+        if disable:
+            st.session_state[gender_list_state_key] = ["male", "female"]
+        return name_surname_selection, selected_years, gender_list_state_key
+
+    def render_tab_selection(self):
+       # if "selected_tab" not in st.session_state:
+        #    st.session_state["selected_tab_"+self.page_name] = "map"
+        tabs_main = [stx.TabBarItemData(id="tab_main_clustering", title="Clustering Tabs", description=""),
+                stx.TabBarItemData(id="tab_main_plot", title="Plot Tabs", description="")
+                ]
+        tab_main_selected = stx.tab_bar(data=tabs_main, default="tab_main_clustering")
+
+        if tab_main_selected == "tab_main_clustering":
+            tabs = [stx.TabBarItemData(id="tab_geo_clustering", title="Geographical Clustering", description=""),
+                    stx.TabBarItemData(id="tab_name_clustering", title="Name Clustering", description="") ]
+            st.session_state["selected_tab_"+self.page_name] = stx.tab_bar(data=tabs, default="tab_geo_clustering")
+        else:
+            tabs = [ stx.TabBarItemData(id="tab_map", title="Map Plot", description=""),
+                    stx.TabBarItemData(id="rank_bump", title="Rank Bump Plot", description=""),
+                    stx.TabBarItemData(id="rank_bar", title="Rank Bar Plot", description=""),
+                    stx.TabBarItemData(id="custom_bar", title="Custom Name Bar Plot", description="")]
+            st.session_state["selected_tab_" + self.page_name] = stx.tab_bar(data=tabs, default="tab_map")
+
+        return st.session_state["selected_tab_"+self.page_name]
 
     def render(self):
         # Apply CSS to all radio groups except the first
+        st.session_state["geo_scale"] = "province"
         header = "Names & Surnames Analysis" if self.page_name == "names_surnames" else "Baby Names Analysis"
         st.header(header)
         start_year, end_year = self.data["name"].index.get_level_values(0).min(), self.data["name"].index.get_level_values(0).max()
         self.sidebar_controls(start_year, end_year)
+        name_surname_selection, selected_years, gender_list_state_key = self.render_gender_name_surname_filters()
+        # ---   Apply Filter ---
+        # Only filter by gender if we are looking at names
+        df = self.data[name_surname_selection.lower()]
+        idx = pd.IndexSlice
+        df = df.loc[idx[selected_years, :], :]
+        if name_surname_selection != "surname":
+            # Ensure the column 'sex' exists before filtering
+            if 'sex' in df.columns:
+                df = df[df['sex'].isin(st.session_state[gender_list_state_key])]
 
-        if "selected_tab" not in st.session_state:
-            st.session_state["selected_tab_"+self.page_name] = "map"
-        tabs = [stx.TabBarItemData(id="tab_geo_clustering", title="Geographical Clustering", description=""),
-                stx.TabBarItemData(id="tab_map", title="Map Plot", description=""),
-                stx.TabBarItemData(id="rank_bump", title="Rank Bump Plot", description=""),
-                stx.TabBarItemData(id="rank_bar", title="Rank Bar Plot", description=""),
-                stx.TabBarItemData(id="custom_bar", title="Custom Name Bar Plot", description=""),
-                stx.TabBarItemData(id="name_clustering", title="Name Clustering", description="")
-                ]
 
-        st.session_state["selected_tab_"+self.page_name] = stx.tab_bar(data=tabs, default="tab_geo_clustering")
-        tab_selected = st.session_state["selected_tab_"+self.page_name]
+        tab_selected = self.render_tab_selection()
         col_1, col_2, col_3, col_4, _ = st.columns([1, 1, 1, 1, 1])
 
-        df = self.common_tab_ui(col_1, col_2)
         # if "display_option_"+self.page_name not in st.session_state:
         #     st.session_state["display_option_"+self.page_name] = 0
 
         col_plot, col_df = st.columns([5, 1])
-        if tab_selected == "tab_geo_clustering":  # Tab-2
-            self.tab_1_geo_clustering(df)
-        elif tab_selected == "tab_map":  # Tab-2
+        if tab_selected == "tab_geo_clustering" or tab_selected == "tab_name_clustering":  # Main Tab-1
+            self.tab_clustering(df)
+        elif tab_selected == "tab_map":  # Main Tab-2: Tab-1
             self.tab_2_map(df)
-        elif tab_selected in ["rank_bump", "rank_bar", "custom_bar"]:  # Tab 3-4-5
+        elif tab_selected in ["rank_bump", "rank_bar", "custom_bar"]:  # Main Tab-2: Tab 3-4-5
             self.tab_3_4_5(df, col_plot, col_df, col_2, col_3, col_4)
-        else:  # Tab-6
-            self.tab_name_clustering(df, col_plot, col_df, col_2, col_3,col_4)
 
-    # Tab-1 Step-0: Render UI and return button name if clicked
-    def run_geo_clustering(self, df_pivot, clustering_algorithm):
-        # 1. Define the mapping (Dispatch Dictionary)
-        # Maps algorithm name (string) to the corresponding class method (function)
-        algorithm_map = {"kmeans": self.kmeans, "gmm": self.gmm, "dbscan": self.dbscan }
-        # 2. Look up the method
-        # Use .get() for safe access and provide a default error if the key isn't found
-        clustering_method = algorithm_map[clustering_algorithm]
-        # 3. Call the selected method
-        df_pivot, closest_indices = clustering_method(df_pivot)
-        return df_pivot, closest_indices
-
-    # Tab-1 Step:6
-    def render_geo_clustering_plots(self, df_pivot, col_plot, col_df, df_original):
-        """Tab-1 Step-6: Render map, PCA plot, and dataframe of clusters."""
-        df_clusters = df_pivot["clusters"]
-        # Determine year or year range
-        start_year = df_original.index.get_level_values(0).min()
-        end_year = df_original.index.get_level_values(0).max()
-        if start_year == end_year:
-            year_label = f"in {start_year}"
-        else:
-            year_label = f"between {start_year}-{end_year}"
-        # Plot geographic clusters
-        self.plot_clusters(year_label, col_plot)
-        # PCA plot
-        df_features = df_pivot.drop(columns=["clusters"])
-        self.plot_pca(df_features, df_clusters, col_plot)
-        # Show raw cluster assignments
-        col_df.dataframe(df_clusters)
-
-    def tab_1_geo_clustering(self, df):
-        """Refactored Tab 1: Geographical Clustering."""
-        # 0. Render UI; only proceed if the button was pressed
-        clustering_algorithm = self.render_geo_clustering_ui()
-        if not clustering_algorithm:
-            return
-        col_plot, col_df = st.columns([5, 1])
-        # 1. Run clustering: Preprocess and run k clustering.
-        df_pivot = self.preprocess_clustering(df)
-        df_pivot, closest_indices = self.run_geo_clustering(df_pivot, clustering_algorithm)
-        # Step-2: Update geodata (clusters + centroid provinces)
-        self.update_cluster_centers(df_pivot, closest_indices)
-        # Step-3 (Optional): Optimal K diagnostic --> optimal_k_analysis
-        if st.session_state["optimal_k_analysis"]:
-            fig = self.optimal_k_analysis(df_pivot.drop(columns=["clusters"]))
-            col_df.pyplot(fig)
-        # Step-4: Apply consensus relabeling if enabled
-        df_pivot = self.apply_consensus_labels_if_needed(df_pivot)
-        if st.session_state["use_consensus_labels_" + self.page_name]:
-            # Step-5a: Find new cluster centers if consensus labels is checked
-            closest_indices = self.recompute_centroid_provinces(df_pivot)
-            # Step-5b: Update cluster centers if consensus labels is checked
-            self.update_cluster_centers(df_pivot, closest_indices)
-        # Step-6. Render map, PCA, and clusters table
-        self.render_geo_clustering_plots(df_pivot, col_plot, col_df, df)
 
     def tab_2_map(self, df):
         # Expression depending on page
@@ -315,6 +294,7 @@ class PageNames(BasePage):
         # Display results on map if a button is clicked
         if display_option:
             self.plot_map(col_plot, col_df, df, plot_value, display_option)
+
     def tab_3_4_5(self, df, col_plot, col_df,col_2,col_3,col_4):
         tab_selected = st.session_state["selected_tab_" + self.page_name]
         if "rank" in tab_selected:  # add rank selectbox if tab_selected == "tab_rank_bump" or tab_selected == "tab_rank_bar": Tabs 2-3
@@ -329,16 +309,18 @@ class PageNames(BasePage):
             empty_col.multiselect(f"Select {expression_in_sentence}", sorted(df["name"].unique(), key=locale.strxfrm),
                                   key="names_" + self.page_name)
         if tab_selected in ["rank_bump", "rank_bar", "custom_bar"]:  # if tab is one of tab-2,3 or 4
-            col_3.radio("Select an option", options=["Use provinces", "Use clusters"],
-                        key="province_or_cluster").lower()
+            col_3.radio("Select an option", options=["Use provinces", "Use clusters"],  key="province_or_cluster").lower()
             provinces = sorted(df.index.get_level_values(1).unique(), key=locale.strxfrm)
-            clusters = range(1, st.session_state["n_clusters_" + self.page_name] + 1)
+            if "n_clusters_" + self.page_name in st.session_state:
+                clusters = range(1, st.session_state["n_clusters_" + self.page_name] + 1)
+            else:
+                clusters= []
             col_4.multiselect(f"Select provinces (default all)", provinces, key="provinces_" + self.page_name)
             col_4.multiselect(f"Select clusters (default all)", clusters, key="clusters_" + self.page_name)
             col_4.checkbox(f"Show aggregated totals (sum counts for selected provinces)", provinces,
                            key="aggregate_totals_" + self.page_name)
 
-        # works for two tabs: Rank Bar Graph and Custom Name Bar Graph
+        # works for two tabs: Rank Bar Plot and Custom Name Bar Plot (tabs 4 & 5)
         selected_provinces = st.session_state["provinces_" + self.page_name]
         selected_clusters = st.session_state["clusters_" + self.page_name]
 
@@ -360,7 +342,7 @@ class PageNames(BasePage):
                     plot_method(self.preprocess_for_rank_bar_tabs(df_province), col_plot)
             col_df.dataframe(df)
         elif st.session_state["province_or_cluster"] == "Use clusters" and selected_clusters:
-            df_pivot = self.preprocess_clustering(df, True)
+            df_pivot = self.preprocess_clustering(df)
             df_pivot, _ = self.kmeans(df_pivot) # _ --> closest indices ( not used here)
 
             df_clusters = df_pivot["clusters"]
@@ -377,23 +359,6 @@ class PageNames(BasePage):
         else:  # if not any selected, select all provinces
             plot_method(self.preprocess_for_rank_bar_tabs(df), col_plot)
 
-    def tab_name_clustering(self, df, col_plot, col_df, col_2, col_3, col_4):
-        with col_2:
-            self.gui_options_kmeans()
-        df_pivot = self.preprocess_clustering(df, True)
-        df_pivot, _ = self.kmeans(df_pivot)
-        df_clusters = df_pivot["clusters"]
-        df_pivot = df_pivot.drop(columns=["clusters"])
-        if st.session_state["optimal_k_analysis"]:
-            col_df.pyplot(self.optimal_k_analysis(df_pivot))
-        if st.session_state["use_consensus_labels_" + self.page_name]:
-            if "consensus_labels_"+self.page_name not in st.session_state or  st.session_state["consensus_labels_"+self.page_name] == None:
-                st.write("First run cluster analysis.")
-            else:
-                consensus_labels = st.session_state["consensus_labels_" + self.page_name]
-                print("333777", consensus_labels, "NUM OF NAMES,", df_pivot.shape)
-                df_pivot["clusters"] = consensus_labels[st.session_state["n_clusters_" + self.page_name]]
-                self.plot_pca(df_pivot, df_clusters, col_plot)
 
     def create_title_for_plot(self, rank):
         page_name = st.session_state["page_name"]
@@ -415,7 +380,6 @@ class PageNames(BasePage):
         return title, names_or_surnames
 
     # Plot methods of three tabs
-
 
     def plot_map(self, col_plot, col_df, df, n, display_option):
         gdf_borders = self.gdf["province"]
@@ -459,7 +423,21 @@ class PageNames(BasePage):
         else:
             st.write("No results found.")
 
-    # Tab-1.1:  nth most common
+    def get_title_statement(self):
+        # Male Baby Names, Female Names
+        gender = st.session_state["sex_" + self.page_name]
+        if self.page_name == "names_surnames" and st.session_state["name_surname_rb"] == "Surname":
+            title_statement = "Surnames"
+        else:
+            title_statement = "Names"
+        if self.page_name == "baby_names":
+            title_statement = "Baby " + title_statement
+        if len(gender) == 1 and title_statement!="Surnames":
+            gender = gender[0]
+            title_statement = " " + gender.capitalize() + " " + title_statement
+        return title_statement
+
+    # Tab-2.1:  nth most common
     def plot_names(self, df_result, ax):
         # Tab-1.1: Plots nth most common names on map
         # Create a color map
@@ -468,7 +446,7 @@ class PageNames(BasePage):
         # Assign colors to each row in the GeoDataFrame
         df_result['color'] = df_result['clusters'].map(color_map).fillna("gray") #-->GEREK YOK mu
         print(df_result)
-        # After groupby df_result becomdes Pandas dataframe, we have to convert it to GeoPandas dataframe
+        # After groupby df_result becomes Pandas dataframe, we have to convert it to GeoPandas dataframe
         df_result = gpd.GeoDataFrame(df_result, geometry='geometry')
         # Plotting
         df_result.plot(ax=ax, color=df_result['color'], legend=True,  edgecolor="black", linewidth=.2)
@@ -507,91 +485,8 @@ class PageNames(BasePage):
        #     ax.plot([], [], color=color, label=name, linestyle='None', marker='o')
        #     ax.legend(title='Names', fontsize=4, bbox_to_anchor=(0.01, 0.01), loc='lower right', fancybox=True, shadow=True)
 
-    def get_title_statement(self):
-        # Male Baby Names, Female Names
-        gender = st.session_state["sex_" + self.page_name]
-        if self.page_name == "names_surnames" and st.session_state["name_surname_rb"] == "Surname":
-            title_statement = "Surnames"
-        else:
-            title_statement = "Names"
-        if self.page_name == "baby_names":
-            title_statement = "Baby " + title_statement
-        if len(gender) == 1 and title_statement!="Surnames":
-            gender = gender[0]
-            title_statement = " " + gender.capitalize() + " " + title_statement
-        return title_statement
 
-    def plot_clusters(self,  year_in_title, col_plot):
-        fig, ax = plt.subplots(1, 1, figsize=(10, 6))
-        n_clusters = st.session_state["n_clusters_" + self.page_name]
-        # Define a color map for the categories
-        color_map = self.create_color_mapping(self.gdf_clusters, n_clusters)
-        # Map the colors to the GeoDataFrame
-        #SEÇİM - BİRİNCİ PARTİ
-        secim = False
-        if secim:
-            file_name = "elections2023.csv"
-            self.gdf_clusters["clusters"]=pd.read_csv(file_name,index_col=0)["cluster"].tolist() # elections1-->1.figure
-            color_map={1:"darkorange",2:"red",3:"purple",4:"gold"}
-        #
-        # #SEÇİM1-SON
-        self.gdf_clusters["color"] = self.gdf_clusters["clusters"].map(color_map)
-        nan_rows = self.gdf_clusters[self.gdf_clusters.isna().any(axis=1)]
-        print("nan rows:",nan_rows,"n_clusters",n_clusters)
-        print(self.gdf_clusters.index)
-        self.gdf_clusters.plot(ax=ax, color=self.gdf_clusters['color'], legend=True, edgecolor="black", linewidth=.2)
-        ax.axis("off")
-        ax.margins(x=0)
-
-        # Add province names (from index) at centroids
-        bbox = dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="none", alpha=0.6)
-        ha_positions,va_positions = self.HA_POSITIONS, self.VA_POSITIONS
-        for province in self.gdf_clusters.index:
-            ax.annotate(text=province,  # Use index (province name) directly
-                        xy=(self.gdf_clusters.loc[province, "geometry"].centroid.x,
-                            self.gdf_clusters.loc[province, "geometry"].centroid.y),
-                        ha=ha_positions.get(province, "center"), va=va_positions.get(province, "center"), fontsize=5, color="black", bbox=bbox)
-
-
-        if secim:
-            from matplotlib.patches import Patch
-            if file_name == "elections2022.csv":
-                legend_handles = [
-                    Patch(facecolor='darkorange', label='People’s Alliance'),
-                    Patch(facecolor='red', label="Nation's Alliance"),
-                    Patch(facecolor='purple', label="Labour's Alliance")
-                ]
-                title = "2023 Turkish Parliamentary Elections: Provincial Wins by Alliance Blocs"
-            else:
-                legend_handles = [
-                    Patch(facecolor='darkorange', label='People’s Alliance (AKP + MHP)'),
-                    Patch(facecolor='red', label='CHP'),
-                    Patch(facecolor='purple', label='DEM Party')
-                ]
-                title = "2024 Turkish Municipal Council Elections: Provincial Wins by Alliance Blocs and Competing Parties"
-            ax.legend(
-                handles=legend_handles,
-                loc=[.55, .87],
-                fontsize=6,
-                title_fontsize=6,
-                frameon=False  # Remove if you want a background
-            )
-            ax.set_title(title)
-        else:
-            ax.set_title(f"{n_clusters} Clusters Identified {year_in_title} (K-means)")
-            ax.legend(loc="upper right", fontsize=6)
-            # Compute centroids of the closest provinces and plot them as markers
-            closest_provinces_centroids = self.gdf_centroids.to_crs("EPSG:4326").copy()
-            closest_provinces_centroids["centroid_geometry"] = closest_provinces_centroids.geometry.centroid
-            # Create a temporary GeoDataFrame with centroid geometries (points)
-            closest_provinces_points = gpd.GeoDataFrame(closest_provinces_centroids, geometry="centroid_geometry",
-                                                        crs=self.gdf_clusters.crs)
-            # Add markers using the centroid points (no fill color change   # Transparent fill)
-            closest_provinces_points.plot(ax=ax, facecolor="none", markersize=120, edgecolor="black", linewidth=1.5,
-                                          label=f"Closest provinces\nto  cluster centers")
-        col_plot.pyplot(fig)
-
-    # Tab-2 plot method
+    # Tab-2.2 plot method
     def plot_rank_bump(self, df, col_plot):  # pyplot
         # 2nd tab: Bump chart using pyplot
         df_pivot = pd.pivot_table(df, values='rank', index=df.index, columns=['name'],
@@ -742,7 +637,7 @@ class PageNames(BasePage):
 
         col_plot.plotly_chart(fig)
 
-    # Tab-3-4 plot methods
+    # Tab-2.3 & 2.4 plot methods
     def plot_rank_bar(self, df, col_plot):
         # 3rd tab & 4th tab: Bar plot for ranking and custom names
         print("5555",df)
@@ -765,93 +660,3 @@ class PageNames(BasePage):
         )
 
         col_plot.altair_chart(chart)
-
-    def plot_pca(self, df_pivot, df_clusters, col_plot):
-        fig, ax = plt.subplots(1, 1, figsize=(10, 6))
-        pca = PCA(n_components=2)
-        reduced_data = pca.fit_transform(df_pivot)
-        ax.scatter(
-            reduced_data[:, 0],
-            reduced_data[:, 1],
-            c=df_clusters.apply(lambda x:self.COLORS[x-1]),
-            edgecolors='w'
-        )
-        # Get the explained variance ratios for each component
-        explained_variance_ratios = pca.explained_variance_ratio_
-
-        # Calculate cumulative variance for the first two components
-        cumulative_variance_two = sum(explained_variance_ratios[:2])
-        # --- Add Legend Here ---
-        # Get unique cluster IDs and sort them (e.g., [1, 2, 3])
-        unique_clusters = sorted(df_clusters.unique())
-        # Create legend labels and handles
-        legend_labels = [f'Cluster {cluster_id}' for cluster_id in unique_clusters]
-        # Map each cluster to its color in the colormap,         # Add legend to plot
-        legend_handles = [
-            plt.Line2D([], [], marker='o', linestyle='',
-                       color=self.COLORS[i],  # Directly access color from self.COLORS
-                       markersize=10, label=label)
-            for i, label in enumerate(legend_labels)
-        ]
-        ax.legend(handles=legend_handles, title='Clusters', loc='best')
-
-        cluster_counts = df_clusters.value_counts()  # Calculate ONCE
-        total_points = len(df_clusters)
-        texts=[]
-        factor = .1 if self.page_name=="names_surnames" else 1
-        dense_threshold = total_points / (10*factor) if st.session_state["selected_tab_"+self.page_name] != "map" else 100# Define thresholds
-        mid_threshold = total_points / (20*factor) if st.session_state["selected_tab_"+self.page_name] != "map" else 100#
-        for i, name in enumerate(df_pivot.index):
-            cluster_id = df_clusters[name]
-            cluster_size = cluster_counts[cluster_id]
-            # Skip dense clusters (>=10% of data)
-            if cluster_size >= dense_threshold:
-                continue
-            # For mid-density (5-10%), annotate every 5th point
-            if cluster_size >= mid_threshold and i % 5 != 0:
-                continue
-            # Annotate sparse clusters (<5%) and selected mid-density points
-            texts.append( ax.annotate(name, (reduced_data[i, 0], reduced_data[i, 1]), fontsize=8, alpha=0.7))
-
-
-        adjust_text(texts)
-        if  st.session_state["selected_tab_"+self.page_name]=="name_clustering":
-            title = "Names Clustering Based on Provincial Ratios"
-        else:
-            title = "Province Clustering Based on Name Distributions"
-        ax.set_title(f"{title}\nExplained_variance ratios{explained_variance_ratios}\nCumulative variance of two components:{cumulative_variance_two}")
-        ax.set_xlabel("Component 1")
-        ax.set_ylabel("Component 2")
-        ax.grid(True)
-        # from mpl_toolkits.mplot3d import Axes3D
-        # pca = PCA(n_components=3)
-        # reduced_data = pca.fit_transform(df_pivot)
-        # fig = plt.figure(figsize=(10, 8))
-        # # Get the explained variance ratios for each component
-        # explained_variance_ratios = pca.explained_variance_ratio_
-        #
-        # # Calculate cumulative variance for the first two components
-        # cumulative_variance_two = sum(explained_variance_ratios[:2])
-        #
-        # ax = fig.add_subplot(111, projection='3d')
-        # ax.scatter(reduced_data[:, 0], reduced_data[:, 1], reduced_data[:, 2],
-        #            c=df_clusters.apply(lambda x: self.COLORS[x - 1]), edgecolors='w')
-        # # Annotate in 3D with offset to reduce overlap
-        # for i, name in enumerate(df_pivot.index):
-        #     # Use ax.text for 3D annotations with a slight offset
-        #     ax.text(
-        #         reduced_data[i, 0] ,  # Small offset in x
-        #         reduced_data[i, 1] ,  # Small offset in y
-        #         reduced_data[i, 2] ,  # Small offset in z
-        #         name,
-        #         fontsize=8,
-        #         alpha=0.7
-        #     )
-        # ax.set_title(f"\nExplained_variance ratios{explained_variance_ratios}\nCumulative variance of two components:{cumulative_variance_two}")
-        #
-        # # Set labels
-        # ax.set_xlabel('PC1')
-        # ax.set_ylabel('PC2')
-        # ax.set_zlabel('PC3')
-        col_plot.pyplot(fig)
-

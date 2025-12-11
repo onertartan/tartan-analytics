@@ -2,24 +2,14 @@
 # from pycirclize.parser import Matrix
 import branca.colormap as cm
 import folium
-from matplotlib.colors import to_hex
 from streamlit_folium import folium_static
 
-from modules.base_page import BasePage
 import locale
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
-import pydeck as pdk
-import extra_streamlit_components as stx
-import numpy as np
-from streamlit.components.v1 import html
-import networkx as nx
-from pyvis.network import Network
-import matplotlib.pyplot as plt
 
-import plotly.graph_objects as go
-from viz.bar_plotter import get_plotter
+from viz.plotters.bar_plotter import get_plotter
 
 locale.setlocale(locale.LC_ALL, 'tr_TR.utf8')
 

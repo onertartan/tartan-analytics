@@ -2,7 +2,6 @@
 from __future__ import annotations
 import abc
 from typing import Literal
-
 import pandas as pd
 import streamlit as st
 
@@ -151,10 +150,6 @@ class PandasPlotter(BarPlotter):
 
 
 # ------------- altair -------------
-import streamlit as st
-
-import streamlit as st
-
 
 class AltairPlotter(BarPlotter):
     ENGINE = "altair"

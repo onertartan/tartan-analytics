@@ -1,3 +1,4 @@
+from sklearn import preprocessing
 import os
 import time
 import numpy as np
@@ -27,8 +28,7 @@ class PageCommon(BasePage):
 
             tabs = [stx.TabBarItemData(id="map", title="Map/Race plot", description="")]
             if st.session_state["page_name"] in ["sex_age", "marital_status"]:
-                st.session_state["selected_tab"] = tabs.append(
-                    stx.TabBarItemData(id="pyramid", title="Pop. Pyramid", description=""))
+                tabs.append(stx.TabBarItemData(id="pyramid", title="Pop. Pyramid", description=""))
 
             #   tab_map, tab_pyramid= st.tabs(["Map", "Population pyramid"])
             st.session_state["selected_tab"] = stx.tab_bar(data=tabs, default="map")
@@ -50,40 +50,121 @@ class PageCommon(BasePage):
                     # Display a static image
                     st.image("images/colormaps.jpg")
 
-    def get_df_result(self,df_data, selected_features, geo_scale, years, give_total=True):
-        k_means = st.session_state["clustering_cb_" + st.session_state["page_name"]]
-        df_result = df_nom_result = self.get_df_year_and_features(df_data, "nominator", years, selected_features, geo_scale,
-                                                             not k_means)
+    def _apply_custom_css(self):
+        """Sayfa için gerekli CSS stillerini tek bir yerden yönetir."""
+        st.markdown("""
+            <style> 
+                .main > div {padding-left:1rem; padding-right:1rem; padding-top:4rem;}
+                [role=radiogroup] { gap: 0rem; }
+                [data-testid="stHorizontalBlock"] { align-items: top; }
+            </style>
+        """, unsafe_allow_html=True)
+    def _render_map_tab(self, df_data, cols_nom_denom, gdf_borders):
+        with st.form("submit_form"):
+            (col_show_results, col_animation) = st.columns(2)
+            show_results = col_show_results.form_submit_button("Show results")
+            if self.animation_available:
+                play_animation = col_animation.form_submit_button("Play animation")
+                col_animation.write("Animation Controls")
+                col_animation.slider("Animation Speed (seconds)", min_value=0.5, max_value=5., value=1., step=1.,
+                                     key="animation_speed")
+                col_animation.checkbox("Auto-play", value=True, key="auto_play")
+                if play_animation:
+                    st.session_state["animate"] = True
+                else:
+                    st.session_state["animate"] = False
 
-        if st.session_state["display_percentage"] and  not k_means:
+            # Run on first load OR when form is submitted
+            selected_features = self.get_selected_features(cols_nom_denom)
+            if show_results or (self.animation_available and play_animation):
+                #  st.session_state["animation_images_generated"] = False
+                # delete_temp_files()
+                col_plot, col_df = st.columns((4, 1), gap="small")
+                print("df_data : LOL", df_data["denominator"]["district"])
+                self.plot_main(col_plot, col_df, df_data, gdf_borders, selected_features,  [st.session_state["geo_scale"]])
+    def _render_clustering_tab(self, df_data, cols_nom_denom, geo_scale):
+        selected_features = self.get_selected_features(cols_nom_denom)
+        years_selected = sorted({st.session_state["year_1"], st.session_state["year_2"]})
+        df_result = self.get_df_result(df_data, selected_features, geo_scale, years_selected, give_total=True)
+        self.tab_clustering(df_result, df_data, years_selected, selected_features, geo_scale)
+
+
+
+    def render(self):
+        self._apply_custom_css()
+        st.session_state["geo_scale"] = self.top_row_cols[0].radio("Choose geographic scale",self.geo_scales).split()[0]
+        self.fun_extras() # for optional columns at the top row
+        cols_nom_denom = self.ui_basic_setup()
+        # get cached data
+        df_data = self.get_data()
+        geo_scale = "province" if st.session_state["geo_scale"]!="district" else "district"
+        gdf_borders = self.gdf[geo_scale]
+        # determine year interval
+        start_year = df_data["nominator"][geo_scale].index.get_level_values(0).min()
+        end_year = df_data["nominator"][geo_scale].index.get_level_values(0).max()
+        self.sidebar_controls(start_year, end_year)
+        #st.write("""<style>[data-testid="stHorizontalBlock"]{align-items: top;}</style>""", unsafe_allow_html=True)
+
+        tabs = [stx.TabBarItemData(id="tab_map", title="Map Plot", description="") ,
+                stx.TabBarItemData(id="tab_geo_clustering", title="Geographical Clustering", description="")]
+        tab_selected = stx.tab_bar(data=tabs, default="tab_map")
+        st.session_state["clustering_" + st.session_state["page_name"]] = (tab_selected == "tab_geo_clustering")
+        if tab_selected == "tab_map":
+            self._render_map_tab(df_data, cols_nom_denom, gdf_borders)
+        else:
+            self._render_clustering_tab(df_data, cols_nom_denom, geo_scale)
+
+    # Overriden method
+    def scale(self, df):
+        scaler_name = st.session_state.get("scaler_" + self.page_name, "MaxAbsScaler")
+        if scaler_name != "No scaling":
+            scaler_class = getattr(preprocessing, scaler_name)
+            scaler = scaler_class()
+            print("BEFORE SCALING11", scaler, df)
+            df_scaled = scaler.fit_transform(df)
+            print("AFTER SCALING11", df)
+            df = pd.DataFrame(df_scaled, index=df.index, columns=df.columns)
+        return df
+    # Overridden method
+    def gui_clustering_up_col1(self):
+        options = ["MaxAbsScaler", "MinMaxScaler", "StandardScaler", "No scaling"]
+        stored_value = st.session_state.get("scaler_" + self.page_name, options[0])
+        default_index = options.index(stored_value) if stored_value in options else 0
+        st.session_state["scaler_" + self.page_name] = st.radio("Select scaling option", options=options, index=default_index)
+
+    # Overriden method
+    def preprocess_clustering(self, df_result,df_data,years, selected_features, geo_scale):
+        numeric_cols = list(df_result.select_dtypes(include=['number']).columns)
+        df_pivot= df_result.loc[:, numeric_cols]
+        if st.session_state["display_percentage"]:
+            df_denom_result = self.get_df_year_and_features(df_data, "denominator", years, selected_features, geo_scale, give_total=True)
+            df_pivot = df_pivot.div(df_denom_result["result"], axis=0)  # .div(df_denom_result.droplevel(0,axis=0)["result"],axis=0)
+        df_pivot = df_pivot.groupby(level=1).sum()
+        df_pivot = self.scale(df_pivot)
+        return df_pivot
+    def get_df_result(self, df_data, selected_features, geo_scale, years, give_total=True):
+        clustering = st.session_state["clustering_" + st.session_state["page_name"]]
+        df_result = df_nom_result = self.get_df_year_and_features(df_data, "nominator", years, selected_features, geo_scale, not clustering)
+
+        if st.session_state["display_percentage"] and not clustering:
             # df_data_nom and df_data_denom is same for maritial_status, sex-age pages, but different for birth
-            df_denom_result = self.get_df_year_and_features(df_data, "denominator", years, selected_features, geo_scale,
-                                                            give_total=True)
+            df_denom_result = self.get_df_year_and_features(df_data, "denominator", years, selected_features, geo_scale, give_total=True)
             print("vcxz", df_result)
             print("çömn:", df_denom_result)  # df_denom_result.droplevel(0,axis=0))
-            # Calculate the percentagex
+            # Calculate the percentage
             df_result["result"] = df_nom_result["result"] / df_denom_result["result"]
-        if k_means:
-            numeric_cols = list(df_result.select_dtypes(include=['number']).columns)
 
-            if st.session_state["display_percentage"]:
-                df_denom_result = self.get_df_year_and_features(df_data, "denominator", years, selected_features,
-                                                                geo_scale,
-                                                                give_total=True)
-                print("***777***",df_denom_result)
-                df_result.loc[:, numeric_cols] = df_result.loc[:, numeric_cols].div(df_denom_result["result"],
-                                                                    axis=0)  # .div(df_denom_result.droplevel(0,axis=0)["result"],axis=0)
-            n_clusters = st.session_state["n_clusters_" + st.session_state["page_name"]]
-            k_means = KMeans(n_clusters=n_clusters, random_state=42, init='k-means++', n_init=50).fit(self.scale(df_result.loc[:, numeric_cols]))
-            df_result["clusters"] = k_means.labels_
+           # n_clusters = st.session_state["n_clusters_" + st.session_state["page_name"]]
+            #k_means = KMeans(n_clusters=n_clusters, random_state=42, init='k-means++', n_init=50).fit(self.scale(df_result.loc[:, numeric_cols]))
+            #df_result["clusters"] = k_means.labels_
 
-            color_map = plt.get_cmap('tab20')  # tab20 has 20 distinct colors
-            df_result["color"] = df_result["clusters"].apply(lambda x: color_map(x))
-            df_result["clusters"] = + 1 # +1 for displaying clusters to use from 1 not 0
+            #color_map = plt.get_cmap('tab20')  # tab20 has 20 distinct colors
+            #df_result["color"] = df_result["clusters"].apply(lambda x: color_map(x))
+            #df_result["clusters"] +=  1 # +1 for displaying clusters to use from 1 not 0
             # keep descriptive(region, province, code) and cluster,color columns(drop other e.g. 5-9,10-14)
-            non_numeric_cols = df_result.select_dtypes(exclude=['number']).columns.tolist() + ["clusters"]
-            df_result = df_result.loc[:, non_numeric_cols]
-
+            #non_numeric_cols = df_result.select_dtypes(exclude=['number']).columns.tolist() + ["clusters"]
+            #df_result = df_result.loc[:, non_numeric_cols]
+          #  df_result = df_result.loc[:, numeric_cols]
 
         print("SONUÇ:", df_result.head())
         # if not k_means:
@@ -112,8 +193,7 @@ class PageCommon(BasePage):
         df.columns = new_columns
         return df
 
-    def get_df_year_and_features(self, df_data, nom_denom_selection, year, selected_features_dict, geo_scale,
-                                 give_total=True):
+    def get_df_year_and_features(self, df_data, nom_denom_selection, year, selected_features_dict, geo_scale, give_total=True):
         df_codes = pd.read_csv("data/preprocessed/region_codes.csv", index_col=0)
         print("YYY", year, "df_codesçç", df_codes.head(), "geo_scale", geo_scale)
         if "district" in geo_scale:
@@ -179,7 +259,7 @@ class PageCommon(BasePage):
     def get_df_change(self, df_result):
         # display_change: Show the change between end and start years in the third figure
         if st.session_state["year_1"] != st.session_state["year_2"]:
-            if st.session_state["clustering_cb_" + st.session_state["page_name"]]:
+            if st.session_state["clustering_" + st.session_state["page_name"]]:
                 print("TTTT:", df_result.select_dtypes(include=['number']).loc[st.session_state["year_1"]].index)
                 df1, df2 = df_result.loc[st.session_state["year_1"]], df_result.loc[st.session_state["year_2"]]
                 df1, df2 = df1.align(df2, join="inner", axis=1)  # Align columns
@@ -228,8 +308,7 @@ class PageCommon(BasePage):
                     print("*959*",df_result)
                 else:  # In the next step plotter will generate images according to df_result for A RANGE OF YEARS
                     self.delete_temp_files()# 22 NİSAN 2025 ÖNCE KLASÖRÜ TEMİZLE
-                    years_selected = list(
-                        range(st.session_state["slider_year_2"][0], st.session_state["slider_year_2"][1] + 1))
+                    years_selected = list( range(st.session_state["slider_year_2"][0], st.session_state["slider_year_2"][1] + 1))
                     df_result = self.get_df_result(df_data, selected_features, geo_scale, years_selected)
 
                 fig, axs = self.figure_setup((st.session_state["year_1"] != st.session_state["year_2"]))
@@ -266,13 +345,10 @@ class PageCommon(BasePage):
                 plotter_func(gdf_result, title, geo_scale, ax)  # plot map or save figure for each year if the state of animate is True
                 col_df.markdown('</div>', unsafe_allow_html=True)
 
-            if not st.session_state["animate"] and not st.session_state["clustering_cb_" + st.session_state["page_name"]]:
+            if not st.session_state["animate"] and not st.session_state["clustering_" + st.session_state["page_name"]]:
                 # display dataframe on the right side if not in animation mode
                 col_df.dataframe(df_result.loc[year].sort_values(by="result", ascending=False))
-            elif st.session_state["elbow"]:  # if k-means and elbow selected
-                print("**0**",st.session_state["clustering_cb_" + st.session_state["page_name"]])
-                print("-----",df_result.iloc[:, :-5])
-                col_df.pyplot(self.optimal_k_analysis())
+
 
         if st.session_state["animate"]:
             # generated and saved image for each year calling plotterFunction in the for loop above
@@ -289,31 +365,27 @@ class PageCommon(BasePage):
                 title = f"{start_word} between years {st.session_state.year_1} and {st.session_state.year_2}"
                 plotter_func(gdf_result, title, geo_scale, axs[2, 0] if axs is not None else None)
             # if not k-means clustering show result col
-            if not st.session_state["clustering_cb_" + st.session_state["page_name"]]:
+            if not st.session_state["clustering_" + st.session_state["page_name"]]:
 
                 col_df.markdown('<div class="dataframe-margin">', unsafe_allow_html=True)
                 col_df.dataframe(df_change.sort_values(by="result", ascending=False))
                 col_df.markdown('</div>', unsafe_allow_html=True)
             elif st.session_state["elbow"]:  # if k-means and elbow selected
                 print("--x-")
-                fig, _ = self.optimal_k_analysis(df_result.iloc[:, :-5])
+                random_states = range(st.session_state["number_of_seeds"])  # 50 random seeds
+                fig, _ = self.optimal_k_analysis(df_result.iloc[:, :-5], random_states, k_values= list(range(2, 15)))
                 col_df.pyplot(fig)
         if fig and not st.session_state["animate"]:
             col_plot.pyplot(fig)
 
 
     def plot_map_matplotlib(self, gdf_result, title, geo_scale, ax):
-        print("877877",gdf_result)
-        print("998998",gdf_result.columns)
-
         ax.cla()
-
-        print("ömnb2", ax.get_legend())
         norm = None
-        if not st.session_state["clustering_cb_" + st.session_state["page_name"]] and st.session_state[
+        if not st.session_state["clustering_" + st.session_state["page_name"]] and st.session_state[
             "display_percentage"] and gdf_result["result"].min() < 0 and gdf_result["result"].max() > 0:
             norm = colors.TwoSlopeNorm(vmin=gdf_result["result"].min(), vcenter=0, vmax=gdf_result["result"].max())
-        if st.session_state["clustering_cb_" + st.session_state["page_name"]]:
+        if st.session_state["clustering_" + st.session_state["page_name"]]:
 
             gdf_result.plot(ax=ax, color=gdf_result["color"], edgecolor="black",
                             linewidth=.2, norm=norm,  # legend=True, legend_kwds={"shrink": .6},
@@ -363,7 +435,7 @@ class PageCommon(BasePage):
             "style_kwds": dict(color="black", line_width=.01),
         }
         # Determine if we're doing clustering
-        is_clustering = st.session_state["clustering_cb_" + st.session_state["page_name"]]
+        is_clustering = st.session_state["clustering_" + st.session_state["page_name"]]
         # If custom colors are available in the dataframe
         if "color" in gdf_result.columns:
             gdf_result["color"] = gdf_result["color"].apply(lambda x: to_hex(x))
@@ -422,7 +494,6 @@ class PageCommon(BasePage):
         try:
             # List all files in the folder
             files = os.listdir(folder_path)
-
             # Delete each file
             for file in files:
                 file_path = os.path.join(folder_path, file)
@@ -744,3 +815,4 @@ class PageCommon(BasePage):
 
         # Render the HTML
         components.html(html, height=450)
+

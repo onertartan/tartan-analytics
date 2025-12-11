@@ -16,7 +16,7 @@ class PageBabyNames(PageNames):
         # file_path = "data/preprocessed/population/most_common_baby_names_female.csv"
         # df_data["female"] = pd.read_csv(file_path, index_col=[0, 1])
         file_path = "data/preprocessed/population/names_baby.csv"
-        df_data = pd.read_csv(file_path, index_col=[0, 1])
+        df_data = {"name": pd.read_csv(file_path, index_col=[0, 1])}
         return df_data
 
 
