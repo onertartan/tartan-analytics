@@ -1,4 +1,6 @@
 from adjustText import adjust_text
+
+from clustering.scaling import scale
 from modules.base_page import BasePage
 import pandas as pd
 import geopandas as gpd
@@ -9,8 +11,6 @@ import plotly.express as px
 from matplotlib.patches import Patch
 import extra_streamlit_components as stx
 import altair as alt
-from sklearn.preprocessing import normalize
-
 locale.setlocale(locale.LC_ALL, 'tr_TR.utf8')
 
 
@@ -26,35 +26,9 @@ class PageNames(BasePage):
         self.gdf_clusters = df.copy()
         self.gdf_clusters.index = new_index
 
-    # Overridden method
-    def scale(self, df, total_counts):
-        scaler_method = st.session_state.get("scaler_" + self.page_name, "Share of Top 30 (L1 Norm)")
-        if "L1" in scaler_method:  # == "Share of Top 30 (L1 Norm)" in tab_geo_clustering or in name_clustering
-            df_scaled = normalize(df, axis=1, norm='l1')
-        elif scaler_method == "Share of Total Births":
-            # 1. Clean the total_counts series
-            # This groups by the Index Name (Province) and takes the first value found.
-            # It reduces the duplicates down to exactly  81 unique provinces.
-            total_counts_unique = total_counts.groupby(level=0).first()
-            # 2. Perform the division
-            # axis=0 ensures we divide row-by-row (matching the province index)
-            df_scaled = df.div(total_counts_unique, axis=0)
-        elif "L2" in scaler_method:
-            df_scaled = normalize(df, axis=1, norm='l2')
-        #elif: TF-IDF
-        df = pd.DataFrame(df_scaled, index=df.index, columns=df.columns)
-        return df
+
     # GUI
     # Overridden method
-    def gui_clustering_up_col1(self):
-        # First column of upper part in clustering showing scaling options
-        options = ["Share of Top 30 (L1 Norm)",  # Denominator = Sum of the 30 columns
-                "Share of Total Births",  # Denominator = Total births in province (External data)
-                "TF-IDF",  # Best for emphasizing unique/rare names
-                "L2 Normalization" ] # Best for pure cosine pattern matching
-        stored_value = st.session_state.get("scaler_" + self.page_name, options[0])
-        default_index = options.index(stored_value) if stored_value in options else 0
-        st.session_state["scaler_" + self.page_name] = st.radio("Select scaling option", options=options, index=default_index)
 
     # OVERRIDEN METHOD
     def preprocess_clustering(self, df):
@@ -92,7 +66,8 @@ class PageNames(BasePage):
         df_pivot = pd.pivot_table(df_year, values='count', index=df_year.index, columns=['name'], aggfunc=lambda x: x,
                                   dropna=False, fill_value=0)
         total_counts = df_year.loc[:, "total_count"]
-        df_pivot = self.scale(df_pivot, total_counts)
+        scaler_method = st.session_state.get("scaler_" + self.page_name, "Share of Top 30 (L1 Norm)")
+        df_pivot = scale(scaler_method, df_pivot, total_counts)
         if st.session_state["selected_tab_" + self.page_name] == "tab_name_clustering":  # transpose_for_name_clustering:
             df_pivot = df_pivot.T
         return df_pivot

@@ -18,6 +18,7 @@ from modules.base_page import BasePage
 import plotly.graph_objects as go
 import plotly.express as px
 import extra_streamlit_components as stx
+import streamlit as st
 
 class PageCommon(BasePage):
 
@@ -88,8 +89,6 @@ class PageCommon(BasePage):
         df_result = self.get_df_result(df_data, selected_features, geo_scale, years_selected, give_total=True)
         self.tab_clustering(df_result, df_data, years_selected, selected_features, geo_scale)
 
-
-
     def render(self):
         self._apply_custom_css()
         st.session_state["geo_scale"] = self.top_row_cols[0].radio("Choose geographic scale",self.geo_scales).split()[0]
@@ -102,29 +101,21 @@ class PageCommon(BasePage):
         # determine year interval
         start_year = df_data["nominator"][geo_scale].index.get_level_values(0).min()
         end_year = df_data["nominator"][geo_scale].index.get_level_values(0).max()
-        self.sidebar_controls(start_year, end_year)
-        #st.write("""<style>[data-testid="stHorizontalBlock"]{align-items: top;}</style>""", unsafe_allow_html=True)
+        self.sidebar_controls(start_year, end_year)# File: viz/gui_helpers/clustering_helpers.py
+
 
         tabs = [stx.TabBarItemData(id="tab_map", title="Map Plot", description="") ,
                 stx.TabBarItemData(id="tab_geo_clustering", title="Geographical Clustering", description="")]
         tab_selected = stx.tab_bar(data=tabs, default="tab_map")
+        st.session_state["selected_tab_" + self.page_name]=tab_selected
+
         st.session_state["clustering_" + st.session_state["page_name"]] = (tab_selected == "tab_geo_clustering")
         if tab_selected == "tab_map":
             self._render_map_tab(df_data, cols_nom_denom, gdf_borders)
         else:
             self._render_clustering_tab(df_data, cols_nom_denom, geo_scale)
 
-    # Overriden method
-    def scale(self, df):
-        scaler_name = st.session_state.get("scaler_" + self.page_name, "MaxAbsScaler")
-        if scaler_name != "No scaling":
-            scaler_class = getattr(preprocessing, scaler_name)
-            scaler = scaler_class()
-            print("BEFORE SCALING11", scaler, df)
-            df_scaled = scaler.fit_transform(df)
-            print("AFTER SCALING11", df)
-            df = pd.DataFrame(df_scaled, index=df.index, columns=df.columns)
-        return df
+
     # Overridden method
     def gui_clustering_up_col1(self):
         options = ["MaxAbsScaler", "MinMaxScaler", "StandardScaler", "No scaling"]
@@ -140,7 +131,7 @@ class PageCommon(BasePage):
             df_denom_result = self.get_df_year_and_features(df_data, "denominator", years, selected_features, geo_scale, give_total=True)
             df_pivot = df_pivot.div(df_denom_result["result"], axis=0)  # .div(df_denom_result.droplevel(0,axis=0)["result"],axis=0)
         df_pivot = df_pivot.groupby(level=1).sum()
-        df_pivot = self.scale(df_pivot)
+        #df_pivot = scale(df_pivot)
         return df_pivot
     def get_df_result(self, df_data, selected_features, geo_scale, years, give_total=True):
         clustering = st.session_state["clustering_" + st.session_state["page_name"]]
