@@ -1,9 +1,11 @@
-from matplotlib.patches import Patch
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import pandas as pd
 import geopandas as gpd
 import streamlit as st
+
+from viz.color_mapping import create_cluster_color_mapping
+
 
 class GeoClusterPlotter:
     def __init__(self, cluster_color_mapping_dict, ha_positions, va_positions):
@@ -48,8 +50,8 @@ class GeoClusterPlotter:
         fig, ax = plt.subplots(1, 1, figsize=(10, 6))
 
         # 1. Create Colors
-        color_map = self.create_color_mapping(gdf_clusters, n_clusters)
-
+      ##  color_map = self.create_color_mapping(gdf_clusters, n_clusters)
+        color_map = create_cluster_color_mapping(gdf_clusters, self.cluster_color_mapping_dict)
 
         # 2. Map colors and Plot
         # gdf_clusters = gdf_clusters.copy()

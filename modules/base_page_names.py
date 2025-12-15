@@ -11,6 +11,10 @@ import plotly.express as px
 from matplotlib.patches import Patch
 import extra_streamlit_components as stx
 import altair as alt
+from viz.config import COLORS, CLUSTER_COLOR_MAPPING, VA_POSITIONS, HA_POSITIONS
+
+from viz.color_mapping import create_cluster_color_mapping
+
 locale.setlocale(locale.LC_ALL, 'tr_TR.utf8')
 
 
@@ -26,11 +30,6 @@ class PageNames(BasePage):
         self.gdf_clusters = df.copy()
         self.gdf_clusters.index = new_index
 
-
-    # GUI
-    # Overridden method
-
-    # OVERRIDEN METHOD
     def preprocess_clustering(self, df):
         """"
         returns:df_pivot
@@ -175,7 +174,7 @@ class PageNames(BasePage):
             st.session_state[widget_key] = initial_val
 
         # 2. Render Widget
-        gender_selection = col_1.radio(  "Select Gender", ["Both", "Male", "Female"], key=widget_key,label_visibility="collapsed",disabled=disable )
+        gender_selection = col_1.radio("Select Gender", ["Both", "Male", "Female"], key=widget_key,label_visibility="collapsed",disabled=disable )
         # 3. Update the Data List based on the Widget's new value
         if gender_selection == "Male":
             st.session_state[gender_list_state_key] = ["male"]
@@ -243,7 +242,6 @@ class PageNames(BasePage):
             self.tab_2_map(df)
         elif tab_selected in ["rank_bump", "rank_bar", "custom_bar"]:  # Main Tab-2: Tab 3-4-5
             self.tab_3_4_5(df, col_plot, col_df, col_2, col_3, col_4)
-
 
     def tab_2_map(self, df):
         # Expression depending on page
@@ -357,6 +355,7 @@ class PageNames(BasePage):
     # Plot methods of three tabs
 
     def plot_map(self, col_plot, col_df, df, n, display_option):
+        st.session_state["visualization_option"] = "matplotlib"
         gdf_borders = self.gdf["province"]
         title, names_or_surnames = self.create_title_for_plot(n)
         df_results = []
@@ -382,6 +381,7 @@ class PageNames(BasePage):
                     names_or_surnames_statement = names_or_surnames[:-1] + " is" if len(names_from_multi_select) == 1 else names_or_surnames + " are"
                     if df_result.empty:
                         st.write(f"Selected {names_or_surnames_statement} are not in the top {n} for the year {year}")
+
                     df_result_not_null = gdf_borders.merge(df_result, left_on="province", right_on="province")
                     df_result_not_null = df_result_not_null.groupby(["geometry", "province"])["name"].apply(lambda x: "%s" % '\n '.join(x)).to_frame().reset_index()
                     df_results.append(df_result_not_null)
@@ -417,19 +417,18 @@ class PageNames(BasePage):
         # Tab-1.1: Plots nth most common names on map
         # Create a color map
         df_result["clusters"] = df_result["name"].factorize()[0]
-        color_map = self.create_color_mapping(df_result.set_index("name"), df_result["name"].nunique())
+        color_map = create_cluster_color_mapping(df_result.set_index("name"), CLUSTER_COLOR_MAPPING)
         # Assign colors to each row in the GeoDataFrame
+        print("LŞL",color_map)
         df_result['color'] = df_result['clusters'].map(color_map).fillna("gray") #-->GEREK YOK mu
-        print(df_result)
         # After groupby df_result becomes Pandas dataframe, we have to convert it to GeoPandas dataframe
         df_result = gpd.GeoDataFrame(df_result, geometry='geometry')
         # Plotting
         df_result.plot(ax=ax, color=df_result['color'], legend=True,  edgecolor="black", linewidth=.2)
         bbox = dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="none", alpha=0.6)
-        ha_positions, va_positions = self.HA_POSITIONS, self.VA_POSITIONS
         df_result.apply(lambda x: ax.annotate(
             text=x["province"].upper() + "\n" + x['name'].title() if isinstance(x['name'], str) else x["province"],
-            size=4, xy=x.geometry.centroid.coords[0], ha=ha_positions.get(x["province"], "center"), va=va_positions.get(x["province"], "center"), bbox=bbox), axis=1)
+            size=4, xy=x.geometry.centroid.coords[0], ha=HA_POSITIONS.get(x["province"], "center"), va=VA_POSITIONS.get(x["province"], "center"), bbox=bbox), axis=1)
         ax.axis("off")
         ax.margins(x=0)
         # # Add a table (positioned like a legend)

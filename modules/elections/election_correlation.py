@@ -7,6 +7,7 @@ import  streamlit as st
 import pandas as pd
 import seaborn as sns
 import matplotlib.colors as mcolors
+from viz.gui_helpers.gui_common_pages_basic_setup import gui_basic_setup
 
 
 class ElectionCorrelation(PageCommon):
@@ -14,22 +15,21 @@ class ElectionCorrelation(PageCommon):
     features = {"nominator": ["sex", "education", "age"],"denominator":["Party/Alliance"]}
 
     checkbox_group = {"age": Checkbox_Group(page_name, "age", 2,  ["all"] + ["18-24"] + [f"{i}-{i + 4}" for i in range(25, 75, 5)] + ["75+"]),
-                      "sex":Checkbox_Group(page_name,"sex",1, ["all","male", "female"]),
-                      "education": Checkbox_Group(page_name,"education",2,
+                      "sex": Checkbox_Group(page_name, "sex", 1, ["all","male", "female"]),
+                      "education": Checkbox_Group(page_name, "education", 2,
                                                   ["all"]+list(pd.read_csv("data/preprocessed/elections/df_edu.csv", index_col=[0, 1, 2], header=[0, 1, 2]).columns.get_level_values(1).unique() ))}
            # ["all",'illiterate', 'literate but did not complete any school', 'primary school', 'elementary school', 'secondary school or equivalent',
           #   'high school or equivalent', 'pre-license or bachelor degree', 'master degree', 'phd', 'unknown'])    }
-    col_weights = [1, 4, 2, .1, 6.8,.1,.1]
+    col_weights = [1, 4, 2, .1, 6.8, .1, .1]
 
-    @classmethod
-    def fun_extras(cls):
+
+    def fun_extras(self):
         st.radio("Options for selection of primary parameters for correlation calculation", ["Aggregate", "Education", "Age"],
                   key="correlation_selection")
 
-
-    @classmethod
+    @staticmethod  # Add this
     @st.cache_data
-    def get_data(cls):
+    def get_data(geo_scale=None):
         df_sex_age_edu = pd.read_csv("data/preprocessed/elections/df_edu.csv", index_col=[0, 1, 2], header=[0, 1, 2])
         df_election = pd.read_csv("data/preprocessed/elections/df_election.csv", index_col=[0, 1, 2])
 
@@ -38,8 +38,8 @@ class ElectionCorrelation(PageCommon):
        # df_data = {"denominator": df_edu, "nominator": df_election}
         return df_sex_age_edu, df_election
 
-    @classmethod
-    def sidebar_controls_basic_setup(cls,*args):
+
+    def sidebar_controls_basic_setup(self,*args):
         with (st.sidebar):
             st.header('Select options')
             if "selected_election_year" not in st.session_state:
@@ -47,16 +47,16 @@ class ElectionCorrelation(PageCommon):
             year = st.radio("Select year", options=[2018,2023], key="election", index=0)
         return year
 
-    @classmethod
-    def render(cls):
-        df_sex_age_edu, df_election = cls.get_data()
-        cls.fun_extras()
-        cols_nom_denom = cls.ui_basic_setup()
-        year = cls.sidebar_controls_basic_setup()
+
+    def render(self):
+        df_sex_age_edu, df_election = self.get_data()
+        self.fun_extras()
+        cols_nom_denom = gui_basic_setup(self.col_weights)
+        year = self.sidebar_controls_basic_setup()
 
         basic_keys = ["all"]+df_election.loc[year].dropna(axis=1).columns[5:].tolist() # Parties start from index 5
-        cls.checkbox_group["Party/Alliance"] = Checkbox_Group(cls.page_name, "Party/Alliance", 4, basic_keys)
-        selected_features_dict = cls.get_selected_features(cols_nom_denom)
+        self.checkbox_group["Party/Alliance"] = Checkbox_Group(self.page_name, "Party/Alliance", 4, basic_keys)
+        selected_features_dict = self.get_selected_features(cols_nom_denom)
         print("AALLL:",selected_features_dict)
         # add checkbox_group with the "Party/Alliance" according to the selected year --> SELECT PARTIES  NOT NAN AT THAT YEAR. hint:  use st.session_state["year_1"],
         #Combine features
@@ -124,7 +124,7 @@ class ElectionCorrelation(PageCommon):
         cols_hm[1].pyplot(fig)
 
 
-ElectionCorrelation.run()
+ElectionCorrelation().run()
 
 
 def custom_correlation_heatmap(correlations, ax=None, vmin=-0.38, vmax=0.38):

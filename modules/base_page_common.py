@@ -19,6 +19,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import extra_streamlit_components as stx
 import streamlit as st
+from viz.gui_helpers.gui_common_pages_basic_setup import gui_basic_setup
 
 class PageCommon(BasePage):
 
@@ -93,7 +94,8 @@ class PageCommon(BasePage):
         self._apply_custom_css()
         st.session_state["geo_scale"] = self.top_row_cols[0].radio("Choose geographic scale",self.geo_scales).split()[0]
         self.fun_extras() # for optional columns at the top row
-        cols_nom_denom = self.ui_basic_setup()
+        cols_nom_denom = gui_basic_setup(self.col_weights)
+        #cols_nom_denom = self.ui_basic_setup()
         # get cached data
         df_data = self.get_data()
         geo_scale = "province" if st.session_state["geo_scale"]!="district" else "district"
@@ -115,13 +117,6 @@ class PageCommon(BasePage):
         else:
             self._render_clustering_tab(df_data, cols_nom_denom, geo_scale)
 
-
-    # Overridden method
-    def gui_clustering_up_col1(self):
-        options = ["MaxAbsScaler", "MinMaxScaler", "StandardScaler", "No scaling"]
-        stored_value = st.session_state.get("scaler_" + self.page_name, options[0])
-        default_index = options.index(stored_value) if stored_value in options else 0
-        st.session_state["scaler_" + self.page_name] = st.radio("Select scaling option", options=options, index=default_index)
 
     # Overriden method
     def preprocess_clustering(self, df_result,df_data,years, selected_features, geo_scale):
@@ -227,7 +222,6 @@ class PageCommon(BasePage):
         if geo_scale != ["district"]:
             print("before join shape df",df.shape,"len df_codes",len(df_codes))
             df = df.join(df_codes, on="province")  # left_index=True  DEĞİŞTİRİLDİ left_on="province" yapıldı
-            print("\nÜPÜ:\n", df.head())
             print("after  join shape df",df.shape,"len df_codes",len(df_codes))
             print(df.columns)
             print(len(df.columns) != len(set(df.columns)))  # True if duplicates exist
@@ -244,7 +238,6 @@ class PageCommon(BasePage):
             agg_funs.update(
                 {"province": lambda x: ",".join(x.astype(str)), "ibbs1 code": 'first', "sub-region": lambda x: ",".join(x.unique().astype(str))})
             df = df.reset_index().groupby(["year", "region"]).agg(agg_funs)
-
         return df
 
     def get_df_change(self, df_result):
@@ -273,9 +266,7 @@ class PageCommon(BasePage):
         return df_change
 
     def plot_main(self,col_plot, col_df, df_data, gdf_borders, selected_features, geo_scale):
-        print("123456", geo_scale, df_data["denominator"]["district"])
         plotter = getattr(self, "plot_"+ st.session_state["selected_tab"] + "_"+st.session_state["visualization_option"])
-        print("435435",plotter)
 
         if geo_scale == ["district"]:
             geo_scale = geo_scale + ["province"]  # geo_scale = ["province", "district"]
@@ -294,17 +285,14 @@ class PageCommon(BasePage):
                     # st.session_state["animation_images_generated"] = False
                     # delete_temp_files()
                     years_selected = sorted({st.session_state["year_1"], st.session_state["year_2"]})
-                    print("*123*", df_data)
                     df_result = self.get_df_result(df_data, selected_features, geo_scale, years_selected)
-                    print("*959*",df_result)
                 else:  # In the next step plotter will generate images according to df_result for A RANGE OF YEARS
                     self.delete_temp_files()# 22 NİSAN 2025 ÖNCE KLASÖRÜ TEMİZLE
                     years_selected = list( range(st.session_state["slider_year_2"][0], st.session_state["slider_year_2"][1] + 1))
                     df_result = self.get_df_result(df_data, selected_features, geo_scale, years_selected)
 
                 fig, axs = self.figure_setup((st.session_state["year_1"] != st.session_state["year_2"]))
-                self.plot_map_generic(col_plot, col_df, gdf_borders, df_result, geo_scale, plotter,
-                                     years_selected, fig, axs)
+                self.plot_map_generic(col_plot, col_df, gdf_borders, df_result, geo_scale, plotter, years_selected, fig, axs)
 
                 if st.session_state["animate"]:
                     self.animate(col_plot)
@@ -357,7 +345,6 @@ class PageCommon(BasePage):
                 plotter_func(gdf_result, title, geo_scale, axs[2, 0] if axs is not None else None)
             # if not k-means clustering show result col
             if not st.session_state["clustering_" + st.session_state["page_name"]]:
-
                 col_df.markdown('<div class="dataframe-margin">', unsafe_allow_html=True)
                 col_df.dataframe(df_change.sort_values(by="result", ascending=False))
                 col_df.markdown('</div>', unsafe_allow_html=True)

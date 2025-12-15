@@ -26,16 +26,12 @@ if "colormap_list" not in st.session_state:
 if "animate" not in st.session_state:
     st.session_state["animate"] = False
 
-if "elbow" not in st.session_state:
-    st.session_state["elbow"] = False
     # Combine them into a single list
 # current_page is also a Page object you can .run()
 
 if "geo_scale" not in st.session_state:
     st.session_state["geo_scale"] = 'province (ibbs3)'
 
-# Load geo data using the static method
-BasePage.load_geo_data()
 
 current_page = st.navigation({
     "Population": [

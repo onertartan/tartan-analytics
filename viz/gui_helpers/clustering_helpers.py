@@ -1,5 +1,5 @@
 import streamlit as st
-def gui_clustering_kmeans_gmm_common( key):
+def gui_clustering_kmeans_gmm_common(key):
     # CHANGED: Removed direct assignment to st.session_state["n_clusters_" + self.page_name]
     # We just render the widget. Streamlit stores the value in st.session_state["n_clusters_" + key] automatically.
     st.number_input("Number of clusters / components", 2, 15, 6, key="n_clusters" + key)

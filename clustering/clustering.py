@@ -1,18 +1,15 @@
-from typing import Tuple, List
+from typing import List
 import pandas as pd
 from scipy.cluster.hierarchy import linkage, fcluster
-from sklearn.metrics import pairwise_distances_argmin_min
-from .kmeans import KMeansEngine
-from .gmm import GMMEngine
-from sklearn.cluster import KMeans, DBSCAN
+from clustering.models.kmeans import KMeansEngine
+from clustering.models.gmm import GMMEngine
+from sklearn.cluster import KMeans
 import numpy as np
-from sklearn.decomposition import PCA
 from sklearn.metrics import (
-    silhouette_score, calinski_harabasz_score, adjusted_rand_score,
+    silhouette_score, adjusted_rand_score,
     davies_bouldin_score, pairwise_distances_argmin_min
 )
-from sklearn.mixture import GaussianMixture # GMM için eklendi
-from kneed import KneeLocator
+
 
 class Clustering:
     """
@@ -20,7 +17,7 @@ class Clustering:
     Creates the correct engine and executes fit().
     """
     @staticmethod
-    def get_engine(algo: str):
+    def get_engine_class(algo: str):
         mapping = {
             "kmeans": KMeansEngine,
             "gmm": GMMEngine,
@@ -29,21 +26,45 @@ class Clustering:
         if algo not in mapping:
             raise ValueError(f"Unsupported algorithm: {algo}")
         return mapping[algo]
-    @staticmethod
-    def run_clustering(df: pd.DataFrame, algorithm: str, **kwargs) -> pd.DataFrame:
-        engine = Clustering.get_engine(algorithm)(**kwargs)
-        df_out = engine.fit(df)
-        return df_out
 
     @staticmethod
-    def get_representatives(df: pd,algorithm: str) -> List[str]:
-        mapping = {
-            "kmeans": KMeansEngine,
-            "gmm": GMMEngine,
-            #  "dbscan": DBSCANEngine
-        }
-        engine_class = Clustering.get_engine(algorithm)
-        return engine_class.get_representatives(df)
+    def get_representatives(df: pd.DataFrame) -> List[str]:
+        """
+        Calculates representatives based on the 'clusters' column in the dataframe.
+        No need for class instance (self) parameters.
+        IMPORTANT : LAST COLUMN OF df AFTER CALLING fit METHOD ABOVE BECOMES CLUSTER COLUMN
+        this is the reason of using df.iloc[:-1]
+        """
+        calculated_centers = df.groupby("clusters").mean()
+        # En yakın noktaları bulma
+        # Hesapladığımız merkezleri kullanarak en yakın noktaları (representatives) buluyoruz.
+        # calculated_centers DataFrame olduğu için .values ile numpy array'e çevirmemiz gerekebilir
+        # (ancak pairwise_distances genelde DF de kabul eder).
+        closest_indices, _ = pairwise_distances_argmin_min(calculated_centers.values, df.iloc[:,:-1])
+        representatives = df.index[closest_indices].tolist()
+        return representatives
+   # @staticmethod
+   # def run_clustering(df: pd.DataFrame, algorithm: str, **kwargs) -> pd.DataFrame:
+        """
+        Run clustering and return labelled data
+        Parameters
+        ----------
+        df : features only (no 'clusters' column)
+        algorithm : 'kmeans' | 'gmm' | 'dbscan'
+        kwargs : engine-specific hyper-parameters
+            kmeans : n_clusters, n_init, random_state
+            gmm    : n_clusters, n_init, random_state, covariance_type
+            dbscan : eps, min_samples, metric
+        """
+      #  engine = Clustering.get_engine(algorithm)(**kwargs)
+      #  df_out = engine.fit(df)
+      #  return df_out
+
+   # @staticmethod
+   # def get_representatives(df: pd,algorithm: str) -> List[str]:
+   #     engine_class = Clustering.get_engine(algorithm)
+   #     return engine_class.get_representatives(df)
+
 
     @staticmethod
     def recompute_centroid_provinces(df_pivot):
@@ -53,6 +74,31 @@ class Clustering:
         centroids = df_pivot.groupby('clusters')[features].mean()
         closest_indices, _ = pairwise_distances_argmin_min(centroids, df_pivot[features])
         return closest_indices
+
+    @staticmethod
+    def update_geo_cluster_centers(gdf_dict, geo_scale, df_pivot, closest_indices):
+        """
+        Attach cluster labels to geodata and compute centroids for display.
+        Args:
+            gdf_dict: Dictionary containing geodataframes (e.g., {'province': gdf...})
+            geo_scale: Geographical scale key (province etc. ) to select the appropriate GeoDataFrame
+            df_pivot: DataFrame containing the 'clusters' column
+            closest_indices: List of indices representing cluster centers
+
+        Returns:
+            gdf_clusters: GeoDataFrame merged with clusters
+            gdf_centroids: GeoDataFrame of the cluster representatives
+        """
+        # Prepare the base GeoDataFrame
+        # Note: We assume gdf_dict has keys matching the values in st.session_state["geo_scale"]
+        # or that mapping logic handles it. Based on BasePage logic:
+        gdf_clusters = gdf_dict[geo_scale].set_index(geo_scale)
+        # Merge with clusters
+        gdf_clusters = gdf_clusters.merge(df_pivot["clusters"], left_index=True, right_index=True)
+        # Compute centroids for representatives
+        gdf_centroids = gdf_clusters[gdf_clusters.index.isin(closest_indices)].copy()
+        gdf_centroids["centroid"] = gdf_centroids.geometry.centroid
+        return gdf_clusters, gdf_centroids
 
     @staticmethod
     def optimal_k_analysis(df, random_states=1, n_init=1, k_values=range(2, 15)):
@@ -104,7 +150,6 @@ class Clustering:
         # Compute Consensus Clustering Stability Metric (Average Consensus Index)
         # Initialize storage for consensus labels
 
-
         consensus_labels_all = {k: None for k in k_values}  # Dictionary to store consensus labels for each k
         consensus_indices = []
         for k in k_values:
@@ -130,3 +175,28 @@ class Clustering:
             consensus_labels = fcluster(Z, t=k, criterion='maxclust')
             consensus_labels_all[k] = consensus_labels  # S
         return metrics_all,metrics_mean,ari_mean,ari_std,consensus_indices,consensus_labels_all
+
+    # Not used
+    @staticmethod
+    def remap_clusters(labels: pd.Series, priority: List[str]) -> pd.Series:
+        """
+        labels:   pd.Series indexed by province name, values are original kmeans.labels_
+        priority: list of province names in the order you want new labels assigned.
+
+        Returns a new pd.Series of same index with relabeled cluster IDs 0,1,2…
+        """
+        new_label_map = {}
+        next_new = 0
+        for prov in priority:
+            old_lbl = labels.loc[prov]
+            if old_lbl not in new_label_map:
+                new_label_map[old_lbl] = next_new
+                next_new += 1
+
+        # If you have provinces outside your priority list and want to
+        # give them labels too, you could continue:
+        for old_lbl in sorted(set(labels) - set(new_label_map)):
+            new_label_map[old_lbl] = next_new
+            next_new += 1
+
+        return labels.map(new_label_map).to_list()

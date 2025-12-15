@@ -7,7 +7,9 @@ from typing import Tuple, List
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
-from sklearn.metrics import pairwise_distances_argmin_min
+from sklearn.metrics import pairwise_distances_argmin_min, davies_bouldin_score, silhouette_score
+
+from clustering.evaluation.stability import stability_and_consensus
 
 
 class KMeansEngine:
@@ -25,36 +27,63 @@ class KMeansEngine:
         random_state : int
             Random seed for reproducibility.
         """
-        self.n_cluster = n_cluster
-        self.n_init = n_init
-        self.random_state = random_state
+        self.kmeans = KMeans(n_clusters=n_cluster, n_init=n_init, init="k-means++", random_state=random_state)
     # ------------------------------------------------------------------
     def fit(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str]]:
         # 1. K-Means'i çalıştır
-        kmeans = KMeans(n_clusters=self.n_cluster, n_init=self.n_init, init="k-means++",
-                        random_state=self.random_state).fit(df)
+        self.kmeans.fit(df)
         # 2. Etiketleri ata ve DataFrame'i hazırla
         df_out = df.copy()
         # Etiketleri 1'den başlatıyoruz
-        df_out["clusters"] = kmeans.labels_ + 1
+        df_out["clusters"] = self.kmeans.labels_ + 1
         return df_out
 
     @staticmethod
-    def get_representatives(df: pd.DataFrame) -> List[str]:
-        """
-        Calculates representatives based on the 'clusters' column in the dataframe.
-        No need for class instance (self) parameters.
-        IMPORTANT : LAST COLUMN OF df AFTER CALLING fit METHOD ABOVE BECOMES CLUSTER COLUMN
-        this is the reason of using df.iloc[:-1]
-        """
-        calculated_centers = df.groupby("clusters").mean()
-        # En yakın noktaları bulma
-        # Hesapladığımız merkezleri kullanarak en yakın noktaları (representatives) buluyoruz.
-        # calculated_centers DataFrame olduğu için .values ile numpy array'e çevirmemiz gerekebilir
-        # (ancak pairwise_distances genelde DF de kabul eder).
-        closest_indices, _ = pairwise_distances_argmin_min(calculated_centers.values, df.iloc[:,:-1])
-        representatives = df.index[closest_indices].tolist()
-        return  representatives
+    def optimal_k_analysis(df, random_states, n_init=1, k_values=range(2, 15)):
+        X = df.values if hasattr(df, "values") else df
+        n_samples = X.shape[0]
+
+        # ---- Model-specific storage ----
+        metrics_all = {
+            "Inertia": [],
+            "Silhouette": [],
+            "Davies-Bouldin": []
+        }
+
+        labels_all = {seed: {} for seed in random_states}
+
+        # ---- Run K-Means ----
+        for random_state in random_states:
+            inertias = []
+            silhouettes = []
+            db_scores = []
+
+            for k in k_values:
+                kmeans = KMeans(
+                    n_clusters=k,
+                    random_state=random_state,
+                    n_init=n_init
+                ).fit(X)
+
+                labels = kmeans.labels_
+                inertias.append(kmeans.inertia_)
+                silhouettes.append(silhouette_score(X, labels))
+                db_scores.append(davies_bouldin_score(X, labels))
+
+                labels_all[random_state][k] = labels
+
+            metrics_all["Inertia"].append(inertias)
+            metrics_all["Silhouette"].append(silhouettes)
+            metrics_all["Davies-Bouldin"].append(db_scores)
+
+        # ---- Mean metrics across seeds ----
+        metrics_mean = {key: np.mean(metrics_all[key], axis=0) for key in metrics_all}
+
+        # ---- Model-independent evaluation ----
+        ari_mean, ari_std, consensus_indices, consensus_labels_all = \
+            stability_and_consensus(labels_all=labels_all, k_values=k_values, random_states=random_states, n_samples=n_samples)
+
+        return metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all
 
     # ------------------------------------------------------------------
     @staticmethod
