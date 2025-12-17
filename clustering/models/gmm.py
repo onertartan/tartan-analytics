@@ -9,8 +9,9 @@ from sklearn.metrics import silhouette_score, davies_bouldin_score
 from sklearn.mixture import GaussianMixture
 
 from clustering.evaluation.stability import stability_and_consensus
-
-
+import streamlit as st
+from stqdm import stqdm
+import time
 class GMMEngine:
     """
     A clean Gaussian Mixture clustering engine for tabular data.
@@ -53,15 +54,20 @@ class GMMEngine:
             "NegLogLikelihood": [],
             "AIC": [],
             "BIC": [],
-            "Silhouette": [],
-            "Davies-Bouldin": []
+            "Silhouette Score": [],
+            "Davies-Bouldin Index": []
         }
 
         labels_all = {seed: {} for seed in random_states}
-
+        progress_bar = st.progress(0.0)
+        status_text = st.empty()  # This will hold the "X / Y completed" message
+        total_states = len(random_states)
+        start_time = time.time()  # Record overall start time
         # ---- Run GMM ----
-        for random_state in random_states:
+        for idx,random_state in enumerate(random_states):
+
             nlls, aics, bics, silhouettes, dbs = [], [], [], [], []
+            seed_start = time.time()
 
             for k in k_values:
                 gmm = GaussianMixture(
@@ -78,13 +84,18 @@ class GMMEngine:
                 silhouettes.append(silhouette_score(X, labels))
                 dbs.append(davies_bouldin_score(X, labels))
                 labels_all[random_state][k] = labels
+            progress_bar.progress((idx + 1) / total_states)
+            elapsed_total = time.time() - start_time
+            elapsed_minutes, elapsed_seconds = divmod(int(elapsed_total), 60)
+            status_text.text(f"Completed {idx + 1}/{total_states} seeds.Elapsed: {elapsed_minutes}m {elapsed_seconds}s")
 
             metrics_all["NegLogLikelihood"].append(nlls)
             metrics_all["AIC"].append(aics)
             metrics_all["BIC"].append(bics)
-            metrics_all["Silhouette"].append(silhouettes)
-            metrics_all["Davies-Bouldin"].append(dbs)
-
+            metrics_all["Silhouette Score"].append(silhouettes)
+            metrics_all["Davies-Bouldin Index"].append(dbs)
+        progress_bar.empty()
+        status_text.empty()
         # ---- Mean metrics across seeds ----
         metrics_mean = { key: np.mean(metrics_all[key], axis=0)  for key in metrics_all }
 

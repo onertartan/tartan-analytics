@@ -15,6 +15,7 @@ from clustering.clustering import Clustering
 from viz.gui_helpers.clustering_helpers import *
 from viz.plotters.geo_cluster_plotter import GeoClusterPlotter
 from viz.config import COLORS, CLUSTER_COLOR_MAPPING, VA_POSITIONS, HA_POSITIONS
+from clustering.models.gmm import GMMEngine
 
 class BasePage(ABC):
     features = None
@@ -207,8 +208,14 @@ class BasePage(ABC):
     def tab_clustering(self, df, *args):
         # 0. Render UI
         clustering_algorithm = gui_clustering()
+        st.header(clustering_algorithm)
+
         if not clustering_algorithm:
             return
+        if clustering_algorithm in ["kmeans", "gmm"]:
+                st.session_state["n_cluster"] = st.session_state["n_cluster_" + clustering_algorithm]
+                st.session_state["n_init"] = st.session_state["n_init_" + clustering_algorithm]
+
         # 1. Run clustering: Preprocess
         df_pivot = self.preprocess_clustering(df, *args)
         random_states = range(st.session_state["number_of_seeds"])  # 50 random seeds
@@ -218,10 +225,13 @@ class BasePage(ABC):
         num_seeds_to_plot = 3
         col_plot, col_df = st.columns([5, 1])
         engine_class = Clustering.get_engine_class(clustering_algorithm)
+        kwargs={"n_init": n_init, "random_states":random_states}
+        if engine_class is GMMEngine:
+            kwargs["covariance_type"] = st.session_state["gmm_covariance_type"]
         with col_plot:
             """ If optimal_k_analysis is selected or use_consensus_labels is checked but it is not present(optimal_k_analysis has not previously run) """
             if st.session_state.get("optimal_k_analysis", False) or (st.session_state.get("use_consensus_labels_" + self.page_name, False) and "consensus_labels_" + self.page_name not in st.session_state):
-                metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all = engine_class.optimal_k_analysis(df_pivot, random_states, n_init, k_values)
+                metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all = engine_class.optimal_k_analysis(df_pivot, **kwargs)
                 st.session_state["consensus_labels"] = consensus_labels_all
                 df_pivot["clusters"] = consensus_labels_all[n_cluster]
                 OptimalKPlotter.plot_optimal_k_analysis(engine_class, num_seeds_to_plot, k_values, random_states, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices)

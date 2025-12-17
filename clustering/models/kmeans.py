@@ -8,9 +8,11 @@ import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.metrics import pairwise_distances_argmin_min, davies_bouldin_score, silhouette_score
+from stqdm import stqdm
 
 from clustering.evaluation.stability import stability_and_consensus
-
+import streamlit as st
+import time
 
 class KMeansEngine:
     """
@@ -46,17 +48,21 @@ class KMeansEngine:
         # ---- Model-specific storage ----
         metrics_all = {
             "Inertia": [],
-            "Silhouette": [],
-            "Davies-Bouldin": []
+            "Silhouette Score": [],
+            "Davies-Bouldin Index": []
         }
 
         labels_all = {seed: {} for seed in random_states}
-
+        progress_bar = st.progress(0.0)
+        status_text = st.empty()  # This will hold the "X / Y completed" message
+        total_states = len(random_states)
+        start_time = time.time()  # Record overall start time
         # ---- Run K-Means ----
-        for random_state in random_states:
+        for idx, random_state in enumerate(random_states):
             inertias = []
             silhouettes = []
             db_scores = []
+            seed_start = time.time()
 
             for k in k_values:
                 kmeans = KMeans(
@@ -71,11 +77,18 @@ class KMeansEngine:
                 db_scores.append(davies_bouldin_score(X, labels))
 
                 labels_all[random_state][k] = labels
+            # Update progress and status after loop for one random state is completed
+            progress_bar.progress((idx + 1) / total_states)
+            elapsed_total = time.time() - start_time
+            elapsed_minutes, elapsed_seconds = divmod(int(elapsed_total), 60)
+            seed_time = int(time.time() - seed_start)
+            status_text.text(f"The last seed took {seed_time}s")
+            status_text.text(f"Completed {idx + 1}/{total_states} seeds.Elapsed: {elapsed_minutes}m {elapsed_seconds}s")
 
             metrics_all["Inertia"].append(inertias)
-            metrics_all["Silhouette"].append(silhouettes)
-            metrics_all["Davies-Bouldin"].append(db_scores)
-
+            metrics_all["Silhouette Score"].append(silhouettes)
+            metrics_all["Davies-Bouldin Index"].append(db_scores)
+        progress_bar.empty()
         # ---- Mean metrics across seeds ----
         metrics_mean = {key: np.mean(metrics_all[key], axis=0) for key in metrics_all}
 

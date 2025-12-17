@@ -5,7 +5,7 @@ import pandas as pd
 def scale(scaler_method, df, total_counts):
     if "L1" in scaler_method:  # == "Share of Top 30 (L1 Norm)" in tab_geo_clustering or in name_clustering
         df_scaled = normalize(df, axis=1, norm='l1')
-    elif scaler_method == "Share of Total Births":
+    elif scaler_method == "Share of Total":
         # 1. Clean the total_counts series
         # This groups by the Index Name (Province) and takes the first value found.
         # It reduces the duplicates down to exactly  81 unique provinces.
@@ -15,6 +15,14 @@ def scale(scaler_method, df, total_counts):
         df_scaled = df.div(total_counts_unique, axis=0)
     elif "L2" in scaler_method:
         df_scaled = normalize(df, axis=1, norm='l2')
+    elif scaler_method == "TF-IDF":
+        from sklearn.feature_extraction.text import TfidfTransformer
+        tfidf = TfidfTransformer(
+            norm="l2",
+            use_idf=True,
+            smooth_idf=True
+        )
+        df_scaled = tfidf.fit_transform(df.values).toarray()
     # elif: TF-IDF
     df = pd.DataFrame(df_scaled, index=df.index, columns=df.columns)
     return df

@@ -12,9 +12,7 @@ from matplotlib.patches import Patch
 import extra_streamlit_components as stx
 import altair as alt
 from viz.config import COLORS, CLUSTER_COLOR_MAPPING, VA_POSITIONS, HA_POSITIONS
-
 from viz.color_mapping import create_cluster_color_mapping
-
 locale.setlocale(locale.LC_ALL, 'tr_TR.utf8')
 
 

@@ -2,8 +2,8 @@ import streamlit as st
 def gui_clustering_kmeans_gmm_common(key):
     # CHANGED: Removed direct assignment to st.session_state["n_clusters_" + self.page_name]
     # We just render the widget. Streamlit stores the value in st.session_state["n_clusters_" + key] automatically.
-    st.number_input("Number of clusters / components", 2, 15, 6, key="n_clusters" + key)
-    st.number_input("Random restarts (n_init)", 1, 100, 10, key="n_init" + key)
+    st.number_input("Number of clusters / components", 2, 15, 6, key="n_cluster_" + key)
+    st.number_input("Random restarts (n_init)", 1, 100, 10, key="n_init_" + key)
 
 def gui_clustering_up_col1():
     # First column of upper part in clustering showing scaling options
@@ -42,15 +42,12 @@ def gui_clustering_bottom():
 
     for col, (key, config) in zip(cols, algos.items()):
         with col:
-            with st.form("submit_form_" + key):
-                submitted = st.form_submit_button(config["label"], use_container_width=True)
-                config["gui_func"]()
-
-                if submitted:
-                    selected_algo = key
-                    if key in ["kmeans", "gmm"]:
-                        st.session_state["n_cluster"] = st.session_state["n_clusters" + key]
-                        st.session_state["n_init"] = st.session_state["n_init" + key]
+           # with st.form("submit_form_" + key):
+               # submitted = st.form_submit_button(config["label"], use_container_width=True)
+            clicked = st.button(config["label"], use_container_width=True,key=key)
+            config["gui_func"]()
+            if clicked:
+                selected_algo = key
     return selected_algo
 
 def gui_clustering_kmeans():
@@ -68,9 +65,7 @@ def gui_clustering():
 
 def gui_clustering_gmm():
         gui_clustering_kmeans_gmm_common("gmm")
-        gmm_k = st.number_input("Components", min_value=2, max_value=15, value=6)
-        gmm_cov = st.selectbox("Covariance", options=["diag", "full", "tied", "spherical"])
-        gmm_n_init =st.number_input("Restarts", min_value=1, max_value=50, value=10)
+        st.selectbox("Covariance", options=["diag", "full", "tied", "spherical"],key="gmm_covariance_type")
 
 def dbscan_gui_options():
     """
