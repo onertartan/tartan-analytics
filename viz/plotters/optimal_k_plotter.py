@@ -3,11 +3,23 @@ import numpy as np
 from kneed import KneeLocator
 from matplotlib import pyplot as plt
 import streamlit as st
+
+from clustering.base_clustering import Clustering
 from clustering.models.kmeans import KMeansEngine
 from clustering.models.gmm import GMMEngine
 
-class OptimalKPlotter:
+METRIC_OBJECTIVES = {
+    "Silhouette_mean": "max",
+    "ARI_mean": "max",
+    "Consensus": "max",
+    "DaviesBouldin_mean": "min",
 
+    # Only present for GMM
+    "BIC_mean": "min",
+    "AIC_mean": "min",
+}
+
+class OptimalKPlotter:
 
     @staticmethod
     def plot_optimal_k_analysis(engine_class, num_seeds_to_plot,k_values,random_states,metrics_all,metrics_mean,ari_mean,ari_std,consensus_indices):
@@ -75,7 +87,7 @@ class OptimalKPlotter:
         axs[num_seeds_to_plot, 1].axvline(x=optimal_k_mean_db, color='r', linestyle='--')
         axs[num_seeds_to_plot, 1].set_title(f'Mean: {column_titles[2]}', fontsize=TITLE_FONTSIZE)
 
-        if engine_class is 'KMeansEngine':
+        if engine_class is KMeansEngine:
             axs[num_seeds_to_plot, 2].plot(k_values, metrics_mean["Inertia"], 'bo-')
             mean_elbow = KneeLocator(k_values, metrics_mean["Inertia"], curve='convex', direction='decreasing')
             if mean_elbow.elbow:
@@ -120,44 +132,68 @@ class OptimalKPlotter:
         fig.tight_layout(pad=3.0) # Adds padding to prevent labels overlapping
         fig.savefig('kmeans_metrics_analysis.png', dpi=300, bbox_inches='tight')
         st.dataframe(df_optimal_k)
-
-        df = OptimalKPlotter.metrics_to_dataframe(metrics_mean, k_values)
-        st.dataframe( OptimalKPlotter.style_metrics_dataframe(df), use_container_width=True )
-
-        st.header("Gaussian Mixture Model – Optimal k Analysis")
-        st.caption("Mean values across random initializations")
-        metric_names_minimum = ["Davies-Bouldin Index"]
-        if engine_class is GMMEngine:
-            metric_names_minimum += ["BIC", "AIC"]
-        st.dataframe(
-            df.style
-            .highlight_min(subset=metric_names_minimum, color="#d4f7d4")
-            .highlight_max(subset=["Silhouette Score"], color="#d4f7d4"),
-            use_container_width=True
-        )
         st.pyplot(fig)
 
-    @staticmethod
-    def metrics_to_dataframe(metrics_mean, k_values):
-        df = pd.DataFrame(metrics_mean)
-        df["k"] = list(k_values)
-        df = df.set_index("k")
-        return df
+    def style_metrics_dataframe(df: pd.DataFrame):
+        display = pd.DataFrame(index=df.index)
 
-    @staticmethod
-    def style_metrics_dataframe(df):
-        """
-        Apply presentation-only formatting (no data mutation).
-        """
-        format_rules = {
-            "Silhouette Score": "{:.3f}",
-            "Davies-Bouldin Index": "{:.3f}",
-            "Inertia": "{:,.2f}",
-            "AIC": "{:,.1f}",
-            "BIC": "{:,.1f}",
-            "NegLogLikelihood": "{:,.1f}",
-        }
+        def mean_pm_std(mean_col_, std_col, prec=3):
+            return (
+                    df[mean_col_].map(lambda x: f"{x:.{prec}f}") +
+                    " ± " +
+                    df[std_col].map(lambda x: f"{x:.{prec}f}")
+            )
 
-        return df.style.format({
-            col: fmt for col, fmt in format_rules.items() if col in df.columns
-        })
+        # ---- Always-present metrics ----
+        display["Silhouette Score"] = mean_pm_std("Silhouette_mean", "Silhouette_std")
+        display["Davies–Bouldin"] = mean_pm_std("DaviesBouldin_mean", "DaviesBouldin_std" )
+        display["ARI"] = mean_pm_std("ARI_mean", "ARI_std")
+        display["Consensus"] = df["Consensus"].map(lambda x: f"{x:.3f}")
+
+        # ---- GMM-only metrics (guarded) ----
+        if "BIC_mean" in df.columns:
+            display["BIC"] = mean_pm_std("BIC_mean", "BIC_std", prec=0)
+
+        if "AIC_mean" in df.columns:
+            display["AIC"] = mean_pm_std("AIC_mean", "AIC_std", prec=0)
+
+        # ---- Highlighting logic ----
+        def highlight_best(_mean_col):
+            values = df[_mean_col]
+            if METRIC_OBJECTIVES[_mean_col] == "max":
+                best = values.idxmax()
+            else:
+                best = values.idxmin()
+
+            return [
+                "background-color: #d4f7d4" if idx == best else ""
+                for idx in df.index
+            ]
+
+        styler = display.style
+
+        for mean_col in METRIC_OBJECTIVES:
+
+            if mean_col not in df.columns:
+                continue
+            label = (
+                mean_col
+                .replace("_mean", "")
+                .replace("DaviesBouldin", "Davies–Bouldin")
+            )
+            if label == "Silhouette":
+                label += " Score"
+
+            if label in display.columns:
+                styler = styler.apply(
+                    lambda _, mc=mean_col: highlight_best(mc),  # ← FIX
+                    axis=0,
+                    subset=[label]
+                )
+            else:
+                st.header(label+" not found in dataframe columns!"+str(df.columns))
+
+        return styler
+
+
+

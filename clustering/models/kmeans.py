@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.metrics import pairwise_distances_argmin_min, davies_bouldin_score, silhouette_score
-from stqdm import stqdm
 
+from clustering.base_clustering import Clustering
 from clustering.evaluation.stability import stability_and_consensus
 import streamlit as st
 import time
@@ -31,14 +31,13 @@ class KMeansEngine:
         """
         self.kmeans = KMeans(n_clusters=n_cluster, n_init=n_init, init="k-means++", random_state=random_state)
     # ------------------------------------------------------------------
+
     def fit(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str]]:
-        # 1. K-Means'i çalıştır
         self.kmeans.fit(df)
-        # 2. Etiketleri ata ve DataFrame'i hazırla
         df_out = df.copy()
-        # Etiketleri 1'den başlatıyoruz
-        df_out["clusters"] = self.kmeans.labels_ + 1
+        df_out["clusters"] = self.kmeans.labels_ + 1 # start labels at 1
         return df_out
+
 
     @staticmethod
     def optimal_k_analysis(df, random_states, n_init=1, k_values=range(2, 15)):
@@ -57,6 +56,7 @@ class KMeansEngine:
         status_text = st.empty()  # This will hold the "X / Y completed" message
         total_states = len(random_states)
         start_time = time.time()  # Record overall start time
+
         # ---- Run K-Means ----
         for idx, random_state in enumerate(random_states):
             inertias = []
@@ -65,11 +65,7 @@ class KMeansEngine:
             seed_start = time.time()
 
             for k in k_values:
-                kmeans = KMeans(
-                    n_clusters=k,
-                    random_state=random_state,
-                    n_init=n_init
-                ).fit(X)
+                kmeans = KMeans(n_clusters=k, random_state=random_state, n_init=n_init).fit(X)
 
                 labels = kmeans.labels_
                 inertias.append(kmeans.inertia_)
@@ -88,15 +84,45 @@ class KMeansEngine:
             metrics_all["Inertia"].append(inertias)
             metrics_all["Silhouette Score"].append(silhouettes)
             metrics_all["Davies-Bouldin Index"].append(db_scores)
+
+
         progress_bar.empty()
+        status_text.empty()
         # ---- Mean metrics across seeds ----
         metrics_mean = {key: np.mean(metrics_all[key], axis=0) for key in metrics_all}
 
         # ---- Model-independent evaluation ----
         ari_mean, ari_std, consensus_indices, consensus_labels_all = \
             stability_and_consensus(labels_all=labels_all, k_values=k_values, random_states=random_states, n_samples=n_samples)
+        df_summary = KMeansEngine.summarize(metrics_all, ari_mean, ari_std, consensus_indices, k_values)
+        return df_summary,metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all
 
-        return metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all
+    @staticmethod
+    def summarize(metrics_all, ari_mean, ari_std, consensus_indices, k_values):
+        rows = []
+
+        for k_value in k_values:
+            k_idx = list(k_values).index(k_value)
+
+            sil_m, sil_s = Clustering.mean_sd_at_k(
+                metrics_all, "Silhouette Score", k_idx
+            )
+            db_m, db_s = Clustering.mean_sd_at_k(
+                metrics_all, "Davies-Bouldin Index", k_idx
+            )
+
+            rows.append({
+                "Number of clusters": k_value,
+               # Internal validity
+                "Silhouette_mean": sil_m, "Silhouette_std": sil_s,
+                "DaviesBouldin_mean": db_m, "DaviesBouldin_std": db_s,
+                # Stability
+                "ARI_mean": ari_mean[k_idx], "ARI_std": ari_std[k_idx],
+                "Consensus": consensus_indices[k_idx],
+            })
+
+        df = pd.DataFrame(rows).set_index("Number of clusters")
+        return df
 
     # ------------------------------------------------------------------
     @staticmethod

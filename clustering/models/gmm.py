@@ -8,6 +8,7 @@ import pandas as pd
 from sklearn.metrics import silhouette_score, davies_bouldin_score
 from sklearn.mixture import GaussianMixture
 
+from clustering.base_clustering import Clustering
 from clustering.evaluation.stability import stability_and_consensus
 import streamlit as st
 from stqdm import stqdm
@@ -16,7 +17,7 @@ class GMMEngine:
     """
     A clean Gaussian Mixture clustering engine for tabular data.
     """
-    def __init__(self, n_cluster: int, n_init: int = 1, covariance_type: str = "full", random_state: int = 1):
+    def __init__(self, n_cluster: int, n_init: int = 1, random_state: int = 1, covariance_type: str = ""):
         """
         Parameters
         ----------
@@ -97,13 +98,37 @@ class GMMEngine:
         progress_bar.empty()
         status_text.empty()
         # ---- Mean metrics across seeds ----
-        metrics_mean = { key: np.mean(metrics_all[key], axis=0)  for key in metrics_all }
+        metrics_mean = {key: np.mean(metrics_all[key], axis=0) for key in metrics_all }
 
         # ---- Model-independent evaluation ----
         ari_mean, ari_std, consensus_indices, consensus_labels_all = \
             stability_and_consensus(labels_all=labels_all, k_values=k_values, random_states=random_states, n_samples=n_samples)
+        df_summary = GMMEngine.summarize(metrics_all, ari_mean, ari_std, consensus_indices, k_values)
+        return df_summary,metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all
 
-        return metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all
+    @staticmethod
+    def summarize(metrics_all, ari_mean, ari_std, consensus_indices,  k_values):
+        rows=[]
+        for k_value in k_values:
+
+            k_idx = list(k_values).index(k_value)
+            sil_m, sil_s = Clustering.mean_sd_at_k(metrics_all, "Silhouette Score", k_idx)
+            db_m,  db_s = Clustering.mean_sd_at_k(metrics_all, "Davies-Bouldin Index", k_idx)
+            bic_m, bic_s = Clustering.mean_sd_at_k(metrics_all, "BIC", k_idx)
+            aic_m, aic_s = Clustering.mean_sd_at_k(metrics_all, "AIC", k_idx)
+            rows.append({
+                "Number of clusters": k_value,
+                "Silhouette_mean": sil_m, "Silhouette_std": sil_s,
+                "DaviesBouldin_mean": db_m, "DaviesBouldin_std": db_s,
+                "ARI_mean": ari_mean[k_idx], "ARI_std": ari_std[k_idx],
+                "Consensus": consensus_indices[k_idx],
+                "BIC_mean": bic_m, "BIC_std": bic_s,
+                "AIC_mean": aic_m, "AIC_std": aic_s,
+            })
+
+        df_summary = pd.DataFrame(rows)
+        df_summary = df_summary.set_index("Number of clusters")
+        return df_summary
 
     # ------------------------------------------------------------------
     @staticmethod

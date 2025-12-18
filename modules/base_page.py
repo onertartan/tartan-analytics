@@ -6,11 +6,13 @@ import pandas as pd
 import geopandas as gpd
 # Visualization
 import matplotlib.pyplot as plt
+import streamlit
 from adjustText import adjust_text
 
+from clustering.models.factory import get_engine_class
 from viz import PCAPlotter, OptimalKPlotter
 # Machine Learning
-from clustering.clustering import Clustering
+from clustering.base_clustering import Clustering
 # Streamlit & Tools
 from viz.gui_helpers.clustering_helpers import *
 from viz.plotters.geo_cluster_plotter import GeoClusterPlotter
@@ -224,23 +226,25 @@ class BasePage(ABC):
         n_cluster = st.session_state["n_cluster"]
         num_seeds_to_plot = 3
         col_plot, col_df = st.columns([5, 1])
-        engine_class = Clustering.get_engine_class(clustering_algorithm)
-        kwargs={"n_init": n_init, "random_states":random_states}
+        engine_class = get_engine_class(clustering_algorithm)
+        kwargs={"n_init": n_init, "random_states": random_states}
         if engine_class is GMMEngine:
             kwargs["covariance_type"] = st.session_state["gmm_covariance_type"]
         with col_plot:
             """ If optimal_k_analysis is selected or use_consensus_labels is checked but it is not present(optimal_k_analysis has not previously run) """
             if st.session_state.get("optimal_k_analysis", False) or (st.session_state.get("use_consensus_labels_" + self.page_name, False) and "consensus_labels_" + self.page_name not in st.session_state):
-                metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all = engine_class.optimal_k_analysis(df_pivot, **kwargs)
-                st.session_state["consensus_labels"] = consensus_labels_all
+                df_summary, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all = engine_class.optimal_k_analysis(df_pivot, **kwargs)
+                st.session_state["consensus_labels_"+engine_class.__name__] = consensus_labels_all
                 df_pivot["clusters"] = consensus_labels_all[n_cluster]
                 OptimalKPlotter.plot_optimal_k_analysis(engine_class, num_seeds_to_plot, k_values, random_states, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices)
-            elif st.session_state.get("use_consensus_labels_" + self.page_name, False):
-                df_pivot["clusters"] = st.session_state["consensus_labels_" + self.page_name][n_cluster]
-                st.header("Using consensus labels")
+                # streamlit.dataframe(df_summary)
+                st.dataframe(OptimalKPlotter.style_metrics_dataframe(df_summary))
+            elif st.session_state.get("use_consensus_labels_"+engine_class.__name__, False):
+                df_pivot["clusters"] = st.session_state["consensus_labels_" +engine_class.__name__][n_cluster]
+                st.header("Using previously saved consensus labels")
             else:
                 kwargs = {"n_init": n_init, "n_cluster": n_cluster}
-                engine = Clustering.get_engine_class(clustering_algorithm)(**kwargs)
+                engine = get_engine_class(clustering_algorithm)(**kwargs)
                 df_pivot = engine.fit(df_pivot)
             # Step: Update geodata
             representatives = Clustering.get_representatives(df_pivot)
