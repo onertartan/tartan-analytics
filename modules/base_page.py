@@ -10,6 +10,7 @@ import streamlit
 from adjustText import adjust_text
 
 from clustering.models.factory import get_engine_class
+from clustering.models.kmeans import KMeansEngine
 from viz import PCAPlotter, OptimalKPlotter
 # Machine Learning
 from clustering.base_clustering import Clustering
@@ -18,6 +19,7 @@ from viz.gui_helpers.clustering_helpers import *
 from viz.plotters.geo_cluster_plotter import GeoClusterPlotter
 from viz.config import COLORS, CLUSTER_COLOR_MAPPING, VA_POSITIONS, HA_POSITIONS
 from clustering.models.gmm import GMMEngine
+from clustering.models.kmedoids import KMedoidsEngine
 
 class BasePage(ABC):
     features = None
@@ -210,29 +212,33 @@ class BasePage(ABC):
     def tab_clustering(self, df, *args):
         # 0. Render UI
         clustering_algorithm = gui_clustering()
-        st.header(clustering_algorithm)
 
         if not clustering_algorithm:
             return
-        if clustering_algorithm in ["kmeans", "gmm"]:
-                st.session_state["n_cluster"] = st.session_state["n_cluster_" + clustering_algorithm]
+        engine_class = get_engine_class(clustering_algorithm)
+        random_states = range(st.session_state["number_of_seeds"])
+        n_cluster = st.session_state["n_cluster"] = st.session_state["n_cluster_" + clustering_algorithm]
+        kwargs = {}
+        if engine_class is GMMEngine or engine_class is KMeansEngine:
                 st.session_state["n_init"] = st.session_state["n_init_" + clustering_algorithm]
+                kwargs["n_init"]= st.session_state["n_init"]
+        if engine_class is GMMEngine:
+            kwargs["covariance_type"] = st.session_state["gmm_covariance_type"]
+        elif engine_class is KMedoidsEngine:
+            kwargs["metric"] = st.session_state["pam_metric"]
+            kwargs["max_iter"] = st.session_state["max_iter_kmedoids"]
+
 
         # 1. Run clustering: Preprocess
         df_pivot = self.preprocess_clustering(df, *args)
-        random_states = range(st.session_state["number_of_seeds"])  # 50 random seeds
-        n_init = st.session_state["n_init"]
         k_values = list(range(2, 15))
-        n_cluster = st.session_state["n_cluster"]
         num_seeds_to_plot = 3
         col_plot, col_df = st.columns([5, 1])
-        engine_class = get_engine_class(clustering_algorithm)
-        kwargs={"n_init": n_init, "random_states": random_states}
-        if engine_class is GMMEngine:
-            kwargs["covariance_type"] = st.session_state["gmm_covariance_type"]
+
         with col_plot:
             """ If optimal_k_analysis is selected or use_consensus_labels is checked but it is not present(optimal_k_analysis has not previously run) """
             if st.session_state.get("optimal_k_analysis", False) or (st.session_state.get("use_consensus_labels_" + self.page_name, False) and "consensus_labels_" + self.page_name not in st.session_state):
+                kwargs["random_states"] = random_states
                 df_summary, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all = engine_class.optimal_k_analysis(df_pivot, **kwargs)
                 st.session_state["consensus_labels_"+engine_class.__name__] = consensus_labels_all
                 df_pivot["clusters"] = consensus_labels_all[n_cluster]
@@ -243,7 +249,7 @@ class BasePage(ABC):
                 df_pivot["clusters"] = st.session_state["consensus_labels_" +engine_class.__name__][n_cluster]
                 st.header("Using previously saved consensus labels")
             else:
-                kwargs = {"n_init": n_init, "n_cluster": n_cluster}
+                kwargs["n_cluster"]= n_cluster
                 engine = get_engine_class(clustering_algorithm)(**kwargs)
                 df_pivot = engine.fit(df_pivot)
             # Step: Update geodata

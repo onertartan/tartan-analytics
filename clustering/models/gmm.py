@@ -17,7 +17,7 @@ class GMMEngine:
     """
     A clean Gaussian Mixture clustering engine for tabular data.
     """
-    def __init__(self, n_cluster: int, n_init: int = 1, random_state: int = 1, covariance_type: str = ""):
+    def __init__(self, n_cluster: int, n_init: int,  random_state: int = 1,  covariance_type: str = ""):
         """
         Parameters
         ----------
@@ -46,7 +46,8 @@ class GMMEngine:
         return df_out
 
     @staticmethod
-    def optimal_k_analysis(df, random_states=(0, 1, 2, 3, 4), n_init=1, k_values=range(2, 15), covariance_type="full"):
+    def optimal_k_analysis(df, random_states, n_init, covariance_type, k_values=range(2, 15)):
+
         X = df.values if hasattr(df, "values") else df
         n_samples = X.shape[0]
 
@@ -104,7 +105,7 @@ class GMMEngine:
         ari_mean, ari_std, consensus_indices, consensus_labels_all = \
             stability_and_consensus(labels_all=labels_all, k_values=k_values, random_states=random_states, n_samples=n_samples)
         df_summary = GMMEngine.summarize(metrics_all, ari_mean, ari_std, consensus_indices, k_values)
-        return df_summary,metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all
+        return df_summary, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all
 
     @staticmethod
     def summarize(metrics_all, ari_mean, ari_std, consensus_indices,  k_values):

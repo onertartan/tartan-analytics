@@ -23,6 +23,8 @@ class OptimalKPlotter:
 
     @staticmethod
     def plot_optimal_k_analysis(engine_class, num_seeds_to_plot,k_values,random_states,metrics_all,metrics_mean,ari_mean,ari_std,consensus_indices):
+        st.header("Running "+engine_class.__name__+" Optimal k Analysis for "+str(len(random_states))+" seeds.")
+
         TITLE_FONTSIZE = 14
         AXIS_LABEL_FONTSIZE = 12
         TICK_LABEL_FONTSIZE = 11

@@ -63,7 +63,7 @@ class PageNames(BasePage):
         df_pivot = pd.pivot_table(df_year, values='count', index=df_year.index, columns=['name'], aggfunc=lambda x: x,
                                   dropna=False, fill_value=0)
         total_counts = df_year.loc[:, "total_count"]
-        scaler_method = st.session_state.get("scaler_" + self.page_name, "Share of Top 30 (L1 Norm)")
+        scaler_method = st.session_state["scaler"]
         df_pivot = scale(scaler_method, df_pivot, total_counts)
         if st.session_state["selected_tab_" + self.page_name] == "tab_name_clustering":  # transpose_for_name_clustering:
             df_pivot = df_pivot.T

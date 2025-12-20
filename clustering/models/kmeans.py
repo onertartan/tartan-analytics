@@ -18,7 +18,7 @@ class KMeansEngine:
     """
     A clean, UI-independent KMeans clustering module.
     """
-    def __init__(self, n_cluster: int, n_init: int = 1, random_state: int = 1):
+    def __init__(self, n_cluster: int, n_init: int, random_state: int = 1):
         """
         Parameters
         ----------
@@ -32,7 +32,7 @@ class KMeansEngine:
         self.kmeans = KMeans(n_clusters=n_cluster, n_init=n_init, init="k-means++", random_state=random_state)
     # ------------------------------------------------------------------
 
-    def fit(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str]]:
+    def fit(self, df: pd.DataFrame) -> pd.DataFrame:
         self.kmeans.fit(df)
         df_out = df.copy()
         df_out["clusters"] = self.kmeans.labels_ + 1 # start labels at 1

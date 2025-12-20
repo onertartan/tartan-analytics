@@ -1,9 +1,4 @@
 import streamlit as st
-def gui_clustering_kmeans_gmm_common(key):
-    # CHANGED: Removed direct assignment to st.session_state["n_clusters_" + self.page_name]
-    # We just render the widget. Streamlit stores the value in st.session_state["n_clusters_" + key] automatically.
-    st.number_input("Number of clusters / components", 2, 15, 6, key="n_cluster_" + key)
-    st.number_input("Random restarts (n_init)", 1, 100, 10, key="n_init_" + key)
 
 def gui_clustering_up_col1():
     # First column of upper part in clustering showing scaling options
@@ -35,7 +30,8 @@ def gui_clustering_bottom():
     algos = {
         "kmeans": {"label": "K-means", "gui_func": gui_clustering_kmeans},
         "gmm": {"label": "GMM", "gui_func": gui_clustering_gmm},
-        "dbscan": {"label": "DBSCAN", "gui_func": dbscan_gui_options},
+        "kmedoids": {"label": "K-medoids", "gui_func": kmeoids_gui_options},
+      #  "dbscan": {"label": "DBSCAN", "gui_func": dbscan_gui_options},
     }
     cols = st.columns(len(algos))
     selected_algo = None
@@ -50,8 +46,16 @@ def gui_clustering_bottom():
                 selected_algo = key
     return selected_algo
 
+def kmeoids_gui_options():
+    st.number_input("Number of clusters", 2, 15, 6, key="n_cluster_kmedoids")
+    st.number_input("Maximum number of iteration", 10, 300, 100, key="max_iter_kmedoids")
+    st.selectbox("Distance metric", ["cosine", "correlation"], help="Cosine: profile similarity; Correlation: shape similarity", key="pam_metric")
+
+
 def gui_clustering_kmeans():
-    gui_clustering_kmeans_gmm_common("kmeans")
+    st.number_input("Number of clusters", 2, 15, 6, key="n_cluster_kmeans")
+    st.number_input("Random restarts (n_init)", 1, 100, 10, key="n_init_kmeans")
+
 
 def gui_clustering():
     col1, col2, _ = st.columns([2, 2, 6])
@@ -64,8 +68,9 @@ def gui_clustering():
 
 
 def gui_clustering_gmm():
-        gui_clustering_kmeans_gmm_common("gmm")
-        st.selectbox("Covariance", options=["diag", "full", "tied", "spherical"],key="gmm_covariance_type")
+    st.number_input("Number of clusters / components", 2, 15, 6, key="n_cluster_gmm")
+    st.number_input("Random restarts (n_init)", 1, 100, 10, key="n_init_gmm")
+    st.selectbox("Covariance", options=["diag", "full", "tied", "spherical"],key="gmm_covariance_type")
 
 def dbscan_gui_options():
     """
