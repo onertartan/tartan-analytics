@@ -1,11 +1,15 @@
 from typing import List
 import pandas as pd
-
+import time
+import streamlit as st
 import numpy as np
+from matplotlib import pyplot as plt, cm
 from sklearn.metrics import (
     silhouette_score, adjusted_rand_score,
-    davies_bouldin_score, pairwise_distances_argmin_min
+    davies_bouldin_score, pairwise_distances_argmin_min, silhouette_samples
 )
+
+from clustering.evaluation.stability import stability_and_consensus
 
 
 class Clustering:
@@ -13,6 +17,11 @@ class Clustering:
     Unified clustering factory.
     Creates the correct engine and executes fit().
     """
+    def fit_predict(self, df: pd.DataFrame) -> pd.DataFrame:
+        labels = self.model.fit_predict(df) + 1
+        df_out = df.copy()
+        df_out["clusters"] = labels
+        return df_out
 
     @staticmethod
     def get_representatives(df: pd.DataFrame) -> List[str]:
@@ -65,9 +74,89 @@ class Clustering:
         gdf_centroids["centroid"] = gdf_centroids.geometry.centroid
         return gdf_clusters, gdf_centroids
 
-    @staticmethod
-    def optimal_k_analysis(df, random_states=1, n_init=1, k_values=range(2, 15)):
-        pass
+    @classmethod
+    def optimal_k_analysis(cls,
+        df: pd.DataFrame,
+        random_states: list[int],
+        k_values: range,
+        model_kwargs: dict,
+        extra_metrics: dict = None,            # e.g., {"Calinski-Harabasz": calinski_harabasz_score}
+        progress_callback: callable = None     # Optional: function to update progress (for UI)
+    ):
+        n_samples = df.shape[0]
+
+        metrics_all = {"Silhouette Score": [], "Davies-Bouldin Index": []}
+        if cls.__name__ == "KMeansEngine":
+            metrics_all["Inertia"] = []
+        elif cls.__name__ == "GMMEngine":
+            metrics_all["AIC"] = []
+            metrics_all["BIC"] = []
+            metrics_all["NegLogLikelihood"] = []
+        elif cls.__name__ == "HierarchicalEngine":
+            random_states = range(1)  # Hierarchical is deterministic
+
+        labels_all = {seed: {} for seed in random_states}
+        progress_bar = st.progress(0.0)
+        status_text = st.empty()  # This will hold the "X / Y completed" message
+        total_states = len(random_states)
+        start_time = time.time()  # Record overall start time
+
+        # ---- Run Clustering ----
+        for idx, random_state in enumerate(random_states):
+            silhouettes = []
+            db_scores = []
+            if cls.__name__ == "KMeansEngine":
+                inertias = []
+            elif cls.__name__ == "GMMEngine":
+                aics, bics, nlls = [], [], []
+
+            seed_start = time.time()
+
+            for k in k_values:
+                engine = cls(n_cluster=k, random_state=random_state, **model_kwargs)
+                df_out = engine.fit_predict(df)
+                labels = df_out["clusters"].values
+                silhouettes.append(silhouette_score(df, labels, metric=engine.metric_for_silhouette))
+                db_scores.append(davies_bouldin_score(df, labels))
+                labels_all[random_state][k] = labels
+                if cls.__name__ == "KMeansEngine":
+                    inertias.append(engine.model.inertia_)
+                elif cls.__name__ == "GMMEngine":
+                    aics.append(engine.model.aic(df))
+                    bics.append(engine.model.bic(df))
+                    nlls.append(-engine.model.score(df) * n_samples)
+
+            if cls.__name__ == "KMeansEngine":
+                metrics_all["Inertia"].append(inertias)
+            elif cls.__name__ == "GMMEngine":
+                metrics_all["AIC"].append(aics)
+                metrics_all["BIC"].append(bics)
+                metrics_all["NegLogLikelihood"].append(nlls)
+
+            metrics_all["Silhouette Score"].append(silhouettes)
+            metrics_all["Davies-Bouldin Index"].append(db_scores)
+            # Update progress and status after loop for one random state is completed
+            progress_bar.progress((idx + 1) / total_states)
+            elapsed_total = time.time() - start_time
+            elapsed_minutes, elapsed_seconds = divmod(int(elapsed_total), 60)
+            seed_time = int(time.time() - seed_start)
+            status_text.text(f"The last seed took {seed_time}s")
+            status_text.text(f"Completed {idx + 1}/{total_states} seeds. Elapsed: {elapsed_minutes}m {elapsed_seconds}s")
+
+
+        progress_bar.empty()
+        status_text.empty()
+        # ---- Mean metrics across seeds ----
+        metrics_mean = {key: np.mean(metrics_all[key], axis=0) for key in metrics_all}
+
+        # ---- Model-independent evaluation ----
+        ari_mean, ari_std, consensus_indices, consensus_labels_all = \
+            stability_and_consensus(labels_all=labels_all, k_values=k_values, random_states=random_states,
+                                    n_samples=n_samples)
+        df_summary = cls.summarize(metrics_all, ari_mean, ari_std, consensus_indices, k_values)
+       # Clustering.temp(df, engine_class, model_kwargs)
+        return df_summary, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all
+
     @staticmethod
     def mean_sd_at_k(metrics_all, metric_name, k_index):
         """
@@ -77,6 +166,25 @@ class Clustering:
         """
         values = [seed_vals[k_index] for seed_vals in metrics_all[metric_name]]
         return np.mean(values), np.std(values)
+
+    @staticmethod
+    def summarize(metrics_all, ari_mean, ari_std, consensus_indices, k_values):
+        rows = []
+        for k in k_values:
+            idx = list(k_values).index(k)
+            sil_m, sil_s = Clustering.mean_sd_at_k(metrics_all, "Silhouette Score", idx)
+            db_m, db_s = Clustering.mean_sd_at_k(metrics_all, "Davies-Bouldin Index", idx)
+            rows.append({
+                "Number of clusters": k,
+                "Silhouette_mean": sil_m,
+                "Silhouette_std": sil_s,
+                "DaviesBouldin_mean": db_m,
+                "DaviesBouldin_std": db_s,
+                "ARI_mean": ari_mean[idx],
+                "ARI_std": ari_std[idx],
+                "Consensus": consensus_indices[idx],
+            })
+        return pd.DataFrame(rows).set_index("Number of clusters")
 
     # Not used
     @staticmethod
@@ -100,5 +208,82 @@ class Clustering:
         for old_lbl in sorted(set(labels) - set(new_label_map)):
             new_label_map[old_lbl] = next_new
             next_new += 1
-
         return labels.map(new_label_map).to_list()
+
+
+    @staticmethod
+    def temp(df,engine_class,model_kwargs):
+         # Create a subplot with 1 row and 2 columns
+        fig, axs = plt.subplots(3, 4)
+        fig.set_size_inches(18, 7)
+        for n_clusters in range(2, 14):
+
+
+            # The 1st subplot is the silhouette plot
+            # The silhouette coefficient can range from -1, 1 but in this example all
+            # lie within [-0.1, 1]
+            axs = axs.flatten()
+
+            for i in range(len(axs)):
+                axs[i].set_xlim([-0.1, 1])
+            # The (n_clusters+1)*10 is for inserting blank space between silhouette
+            # plots of individual clusters, to demarcate them clearly.
+                axs[i].set_ylim([0, len(df) + (n_clusters + 1) * 10])
+
+            # Initialize the clusterer with n_clusters value and a random generator
+            # seed of 10 for reproducibility.
+            clusterer = engine_class(n_cluster=n_clusters, **model_kwargs)
+            cluster_labels = clusterer.fit_predict(df)["clusters"].values
+
+            # The silhouette_score gives the average value for all the samples.
+            # This gives a perspective into the density and separation of the formed
+            # clusters
+            silhouette_avg = silhouette_score(df, cluster_labels)
+            print(
+                "For n_clusters =",
+                n_clusters,
+                "The average silhouette_score is :",
+                silhouette_avg,
+            )
+
+            # Compute the silhouette scores for each sample
+            sample_silhouette_values = silhouette_samples(df, cluster_labels)
+
+            y_lower = 10
+            ax_index = n_clusters - 2  # To select the correct subplot
+            for i in range(1,n_clusters+1):
+                # Aggregate the silhouette scores for samples belonging to
+                # cluster i, and sort them
+                ith_cluster_silhouette_values = sample_silhouette_values[cluster_labels == i]
+
+                ith_cluster_silhouette_values.sort()
+
+                size_cluster_i = ith_cluster_silhouette_values.shape[0]
+                y_upper = y_lower + size_cluster_i
+
+                color = cm.nipy_spectral(float(i) / n_clusters)
+                axs[ax_index].fill_betweenx(
+                    np.arange(y_lower, y_upper),
+                    0,
+                    ith_cluster_silhouette_values,
+                    facecolor=color,
+                    edgecolor=color,
+                    alpha=0.7,
+                )
+
+                # Label the silhouette plots with their cluster numbers at the middle
+                axs[ax_index].text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
+
+                # Compute the new y_lower for next plot
+                y_lower = y_upper + 10  # 10 for the 0 samples
+
+           # axs[ax_index].set_title("The silhouette plot for the various clusters.")
+            axs[ax_index].set_xlabel("The silhouette coefficient values")
+            axs[ax_index].set_ylabel("Cluster label")
+
+            # The vertical line for average silhouette score of all the values
+            axs[ax_index].axvline(x=silhouette_avg, color="red", linestyle="--")
+
+            axs[ax_index].set_yticks([])  # Clear the yaxis labels / ticks
+            axs[ax_index].set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
+        st.pyplot(fig)

@@ -1,5 +1,6 @@
 import streamlit as st
 
+
 def gui_clustering_up_col1():
     # First column of upper part in clustering showing scaling options
     options = ["Share of Top 30 (L1 Norm)",  # Denominator = Sum of the 30 columns
@@ -9,29 +10,22 @@ def gui_clustering_up_col1():
     st.radio("Select scaling option", options=options, key="scaler")
 
 
-def gui_clustering():
-        col1, col2, _ = st.columns([2, 2, 6])
-        with col1:
-            gui_clustering_up_col1()
-        with col2:
-            gui_clustering_up_col2("use_consensus_labels")
-        selected_algo = gui_clustering_bottom()
-        return selected_algo
-
-
 def gui_clustering_up_col2():
     # scaler
     st.checkbox("Run cluster analysis", key="optimal_k_analysis")
     st.number_input("Number of seeds", min_value=1, max_value=100, value=1, key="number_of_seeds")
     st.checkbox("Use consensus labels", False, key="use_consensus_labels")
 
+
 def gui_clustering_bottom():
     # Algorithm Selection
     algos = {
-        "kmeans": {"label": "K-means", "gui_func": gui_clustering_kmeans},
-        "gmm": {"label": "GMM", "gui_func": gui_clustering_gmm},
-        "kmedoids": {"label": "K-medoids", "gui_func": kmeoids_gui_options},
-      #  "dbscan": {"label": "DBSCAN", "gui_func": dbscan_gui_options},
+        "kmeans": {"label": "K-means", "gui_func": gui_options_kmeans},
+        "gmm": {"label": "GMM", "gui_func": gui_options_gmm},
+        "kmedoids": {"label": "K-medoids", "gui_func": gui_options_kmedoids},
+        "spectral": {"label": "Spectral", "gui_func": gui_options_spectral},
+        "hierarchical": {"label": "Hierarchical", "gui_func": gui_options_hierarchical},
+        #  "dbscan": {"label": "DBSCAN", "gui_func": dbscan_gui_options},
     }
     cols = st.columns(len(algos))
     selected_algo = None
@@ -46,18 +40,21 @@ def gui_clustering_bottom():
                 selected_algo = key
     return selected_algo
 
-def kmeoids_gui_options():
-    st.number_input("Number of clusters", 2, 15, 6, key="n_cluster_kmedoids")
+# OPTIONS FOR CLUSTERING ALGORITHMS
+
+
+def gui_options_kmedoids():
+    st.number_input("Number of clusters", 2, 15, 4, key="n_cluster_kmedoids")
     st.number_input("Maximum number of iteration", 10, 300, 100, key="max_iter_kmedoids")
-    st.selectbox("Distance metric", ["cosine", "correlation"], help="Cosine: profile similarity; Correlation: shape similarity", key="pam_metric")
+    st.selectbox("Distance metric", ["cosine"], help="Cosine: profile similarity;", key="distance_metric_pam")
 
 
-def gui_clustering_kmeans():
-    st.number_input("Number of clusters", 2, 15, 6, key="n_cluster_kmeans")
+def gui_options_kmeans():
+    st.number_input("Number of clusters", 2, 15, 4, key="n_cluster_kmeans")
     st.number_input("Random restarts (n_init)", 1, 100, 10, key="n_init_kmeans")
 
 
-def gui_clustering():
+def gui_clustering_main():
     col1, col2, _ = st.columns([2, 2, 6])
     with col1:
         gui_clustering_up_col1()
@@ -67,10 +64,64 @@ def gui_clustering():
     return selected_algo
 
 
-def gui_clustering_gmm():
-    st.number_input("Number of clusters / components", 2, 15, 6, key="n_cluster_gmm")
+def gui_options_gmm():
+    st.number_input("Number of clusters / components", 2, 15, 4, key="n_cluster_gmm")
     st.number_input("Random restarts (n_init)", 1, 100, 10, key="n_init_gmm")
     st.selectbox("Covariance", options=["diag", "full", "tied", "spherical"],key="gmm_covariance_type")
+
+
+def gui_options_spectral():
+    """
+    GUI controls for SpectralClustering parameters.
+    """
+    st.number_input("Number of clusters", min_value=2, max_value=15, value=4, key="n_cluster_spectral")
+    st.number_input("Number of nearest neighbors", min_value=2, max_value=30, value=10, step=1,
+        help="Controls local connectivity in the graph (higher = more global structure)",
+        key="n_neighbors_spectral"
+    )
+    st.selectbox("Spectral similarity geometry",
+          options=["cosine","euclidean"],
+        index=0,
+        key="spectral_geometry"
+    )
+
+    st.selectbox("Affinity", options=["nearest_neighbors"], index=0, key="affinity_spectral")
+
+
+def gui_options_hierarchical():
+    """
+    GUI options for Hierarchical Clustering (Agglomerative).
+    Designed for structural validation, not k-optimization.
+    """
+    # ---- Distance metric ----
+    st.selectbox("Distance metric", options=["cosine"], index=0, key="distance_metric_hierarchical")
+
+    # ---- Linkage method ----
+    st.selectbox("Linkage method", options=["average"], index=0, key="linkage_hierarchical")
+
+    # ---- k for comparison only ----
+    use_fixed_k = st.checkbox(
+        "Cut dendrogram at fixed number of clusters (for comparison)",
+        value=True,
+        help=(
+            "Hierarchical clustering does not infer the number of clusters. "
+            "This option cuts the dendrogram at an externally selected k "
+            "to enable comparison with other methods."
+        ),key="use_fixed_k_hierarchical"
+    )
+
+    k = None
+    if use_fixed_k:
+        k = st.slider(
+            "Number of clusters (k)",
+            min_value=2,
+            max_value=15,
+            value=4,
+            step=1,
+            help="Used only for comparison with other clustering methods.",
+            key="n_cluster_hierarchical"
+        )
+
 
 def dbscan_gui_options():
     """
@@ -86,3 +137,5 @@ def dbscan_gui_options():
                                   help="Min points to form a core region")
     # optional metric (keep Euclidean unless you need something else)
     db_metric = st.selectbox("Metric", options=["euclidean", "cosine"])
+
+

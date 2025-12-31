@@ -36,7 +36,7 @@ def scale(scaler_method, df, total_counts):
     else:
         st.warning("No scaling selected. Using raw counts.")
         df_scaled = df.values
-    st.header("Scaler:"+scaler_method)
+    st.write("Scaler:"+scaler_method)
     return pd.DataFrame(
         df_scaled,
         index=df.index,

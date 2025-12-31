@@ -22,8 +22,9 @@ METRIC_OBJECTIVES = {
 class OptimalKPlotter:
 
     @staticmethod
-    def plot_optimal_k_analysis(engine_class, num_seeds_to_plot,k_values,random_states,metrics_all,metrics_mean,ari_mean,ari_std,consensus_indices):
+    def plot_optimal_k_analysis(engine_class, num_seeds_to_plot, k_values, random_states, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, kwargs):
         st.header("Running "+engine_class.__name__+" Optimal k Analysis for "+str(len(random_states))+" seeds.")
+        st.write("Using params:"+str(kwargs))
 
         TITLE_FONTSIZE = 14
         AXIS_LABEL_FONTSIZE = 12
@@ -135,6 +136,8 @@ class OptimalKPlotter:
         fig.savefig('kmeans_metrics_analysis.png', dpi=300, bbox_inches='tight')
         st.dataframe(df_optimal_k)
         st.pyplot(fig)
+
+
 
     def style_metrics_dataframe(df: pd.DataFrame):
         display = pd.DataFrame(index=df.index)

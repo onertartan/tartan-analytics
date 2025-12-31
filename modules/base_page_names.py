@@ -23,7 +23,7 @@ class PageNames(BasePage):
         if st.session_state.get("selected_tab_" + self.page_name, "map") == "map":
             st.session_state["visualization_option"] = sidebar.radio("Choose visualization option",  ["Matplotlib", "Folium"]).lower()
 
-    def initialize_multiindex_gdf_clusters(self, df: object, year: object) -> object:
+    def initialize_multiindex_gdf_clusters(self, df: pd.DataFrame, year: object) -> None:
         new_index = pd.MultiIndex.from_product([[year], df.index], names=["year", "city"])
         self.gdf_clusters = df.copy()
         self.gdf_clusters.index = new_index

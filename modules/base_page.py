@@ -8,9 +8,12 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import streamlit
 from adjustText import adjust_text
+from sklearn.decomposition import PCA
 
 from clustering.models.factory import get_engine_class
+from clustering.models.hierarchical import HierarchicalClusteringEngine
 from clustering.models.kmeans import KMeansEngine
+from clustering.models.spectral import SpectralClusteringEngine
 from viz import PCAPlotter, OptimalKPlotter
 # Machine Learning
 from clustering.base_clustering import Clustering
@@ -92,9 +95,8 @@ class BasePage(ABC):
     @staticmethod
     @st.cache_data
     def load_geo_data():
-        gdf = {}
-        gdf["district"] = gpd.read_file("data/preprocessed/gdf_borders_district.geojson")
-        gdf["province"] = gpd.read_file("data/preprocessed/gdf_borders_ibbs3.geojson")
+        gdf = {"district": gpd.read_file("data/preprocessed/gdf_borders_district.geojson"),
+               "province": gpd.read_file("data/preprocessed/gdf_borders_ibbs3.geojson")}
         return gdf
 
     def render(self):
@@ -129,6 +131,7 @@ class BasePage(ABC):
             st.session_state["year_1"] = st.session_state["year_2"] = int(st.session_state.slider_year_1)
         else:
             st.session_state["year_1"], st.session_state["year_2"] = int(st.session_state.slider_year_2[0]), int(st.session_state.slider_year_2[1])
+
 
     def animation_slider_changed(self):
         st.session_state["animate"] = True
@@ -211,13 +214,12 @@ class BasePage(ABC):
 
     def tab_clustering(self, df, *args):
         # 0. Render UI
-        clustering_algorithm = gui_clustering()
+        clustering_algorithm = gui_clustering_main()
 
         if not clustering_algorithm:
             return
         engine_class = get_engine_class(clustering_algorithm)
-        random_states = range(st.session_state["number_of_seeds"])
-        n_cluster = st.session_state["n_cluster"] = st.session_state["n_cluster_" + clustering_algorithm]
+        n_cluster = st.session_state["n_cluster"] = st.session_state.get("n_cluster_" + clustering_algorithm,-1)
         kwargs = {}
         if engine_class is GMMEngine or engine_class is KMeansEngine:
                 st.session_state["n_init"] = st.session_state["n_init_" + clustering_algorithm]
@@ -225,38 +227,68 @@ class BasePage(ABC):
         if engine_class is GMMEngine:
             kwargs["covariance_type"] = st.session_state["gmm_covariance_type"]
         elif engine_class is KMedoidsEngine:
-            kwargs["metric"] = st.session_state["pam_metric"]
+            kwargs["metric"] = st.session_state["distance_metric_pam"]
             kwargs["max_iter"] = st.session_state["max_iter_kmedoids"]
-
+            kwargs["method"]="pam"
+        elif engine_class is SpectralClusteringEngine:
+            kwargs["affinity"] = st.session_state["affinity_spectral"]
+            kwargs["n_neighbors"] = st.session_state["n_neighbors_spectral"]
+            kwargs["assign_labels"] = "kmeans"
+            kwargs["spectral_geometry"] = st.session_state["spectral_geometry"]
+        elif engine_class is HierarchicalClusteringEngine:
+            kwargs["metric"] = st.session_state["distance_metric_hierarchical"]
+            kwargs["linkage_method"] = st.session_state["linkage_hierarchical"]
+            random_states = range(1)
 
         # 1. Run clustering: Preprocess
         df_pivot = self.preprocess_clustering(df, *args)
-        k_values = list(range(2, 15))
-        num_seeds_to_plot = 3
+     #   pca = PCA(n_components=50)
+      #  temp= pca.fit_transform(df_pivot.iloc[:, :-1])
+       # df_pivot = pd.DataFrame(temp,index=df_pivot.index )
+
+
+        """ If optimal_k_analysis is selected or use_consensus_labels is checked but it is not present(optimal_k_analysis has not previously run) """
+        if st.session_state.get("optimal_k_analysis", False) or (st.session_state.get("use_consensus_labels_" + self.page_name, False) and "consensus_labels_" + self.page_name not in st.session_state):
+            k_values = list(range(2, 15)) if engine_class.__name__ != "HierarchicalClusteringEngine" else range(n_cluster, n_cluster + 1)
+            random_states = range(st.session_state["number_of_seeds"]) if engine_class.__name__ != "HierarchicalClusteringEngine" else range(1)
+            num_seeds_to_plot = 3   if engine_class.__name__ != "HierarchicalClusteringEngine" else 1
+
+            try_all_neighbors = True
+            if engine_class is SpectralClusteringEngine and try_all_neighbors:
+                scaler_method = st.session_state["scaler"]
+                for n in range(5, 21):
+                    kwargs["n_neighbors"] = n
+                    st.write(f"Running optimal k analysis for n_neighbors={n} and scaler={scaler_method}")
+                    df_summary, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all = engine_class.optimal_k_analysis(df_pivot, random_states, k_values, kwargs)
+                    st.write(f"Completed optimal k analysis for n_neighbors={n}")
+                    df_summary.to_csv(f"results/files/spectral_{scaler_method}_{n}.csv")
+                    st.session_state["consensus_labels_" + engine_class.__name__ + f"_n_neighbors_{n}"] = consensus_labels_all
+                return # Exit after trying all neighbors
+
+            df_summary, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all = engine_class.optimal_k_analysis(df_pivot, random_states, k_values, kwargs)
+            st.session_state["consensus_labels_"+engine_class.__name__] = consensus_labels_all
+            df_pivot["clusters"] = consensus_labels_all[n_cluster]
+            OptimalKPlotter.plot_optimal_k_analysis(engine_class, num_seeds_to_plot, k_values, random_states, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, kwargs)
+            col1, col2 = st.columns(2)
+            col1.write("Formatted results")
+            col1.dataframe(OptimalKPlotter.style_metrics_dataframe(df_summary))
+            col2.write("Raw results")
+            col2.dataframe(df_summary)
+        elif st.session_state.get("use_consensus_labels_"+engine_class.__name__, False):
+            df_pivot["clusters"] = st.session_state["consensus_labels_" + engine_class.__name__][n_cluster]
+            st.header("Using previously saved consensus labels")
+        else:
+            kwargs["n_cluster"] = n_cluster
+            engine = get_engine_class(clustering_algorithm)(**kwargs)
+            df_pivot = engine.fit_predict(df_pivot)
+        # Step: Update geodata
+        representatives = Clustering.get_representatives(df_pivot)
+        if st.session_state.get("selected_tab_" + self.page_name, "") == "tab_geo_clustering":
+            # self.update_geo_cluster_centers(df_pivot, representatives)
+            self.gdf_clusters, self.gdf_centroids = Clustering.update_geo_cluster_centers(self.gdf, st.session_state["geo_scale"], df_pivot, representatives)
+
         col_plot, col_df = st.columns([5, 1])
 
-        with col_plot:
-            """ If optimal_k_analysis is selected or use_consensus_labels is checked but it is not present(optimal_k_analysis has not previously run) """
-            if st.session_state.get("optimal_k_analysis", False) or (st.session_state.get("use_consensus_labels_" + self.page_name, False) and "consensus_labels_" + self.page_name not in st.session_state):
-                kwargs["random_states"] = random_states
-                df_summary, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all = engine_class.optimal_k_analysis(df_pivot, **kwargs)
-                st.session_state["consensus_labels_"+engine_class.__name__] = consensus_labels_all
-                df_pivot["clusters"] = consensus_labels_all[n_cluster]
-                OptimalKPlotter.plot_optimal_k_analysis(engine_class, num_seeds_to_plot, k_values, random_states, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices)
-                # streamlit.dataframe(df_summary)
-                st.dataframe(OptimalKPlotter.style_metrics_dataframe(df_summary))
-            elif st.session_state.get("use_consensus_labels_"+engine_class.__name__, False):
-                df_pivot["clusters"] = st.session_state["consensus_labels_" +engine_class.__name__][n_cluster]
-                st.header("Using previously saved consensus labels")
-            else:
-                kwargs["n_cluster"]= n_cluster
-                engine = get_engine_class(clustering_algorithm)(**kwargs)
-                df_pivot = engine.fit(df_pivot)
-            # Step: Update geodata
-            representatives = Clustering.get_representatives(df_pivot)
-            if st.session_state.get("selected_tab_" + self.page_name, "") == "tab_geo_clustering":
-                # self.update_geo_cluster_centers(df_pivot, representatives)
-                self.gdf_clusters, self.gdf_centroids = Clustering.update_geo_cluster_centers(self.gdf, st.session_state["geo_scale"], df_pivot, representatives)
         if st.session_state.get("selected_tab_" + self.page_name, "") == "tab_geo_clustering":
             # Step-6: Render geo-cluster plots
             self.render_geo_clustering_plots(df_pivot, col_plot, col_df, df)
@@ -304,4 +336,4 @@ class BasePage(ABC):
         # The Clustering class handles engine selection and .fit() execution
         # fit() returns (df_pivot, closest_indices)
         engine = Clustering.get_engine_class(clustering_algorithm)(**kwargs)
-        return engine.fit(df_pivot)
+        return engine.fit_predict(df_pivot)

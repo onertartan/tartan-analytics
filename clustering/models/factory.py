@@ -1,13 +1,16 @@
 from clustering.models.kmeans import KMeansEngine
 from clustering.models.gmm import GMMEngine
 from clustering.models.kmedoids import KMedoidsEngine
+from clustering.models.spectral import SpectralClusteringEngine
+from clustering.models.hierarchical import HierarchicalClusteringEngine
 
 def get_engine_class(algo: str):
     mapping = {
         "kmeans": KMeansEngine,
         "gmm": GMMEngine,
-        "kmedoids": KMedoidsEngine
-
+        "kmedoids": KMedoidsEngine,
+        "spectral": SpectralClusteringEngine,
+        "hierarchical": HierarchicalClusteringEngine
     }
     if algo not in mapping:
         raise ValueError(f"Unsupported algorithm: {algo}")

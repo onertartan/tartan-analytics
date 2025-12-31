@@ -11,7 +11,6 @@ from matplotlib.colors import to_hex
 from raceplotly.plots import barplot
 from matplotlib import colors, pyplot as plt, patches
 from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, MaxAbsScaler
 from streamlit_folium import folium_static
 import folium
 from modules.base_page import BasePage
