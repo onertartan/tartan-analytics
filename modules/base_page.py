@@ -220,38 +220,38 @@ class BasePage(ABC):
             return
         engine_class = get_engine_class(clustering_algorithm)
         n_cluster = st.session_state["n_cluster"] = st.session_state.get("n_cluster_" + clustering_algorithm,-1)
-        kwargs = {}
-        if engine_class is GMMEngine or engine_class is KMeansEngine:
-                st.session_state["n_init"] = st.session_state["n_init_" + clustering_algorithm]
-                kwargs["n_init"]= st.session_state["n_init"]
-        if engine_class is GMMEngine:
-            kwargs["covariance_type"] = st.session_state["gmm_covariance_type"]
-        elif engine_class is KMedoidsEngine:
-            kwargs["metric"] = st.session_state["distance_metric_pam"]
-            kwargs["max_iter"] = st.session_state["max_iter_kmedoids"]
-            kwargs["method"]="pam"
-        elif engine_class is SpectralClusteringEngine:
-            kwargs["affinity"] = st.session_state["affinity_spectral"]
-            kwargs["n_neighbors"] = st.session_state["n_neighbors_spectral"]
-            kwargs["assign_labels"] = "kmeans"
-            kwargs["spectral_geometry"] = st.session_state["spectral_geometry"]
-        elif engine_class is HierarchicalClusteringEngine:
-            kwargs["metric"] = st.session_state["distance_metric_hierarchical"]
-            kwargs["linkage_method"] = st.session_state["linkage_hierarchical"]
-            random_states = range(1)
-
+        def prepare_kwargs():
+            kwargs = {}
+            if engine_class is GMMEngine or engine_class is KMeansEngine:
+                    st.session_state["n_init"] = st.session_state["n_init_" + clustering_algorithm]
+                    kwargs["n_init"]= st.session_state["n_init"]
+            if engine_class is GMMEngine:
+                kwargs["covariance_type"] = st.session_state["gmm_covariance_type"]
+            elif engine_class is KMedoidsEngine:
+                kwargs["metric"] = st.session_state["distance_metric_pam"]
+                kwargs["max_iter"] = st.session_state["max_iter_kmedoids"]
+                kwargs["method"]="pam"
+            elif engine_class is SpectralClusteringEngine:
+                kwargs["affinity"] = st.session_state["affinity_spectral"]
+                kwargs["n_neighbors"] = st.session_state["n_neighbors_spectral"]
+                kwargs["assign_labels"] = "kmeans"
+                kwargs["spectral_geometry"] = st.session_state["spectral_geometry"]
+            elif engine_class is HierarchicalClusteringEngine:
+                kwargs["metric"] = st.session_state["distance_metric_hierarchical"]
+                kwargs["linkage_method"] = st.session_state["linkage_hierarchical"]
+            return  kwargs
+        kwargs = prepare_kwargs()
         # 1. Run clustering: Preprocess
         df_pivot = self.preprocess_clustering(df, *args)
      #   pca = PCA(n_components=50)
       #  temp= pca.fit_transform(df_pivot.iloc[:, :-1])
        # df_pivot = pd.DataFrame(temp,index=df_pivot.index )
 
-
-        """ If optimal_k_analysis is selected or use_consensus_labels is checked but it is not present(optimal_k_analysis has not previously run) """
+        # If optimal_k_analysis is selected or use_consensus_labels is checked but it is not present(optimal_k_analysis has not previously run)
         if st.session_state.get("optimal_k_analysis", False) or (st.session_state.get("use_consensus_labels_" + self.page_name, False) and "consensus_labels_" + self.page_name not in st.session_state):
-            k_values = list(range(2, 15)) if engine_class.__name__ != "HierarchicalClusteringEngine" else range(n_cluster, n_cluster + 1)
+            k_values = list(range(2, 15)) if not (engine_class is  HierarchicalClusteringEngine) else range(n_cluster, n_cluster + 1)
             random_states = range(st.session_state["number_of_seeds"]) if engine_class.__name__ != "HierarchicalClusteringEngine" else range(1)
-            num_seeds_to_plot = 3   if engine_class.__name__ != "HierarchicalClusteringEngine" else 1
+            num_seeds_to_plot = 3  if engine_class.__name__ != "HierarchicalClusteringEngine" else 1
 
             try_all_neighbors = True
             if engine_class is SpectralClusteringEngine and try_all_neighbors:
@@ -274,6 +274,11 @@ class BasePage(ABC):
             col1.dataframe(OptimalKPlotter.style_metrics_dataframe(df_summary))
             col2.write("Raw results")
             col2.dataframe(df_summary)
+            if engine_class is KMedoidsEngine or engine_class is KMeansEngine:
+                df_summary.to_csv(f"results/files/{engine_class.__name__}/{st.session_state['scaler']}.csv")
+            elif engine_class is GMMEngine:
+                df_summary.to_csv(f"results/files/GMM/{st.session_state['scaler']}_cov_{st.session_state['gmm_covariance_type']}.csv")
+
         elif st.session_state.get("use_consensus_labels_"+engine_class.__name__, False):
             df_pivot["clusters"] = st.session_state["consensus_labels_" + engine_class.__name__][n_cluster]
             st.header("Using previously saved consensus labels")

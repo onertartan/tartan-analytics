@@ -52,19 +52,15 @@ fig, axes = plt.subplots(
     sharex=True
 )
 
-metrics = [
-    ("Silhouette_mean", "Silhouette (cosine)", "Separation"),
+metrics = [("Silhouette_mean", "Silhouette (cosine)", "Separation"),
     ("ARI_mean", "Mean ARI", "Stability"),
-    ("Consensus", "Consensus index", "Dominant structure"),
-]
+    ("Consensus", "Consensus index", "Dominant structure")]
 
 # Kısaltmalar ve Renkler
-scaler_abbr = {
-    "Share of Top 30 (L1 Norm)": "L1",
+scaler_abbr = {"Share of Top 30 (L1 Norm)": "L1",
     "Share of Total": "S",
     "TF-IDF": "TF",
-    "L2 Normalization": "L2"
-}
+    "L2 Normalization": "L2"}
 colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']  # Her scaler için sabit renk
 
 for j, (col, ylabel, title) in enumerate(metrics):
@@ -90,13 +86,12 @@ for j, (col, ylabel, title) in enumerate(metrics):
         else:
             ax.set_ylabel(ylabel)
 
-        if col in ("ARI_mean", "Consensus"): ax.set_ylim(0, 1.05)
+        if col in ("ARI_mean", "Consensus"):
+            ax.set_ylim(0, 1.05)
         ax.grid(True, alpha=0.2)
 
     # --- 5. SATIR: TÜM SCALER'LARIN EN İYİLERİ (4 ÇİZGİ) ---
-    # --- 5. SATIR: TÜM SCALER'LARIN EN İYİLERİ ---
     ax_comp = axes[-1, j]
-
     # Her k noktası için bilgileri ve o k'daki maksimum y değerini saklayacağız
     k_data = {k: {'infos': [], 'max_y': 0} for k in df_all["k"].unique()}
 
@@ -123,7 +118,7 @@ for j, (col, ylabel, title) in enumerate(metrics):
         for _, row in df_scaler_best.iterrows():
             k_val = row["k"]
             val = row[col]
-            k_data[k_val]['infos'].append((f"{abbr}:{int(row['n_neighbors'])}", color))
+            k_data[k_val]['infos'].append((f"{abbr}\nn:{int(row['n_neighbors'])}", color))
             # O sütundaki en yüksek y değerini güncelle
             if val > k_data[k_val]['max_y']:
                 k_data[k_val]['max_y'] = val
@@ -134,35 +129,35 @@ for j, (col, ylabel, title) in enumerate(metrics):
 
         for rank, (text, color) in enumerate(data['infos']):
             # rank 0: 30px üstte, rank 1: 38px üstte, rank 2: 46px üstte...
-            y_offset = 20 + (rank * 8)
-            if k_val<=3 or j==1:
-                y_offset-=10
+            y_offset = 15 + (rank * 8)
+            if k_val<=3 or j == 1:
+                y_offset-= 10
             ax_comp.annotate(
                 text,
                 xy=(k_val, peak_y),
                 xytext=(0, y_offset),
                 textcoords="offset points",
-                fontsize=5,
+                fontsize=6,
                 fontweight='bold',
                 color=color,
-                ha='left',
+                ha='center',
                 va='bottom',
-                bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=0.2)
+                bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=0)
             )
 
     # Grafik tavanını etiketlere yer açmak için %15-20 oranında yükseltelim
     current_ylim = ax_comp.get_ylim()
-    ax_comp.set_ylim(current_ylim[0], current_ylim[1] * 1.1)
-
-    ax_comp.legend(fontsize=8, loc='upper left', bbox_to_anchor=(1, 1))  # Lejantı dışarı alabiliriz
+    y_lim_factor=1.01 if j==1 else 1.06
+    ax_comp.set_ylim(current_ylim[0], current_ylim[1] * y_lim_factor)
+    ax_comp.legend(fontsize=8, loc='upper left', bbox_to_anchor=(.8, 1))  # Lejantı dışarı alabiliriz
     ax_comp.grid(True, alpha=0.2)
 
 # Tüm x ekseni ayarları
 for ax in axes.flat:
     ax.set_xticks(sorted(df_all["k"].unique()))
     ax.set_xlabel("Number of clusters (k)")
-print("zxcasd",len(axes))
-plt.tight_layout()
+fig.subplots_adjust(wspace=0.2)
+
 plt.show()
 """
 SELECTED_K = 6

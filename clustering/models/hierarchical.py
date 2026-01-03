@@ -29,9 +29,9 @@ class HierarchicalClusteringEngine(Clustering):
     ):
         self.n_clusters = n_cluster
         self.metric = metric
-        self.linkage_method = "ward"
+        self.linkage_method = "average"
         self.Z = None
-        self.metric_for_silhouette = "euclidean"
+        self.metric_for_silhouette = "cosine"
         self.model = self  # for interface compatibility
     # ------------------------------------------------------------------
     def fit_predict(self, df: pd.DataFrame) -> pd.DataFrame:

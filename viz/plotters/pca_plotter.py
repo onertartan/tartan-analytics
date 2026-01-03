@@ -37,7 +37,7 @@ class PCAPlotter:
             if cluster_size >= mid_threshold and i % 5 != 0:
                 continue
             # Annotate sparse clusters (<5%) and selected mid-density points
-            texts.append(ax.annotate(name, (reduced_data[i, 0], reduced_data[i, 1]), fontsize=8, alpha=0.7))
+         #   texts.append(ax.annotate(name, (reduced_data[i, 0], reduced_data[i, 1]), fontsize=8, alpha=0.7))
 
         adjust_text(texts)
         ax.set_title(f"{title}\nExplained_variance ratios{explained_variance_ratios.round(2)}\nCumulative variance of two components:{cumulative_variance_two.round(2)}")
