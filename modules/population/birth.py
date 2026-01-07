@@ -34,7 +34,7 @@ class PageBirthSex(PageCommon):
     @st.cache_data
     def get_data(geoscale=False):
         df = {}
-        file_path = "data/preprocessed/population/birth-sex-ibbs3-2009-2023.csv"
+        file_path = "data/preprocessed/population/birth-sex-ibbs3-2009-2024.csv"
         df["province"] = pd.read_csv(file_path, index_col=[0, 1], header=[0])
         file_path = "data/preprocessed/population/birth-district-2014-2023.csv"
         df["district"] = pd.read_csv(file_path, index_col=[0, 1, 2], header=[0])

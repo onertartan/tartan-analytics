@@ -191,7 +191,7 @@ class PageNames(BasePage):
        # if "selected_tab" not in st.session_state:
         #    st.session_state["selected_tab_"+self.page_name] = "map"
         tabs_main = [stx.TabBarItemData(id="tab_main_clustering", title="Clustering Tabs", description=""),
-                stx.TabBarItemData(id="tab_main_plot", title="Plot Tabs", description="")
+                stx.TabBarItemData(id="tab_main_plot", title="Plots Tab", description="")
                 ]
         tab_main_selected = stx.tab_bar(data=tabs_main, default="tab_main_clustering")
 
@@ -464,10 +464,11 @@ class PageNames(BasePage):
         df_pivot = pd.pivot_table(df, values='rank', index=df.index, columns=['name'],
                                   aggfunc=lambda x: x, dropna=False)
         fig, ax = plt.subplots(figsize=(10, 6))  # Explicit figure creation
-
+        cmap = plt.cm.get_cmap("tab20", 20)  # good for categorical lines
+        COLORS = [cmap(i) for i in range(20)]
         # Plot lines and dots for each name
         for i, name in enumerate(df_pivot.columns):
-            color = self.COLORS[i]
+            color =  COLORS[i]
             series = df_pivot[name]
 
             # Identify all non-NaN segments, including single points

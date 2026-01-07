@@ -252,8 +252,7 @@ class BasePage(ABC):
             k_values = list(range(2, 15)) if not (engine_class is  HierarchicalClusteringEngine) else range(n_cluster, n_cluster + 1)
             random_states = range(st.session_state["number_of_seeds"]) if engine_class.__name__ != "HierarchicalClusteringEngine" else range(1)
             num_seeds_to_plot = 3  if engine_class.__name__ != "HierarchicalClusteringEngine" else 1
-
-            try_all_neighbors = True
+            try_all_neighbors=True
             if engine_class is SpectralClusteringEngine and try_all_neighbors:
                 scaler_method = st.session_state["scaler"]
                 for n in range(5, 21):
@@ -261,23 +260,23 @@ class BasePage(ABC):
                     st.write(f"Running optimal k analysis for n_neighbors={n} and scaler={scaler_method}")
                     df_summary, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all = engine_class.optimal_k_analysis(df_pivot, random_states, k_values, kwargs)
                     st.write(f"Completed optimal k analysis for n_neighbors={n}")
-                    df_summary.to_csv(f"results/files/spectral_{scaler_method}_{n}.csv")
+                    df_summary.to_csv(f"results/files/SpectralClusteringEngine/{st.session_state['spectral_geometry']}_{scaler_method}_{n}.csv")
                     st.session_state["consensus_labels_" + engine_class.__name__ + f"_n_neighbors_{n}"] = consensus_labels_all
-                return # Exit after trying all neighbors
-
-            df_summary, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all = engine_class.optimal_k_analysis(df_pivot, random_states, k_values, kwargs)
-            st.session_state["consensus_labels_"+engine_class.__name__] = consensus_labels_all
-            df_pivot["clusters"] = consensus_labels_all[n_cluster]
-            OptimalKPlotter.plot_optimal_k_analysis(engine_class, num_seeds_to_plot, k_values, random_states, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, kwargs)
-            col1, col2 = st.columns(2)
-            col1.write("Formatted results")
-            col1.dataframe(OptimalKPlotter.style_metrics_dataframe(df_summary))
-            col2.write("Raw results")
-            col2.dataframe(df_summary)
-            if engine_class is KMedoidsEngine or engine_class is KMeansEngine:
-                df_summary.to_csv(f"results/files/{engine_class.__name__}/{st.session_state['scaler']}.csv")
-            elif engine_class is GMMEngine:
-                df_summary.to_csv(f"results/files/GMM/{st.session_state['scaler']}_cov_{st.session_state['gmm_covariance_type']}.csv")
+                return
+            else:
+                df_summary, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all = engine_class.optimal_k_analysis(df_pivot, random_states, k_values, kwargs)
+                st.session_state["consensus_labels_"+engine_class.__name__] = consensus_labels_all
+                df_pivot["clusters"] = consensus_labels_all[n_cluster]
+                OptimalKPlotter.plot_optimal_k_analysis(engine_class, num_seeds_to_plot, k_values, random_states, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, kwargs)
+                col1, col2 = st.columns(2)
+                col1.write("Formatted results")
+                col1.dataframe(OptimalKPlotter.style_metrics_dataframe(df_summary))
+                col2.write("Raw results")
+                col2.dataframe(df_summary)
+                if engine_class is KMedoidsEngine or engine_class is KMeansEngine:
+                    df_summary.to_csv(f"results/files/{engine_class.__name__}/{st.session_state['scaler']}.csv")
+                elif engine_class is GMMEngine:
+                    df_summary.to_csv(f"results/files/{engine_class.__name__}/{st.session_state['scaler']}_cov_{st.session_state['gmm_covariance_type']}.csv")
 
         elif st.session_state.get("use_consensus_labels_"+engine_class.__name__, False):
             df_pivot["clusters"] = st.session_state["consensus_labels_" + engine_class.__name__][n_cluster]

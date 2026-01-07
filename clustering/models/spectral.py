@@ -39,7 +39,3 @@ class SpectralClusteringEngine(Clustering):
         df_out = df.copy()
         df_out["clusters"] = labels
         return df_out
-
-    @staticmethod
-    def summarize(metrics_all, ari_mean, ari_std, consensus_indices, k_values):
-        return Clustering.summarize(metrics_all, ari_mean, ari_std, consensus_indices, k_values)

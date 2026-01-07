@@ -20,7 +20,3 @@ class KMedoidsEngine(Clustering):
             random_state=random_state,
         )
         self.metric_for_silhouette = metric #"cosine"
-
-    @staticmethod
-    def summarize(metrics_all, ari_mean, ari_std, consensus_indices, k_values):
-        return Clustering.summarize(metrics_all, ari_mean, ari_std, consensus_indices, k_values)

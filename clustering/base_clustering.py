@@ -167,14 +167,14 @@ class Clustering:
         values = [seed_vals[k_index] for seed_vals in metrics_all[metric_name]]
         return np.mean(values), np.std(values)
 
-    @staticmethod
-    def summarize(metrics_all, ari_mean, ari_std, consensus_indices, k_values):
+    @classmethod
+    def summarize(cls, metrics_all, ari_mean, ari_std, consensus_indices, k_values):
         rows = []
         for k in k_values:
             idx = list(k_values).index(k)
-            sil_m, sil_s = Clustering.mean_sd_at_k(metrics_all, "Silhouette Score", idx)
-            db_m, db_s = Clustering.mean_sd_at_k(metrics_all, "Davies-Bouldin Index", idx)
-            rows.append({
+            sil_m, sil_s = cls.mean_sd_at_k(metrics_all, "Silhouette Score", idx)
+            db_m, db_s = cls.mean_sd_at_k(metrics_all, "Davies-Bouldin Index", idx)
+            row_dict={
                 "Number of clusters": k,
                 "Silhouette_mean": sil_m,
                 "Silhouette_std": sil_s,
@@ -183,7 +183,20 @@ class Clustering:
                 "ARI_mean": ari_mean[idx],
                 "ARI_std": ari_std[idx],
                 "Consensus": consensus_indices[idx],
-            })
+            }
+            if cls.__name__ == "KMeansEngine":
+                iner_m, iner_s = cls.mean_sd_at_k(metrics_all, "Inertia", idx)
+                row_dict["Inertia_mean"] = iner_m
+                row_dict["Inertia_std"] = iner_s
+            elif cls.__name__=="GMMEngine":
+                bic_m, bic_s = cls.mean_sd_at_k(metrics_all, "BIC", idx)
+                aic_m, aic_s = cls.mean_sd_at_k(metrics_all, "AIC", idx)
+                row_dict["BIC_mean"] = bic_m
+                row_dict["BIC_std"] = bic_s
+                row_dict["AIC_mean"] = aic_m
+                row_dict["AIC_std"] = aic_s
+
+            rows.append(row_dict)
         return pd.DataFrame(rows).set_index("Number of clusters")
 
     # Not used

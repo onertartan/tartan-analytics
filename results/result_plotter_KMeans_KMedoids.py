@@ -5,7 +5,10 @@ from pathlib import Path
 # ------------------------
 # Configuration
 # ------------------------
-DATA_DIR = Path("files/KMeansEngine")
+engine_name = "KMeansEngine"
+#engine_name = "KMedoidsEngine"
+
+DATA_DIR = Path(f"files/{engine_name}")
 
 scaler_labels = {
     "Share of Top 30 (L1 Norm)": "L1 (Top 30)",
@@ -19,7 +22,8 @@ METRICS = [
     ("ARI_mean", "Clustering stability", "Stability"),
     ("Consensus", "Dominant structure", "Dominant structure")
 ]
-
+#if engine_name == "KMeansEngine":
+#    METRICS.append(("Inertia_mean", "Inertia", "Inertia"))
 # ------------------------
 # Load data
 # ------------------------
@@ -49,12 +53,13 @@ for ax, (col, ylabel, title) in zip(axes, METRICS):
             marker="o",
             label=scaler_labels[scaler]
         )
-        ax.fill_between(
-            df["Number of clusters"],
-            df[col] - df[col.replace("_mean", "_std")],
-            df[col] + df[col.replace("_mean", "_std")],
-            alpha=0.15
-        )
+        if col!= "Consensus":
+            ax.fill_between(
+                df["Number of clusters"],
+                df[col] - df[col.replace("_mean", "_std")],
+                df[col] + df[col.replace("_mean", "_std")],
+                alpha=0.15
+            )
 
     ax.set_title(title, fontsize=12, pad=10)
     ax.set_xlabel("Number of clusters (k)")
