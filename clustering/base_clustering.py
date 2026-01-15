@@ -143,7 +143,6 @@ class Clustering:
             status_text.text(f"The last seed took {seed_time}s")
             status_text.text(f"Completed {idx + 1}/{total_states} seeds. Elapsed: {elapsed_minutes}m {elapsed_seconds}s")
 
-
         progress_bar.empty()
         status_text.empty()
         # ---- Mean metrics across seeds ----
@@ -154,7 +153,6 @@ class Clustering:
             stability_and_consensus(labels_all=labels_all, k_values=k_values, random_states=random_states,
                                     n_samples=n_samples)
         df_summary = cls.summarize(metrics_all, ari_mean, ari_std, consensus_indices, k_values)
-       # Clustering.temp(df, engine_class, model_kwargs)
         return df_summary, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all
 
     @staticmethod
@@ -199,6 +197,78 @@ class Clustering:
             rows.append(row_dict)
         return pd.DataFrame(rows).set_index("Number of clusters")
 
+    @classmethod
+    def silhouette_analysis(cls,df_pivot, kwargs, k_values=range(2,7)):
+        for n_clusters in k_values:
+            # Create a subplot with 1 row and 2 columns
+            fig, (ax1, ax2) = plt.subplots(1, 2)
+            fig.set_size_inches(18, 7)
+
+            # The 1st subplot is the silhouette plot
+            # The silhouette coefficient can range from -1, 1 but in this example all
+            # lie within [-0.1, 1]
+            ax1.set_xlim([-0.1, 1])
+            # The (n_clusters+1)*10 is for inserting blank space between silhouette
+            # plots of individual clusters, to demarcate them clearly.
+            ax1.set_ylim([0, len(df_pivot) + (n_clusters + 1) * 10])
+            # Initialize the clusterer with n_clusters value and a random generator
+            # seed of 10 for reproducibility.
+            kwargs['n_cluster'] = n_clusters
+            clusterer = cls(**kwargs)
+            cluster_labels = clusterer.fit_predict(df_pivot)
+
+            # The silhouette_score gives the average value for all the samples.
+            # This gives a perspective into the density and separation of the formed
+            # clusters
+            silhouette_avg = silhouette_score(df_pivot, cluster_labels)
+            print(
+                "For n_clusters =",
+                n_clusters,
+                "The average silhouette_score is :",
+                silhouette_avg,
+            )
+
+            # Compute the silhouette scores for each sample
+            sample_silhouette_values = silhouette_samples(df_pivot, cluster_labels)
+
+            y_lower = 10
+            for i in range(n_clusters):
+                # Aggregate the silhouette scores for samples belonging to
+                # cluster i, and sort them
+                ith_cluster_silhouette_values = sample_silhouette_values[cluster_labels == i]
+
+                ith_cluster_silhouette_values.sort()
+
+                size_cluster_i = ith_cluster_silhouette_values.shape[0]
+                y_upper = y_lower + size_cluster_i
+
+                color = cm.nipy_spectral(float(i) / n_clusters)
+                ax1.fill_betweenx(
+                    np.arange(y_lower, y_upper),
+                    0,
+                    ith_cluster_silhouette_values,
+                    facecolor=color,
+                    edgecolor=color,
+                    alpha=0.7,
+                )
+
+                # Label the silhouette plots with their cluster numbers at the middle
+                ax1.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
+
+                # Compute the new y_lower for next plot
+                y_lower = y_upper + 10  # 10 for the 0 samples
+
+            ax1.set_title("The silhouette plot for the various clusters.")
+            ax1.set_xlabel("The silhouette coefficient values")
+            ax1.set_ylabel("Cluster label")
+
+            # The vertical line for average silhouette score of all the values
+            ax1.axvline(x=silhouette_avg, color="red", linestyle="--")
+
+            ax1.set_yticks([])  # Clear the yaxis labels / ticks
+            ax1.set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
+        st.pyplot(fig)
+
     # Not used
     @staticmethod
     def remap_clusters(labels: pd.Series, priority: List[str]) -> pd.Series:
@@ -223,80 +293,3 @@ class Clustering:
             next_new += 1
         return labels.map(new_label_map).to_list()
 
-
-    @staticmethod
-    def temp(df,engine_class,model_kwargs):
-         # Create a subplot with 1 row and 2 columns
-        fig, axs = plt.subplots(3, 4)
-        fig.set_size_inches(18, 7)
-        for n_clusters in range(2, 14):
-
-
-            # The 1st subplot is the silhouette plot
-            # The silhouette coefficient can range from -1, 1 but in this example all
-            # lie within [-0.1, 1]
-            axs = axs.flatten()
-
-            for i in range(len(axs)):
-                axs[i].set_xlim([-0.1, 1])
-            # The (n_clusters+1)*10 is for inserting blank space between silhouette
-            # plots of individual clusters, to demarcate them clearly.
-                axs[i].set_ylim([0, len(df) + (n_clusters + 1) * 10])
-
-            # Initialize the clusterer with n_clusters value and a random generator
-            # seed of 10 for reproducibility.
-            clusterer = engine_class(n_cluster=n_clusters, **model_kwargs)
-            cluster_labels = clusterer.fit_predict(df)["clusters"].values
-
-            # The silhouette_score gives the average value for all the samples.
-            # This gives a perspective into the density and separation of the formed
-            # clusters
-            silhouette_avg = silhouette_score(df, cluster_labels)
-            print(
-                "For n_clusters =",
-                n_clusters,
-                "The average silhouette_score is :",
-                silhouette_avg,
-            )
-
-            # Compute the silhouette scores for each sample
-            sample_silhouette_values = silhouette_samples(df, cluster_labels)
-
-            y_lower = 10
-            ax_index = n_clusters - 2  # To select the correct subplot
-            for i in range(1,n_clusters+1):
-                # Aggregate the silhouette scores for samples belonging to
-                # cluster i, and sort them
-                ith_cluster_silhouette_values = sample_silhouette_values[cluster_labels == i]
-
-                ith_cluster_silhouette_values.sort()
-
-                size_cluster_i = ith_cluster_silhouette_values.shape[0]
-                y_upper = y_lower + size_cluster_i
-
-                color = cm.nipy_spectral(float(i) / n_clusters)
-                axs[ax_index].fill_betweenx(
-                    np.arange(y_lower, y_upper),
-                    0,
-                    ith_cluster_silhouette_values,
-                    facecolor=color,
-                    edgecolor=color,
-                    alpha=0.7,
-                )
-
-                # Label the silhouette plots with their cluster numbers at the middle
-                axs[ax_index].text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
-
-                # Compute the new y_lower for next plot
-                y_lower = y_upper + 10  # 10 for the 0 samples
-
-           # axs[ax_index].set_title("The silhouette plot for the various clusters.")
-            axs[ax_index].set_xlabel("The silhouette coefficient values")
-            axs[ax_index].set_ylabel("Cluster label")
-
-            # The vertical line for average silhouette score of all the values
-            axs[ax_index].axvline(x=silhouette_avg, color="red", linestyle="--")
-
-            axs[ax_index].set_yticks([])  # Clear the yaxis labels / ticks
-            axs[ax_index].set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
-        st.pyplot(fig)

@@ -85,8 +85,8 @@ for ax, (col, ylabel, title) in zip(axes, METRICS):
     ax.set_ylabel(ylabel)
     ax.grid(alpha=0.3)
 
-    if col in ("ARI_mean", "Consensus"):
-        ax.set_ylim(0, 1.05)
+    #if col in ("ARI_mean", "Consensus"):
+    ax.set_ylim(0, 1.01)
 
 # ------------------------
 # Legends (two-part, clean)

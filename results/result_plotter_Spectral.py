@@ -7,7 +7,6 @@ import re
 DEFAULT_METRICS = [
     ("Silhouette_mean", "Cluster separation", "Separation"),
     ("ARI_mean", "Clustering stability", "Stability"),
-    ("Consensus", "Dominant structure", "Dominant structure"),
 ]
 
 DEFAULT_SCALER_ABBR = {
@@ -16,13 +15,11 @@ DEFAULT_SCALER_ABBR = {
     "TF-IDF": "TF",
     "L2 Normalization": "L2",
 }
-def _parse_spectral_filename(fname: Path):
-    m = re.match(
-        r"(.+?)_(euclidean|cosine)_(\d{4}_\d{4})_(\d+)\.csv",
-        fname.name
-    )
+def _parse_spectral_filename(fname: Path,geometry:str):
+    m = re.match(rf"(.+?)_({re.escape(geometry)})_(\d{{4}}_\d{{4}})_(\d+)\.csv",fname.name)
+
     if m is None:
-        raise ValueError(f"Cannot parse filename: {fname.name}")
+        return None
 
     scaler = m.group(1)
     geometry = m.group(2)
@@ -34,7 +31,7 @@ def _parse_spectral_filename(fname: Path):
 
 
 def plot_spectral_k_analysis(
-    geometry="both",                      # "cosine" | "euclidean" | "both" | ("cosine","euclidean")
+    geometry,                      # "cosine" | "euclidean"
     data_dir="files/SpectralClusteringEngine",
     metrics=DEFAULT_METRICS,
     scaler_abbr=DEFAULT_SCALER_ABBR,
@@ -58,20 +55,7 @@ def plot_spectral_k_analysis(
 
     Geometry selection:
       geometry="cosine" or "euclidean" filters files.
-      geometry="both" or tuple/list includes both (data combined).
     """
-
-    # ---- normalize geometry argument ----
-    if geometry == "both":
-        geometries = {"euclidean", "cosine"}
-    elif isinstance(geometry, (tuple, list, set)):
-        geometries = set(geometry)
-    else:
-        geometries = {str(geometry).lower()}
-
-    bad = geometries - {"euclidean", "cosine"}
-    if bad:
-        raise ValueError(f"Invalid geometry values: {bad}. Use 'cosine', 'euclidean', or 'both'.")
 
     DATA_DIR = Path(data_dir)
     files = sorted(f for f in DATA_DIR.glob("*.csv")  if not f.name.startswith("consensus_labels_all_") )
@@ -82,10 +66,10 @@ def plot_spectral_k_analysis(
     # ---- load and filter ----
     dfs = []
     for f in files:
-        geom, scaler,year_range, n_nb = _parse_spectral_filename(f)
-        if geom not in geometries:
+        regex_groups = _parse_spectral_filename(f,geometry)
+        if regex_groups == None:
             continue
-
+        geom, scaler, year_range, n_nb = regex_groups
         df = pd.read_csv(f)
         df["Number of clusters"] = df["Number of clusters"].astype(int)
         df = df.rename(columns={"Number of clusters": "k"})
@@ -96,7 +80,7 @@ def plot_spectral_k_analysis(
         dfs.append(df)
 
     if not dfs:
-        raise FileNotFoundError(f"No files matched geometry={geometries} in {data_dir}")
+        raise FileNotFoundError(f"No files matched  in {data_dir}")
 
     df_all = pd.concat(dfs, ignore_index=True)
 
@@ -111,9 +95,8 @@ def plot_spectral_k_analysis(
     fig, axes = plt.subplots(
         nrows=n_rows,
         ncols=n_cols,
-        figsize=(5 * n_cols, figsize_per_row * n_rows),
-        sharex=True,
-        constrained_layout=True
+        figsize=(5 * n_cols, figsize_per_row * n_rows+5),
+        sharex=True,constrained_layout=True
     )
 
     # ensure axes is always 2D
@@ -156,10 +139,10 @@ def plot_spectral_k_analysis(
             else:
                 ax.set_ylabel(ylabel)
 
-            if col in ("ARI_mean", "Consensus"):
-                ax.set_ylim(0, 1.05)
+            ax.set_ylim(0, 1.05)
 
             ax.grid(True, alpha=0.2)
+
 
         # last row: comparison across scalers (best per k)
         if show_comparison_row:
@@ -184,16 +167,21 @@ def plot_spectral_k_analysis(
                 for _, row in g.iterrows():
                     k_val = row["k"]
                     val = row[col]
-                    k_data[k_val]["infos"].append((f"{abbr}\nn:{int(row['n_neighbors'])}", color))
+                    k_data[k_val]["infos"].append((f"{abbr}-{int(row['n_neighbors'])}", color))
                     k_data[k_val]["max_y"] = max(k_data[k_val]["max_y"], val)
+                    k_data[k_val]["min_y"] = min(k_data[k_val]["max_y"], val)
 
             # stack annotations above each k
             for k_val, data in k_data.items():
                 peak_y = data["max_y"]
+                bottom_y = data["min_y"]
                 for rank, (text, color) in enumerate(data["infos"]):
                     y_offset = 15 + rank * 8
-                    if k_val <= 3 or j == 1:
+                    if  j == 1:
+                       y_offset= -15- abs(1-bottom_y)*500- rank * 10
+                    elif k_val <= 3 :
                         y_offset -= 10
+
                     ax_comp.annotate(
                         text,
                         xy=(k_val, peak_y),
@@ -204,25 +192,31 @@ def plot_spectral_k_analysis(
                         bbox=dict(facecolor="white", alpha=0.7, edgecolor="none", pad=0)
                     )
 
-            ymin, ymax = ax_comp.get_ylim()
-            ax_comp.set_ylim(ymin, ymax * (1.01 if j == 1 else 1.06))
+            ax_comp.set_ylim(0,1.05)
             ax_comp.set_ylabel(ylabel)
+            ax_comp.set_yticks(np.arange(0, 1.01, 0.1))
+
             ax_comp.grid(True, alpha=0.2)
-            ax_comp.legend(fontsize=8, loc="upper left", bbox_to_anchor=(0.8, 1.0))
+            if j==2:
+                ax_comp.legend(fontsize=8, loc="upper left", bbox_to_anchor=(0.8, 1.0))
 
     # shared x-axis formatting
-    for ax in axes.flat:
+    for i,ax in enumerate(axes.flat):
         ax.set_xticks(k_vals)
         ax.set_xlabel("Number of clusters (k)")
 
+
     # optional: annotate which geometries are included
-    geom_label = " & ".join(sorted(geometries))
-    fig.suptitle(f"Spectral clustering k-analysis ({geom_label})", y=1.01, fontsize=12)
+    fig.set_constrained_layout_pads(h_pad=0.05)
+
+    fig.suptitle(f"Spectral clustering k-analysis ({geometry})",  fontsize=12)
 
     if save_path:
         fig.savefig(save_path, dpi=dpi, bbox_inches="tight")
 
     return fig
 
-plot_spectral_k_analysis(geometry="cosine")
-plt.show()
+df=pd.read_csv("files/GMMEngine/TF-IDF_spherical_2018_2024_consensus_labels_all.csv",index_col=0)
+print(df.head())
+#plot_spectral_k_analysis(geometry="cosine")
+#plt.show()

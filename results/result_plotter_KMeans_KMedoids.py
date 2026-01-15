@@ -7,14 +7,7 @@ def plot_k_analysis(engines, METRICS, pattern_map, scaler_labels):
     n_rows = len(engines)
     n_cols = len(METRICS)
 
-    fig, axes = plt.subplots(
-        nrows=n_rows,
-        ncols=n_cols,
-        figsize=(5 * n_cols, 4 * n_rows),
-        sharex=True,
-        constrained_layout=True
-    )
-
+    fig, axes = plt.subplots(nrows=n_rows, ncols=n_cols, figsize=(5 * n_cols, 4 * n_rows), sharex=True, constrained_layout=True)
     # Ensure axes is always 2D
     if n_rows == 1:
         axes = axes.reshape(1, -1)
@@ -22,7 +15,6 @@ def plot_k_analysis(engines, METRICS, pattern_map, scaler_labels):
     for row_idx, (engine_name, engine_label) in enumerate(engines):
 
         DATA_DIR = Path(f"files/{engine_name}")
-
         # ---- load data ----
         dfs = {}
         for scaler, regex in pattern_map.items():
@@ -38,14 +30,7 @@ def plot_k_analysis(engines, METRICS, pattern_map, scaler_labels):
             ax = axes[row_idx, col_idx]
 
             for scaler, df in dfs.items():
-                ax.plot(
-                    df["Number of clusters"],
-                    df[metric],
-                    marker="o",
-                    linewidth=2,
-                    label=scaler_labels[scaler]
-                )
-
+                ax.plot(df["Number of clusters"], df[metric], marker="o", linewidth=2, label=scaler_labels[scaler])
                 if metric != "Consensus":
                     ax.fill_between(
                         df["Number of clusters"],
@@ -67,8 +52,8 @@ def plot_k_analysis(engines, METRICS, pattern_map, scaler_labels):
             ax.set_xlabel("Number of clusters (k)")
             ax.grid(alpha=0.3)
 
-            if metric in ("ARI_mean", "Consensus"):
-                ax.set_ylim(0, 1.05)
+            #if metric in ("ARI_mean", "Consensus"):
+            ax.set_ylim(0, 1.02)
 
     # ---- shared legend ----
     handles, labels = axes[0, 0].get_legend_handles_labels()
@@ -77,10 +62,10 @@ def plot_k_analysis(engines, METRICS, pattern_map, scaler_labels):
         labels,
         title="Normalization",
         loc="upper right",
-        bbox_to_anchor=(0.98, 0.95),
+        bbox_to_anchor=(0.98, 0.92),
         frameon=False
     )
-
+    fig.suptitle("K-Means and K-Medoids: Cluster-number sensitivity", fontsize=14)
     return fig
 scaler_labels = {
     "Share of Top 30 (L1 Norm)": "L1 (Top 30)",

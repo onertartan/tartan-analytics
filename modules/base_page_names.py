@@ -185,7 +185,76 @@ class PageNames(BasePage):
         # If surname is selected, we force both genders (or ignore gender column)
         if disable:
             st.session_state[gender_list_state_key] = ["male", "female"]
+
+
+
         return name_surname_selection, selected_years, gender_list_state_key
+
+    import streamlit as st
+    from typing import List, Optional
+
+
+
+    def province_selector(
+            self,
+            all_provinces,
+            key_prefix: str = "province",
+            default_excluded: Optional[List[str]] = None
+    ) -> List[str]:
+        """
+        Ultra-compact province selector using only exclusion.
+
+        Args:
+            key_prefix: Unique prefix for session state keys and widget IDs
+            all_provinces: Complete list of all provinces
+            default_excluded: Provinces to exclude by default on first load
+
+        Returns:
+            List of currently selected provinces (all minus excluded)
+        """
+        # Session state initialization
+        if f"{key_prefix}_excluded" not in st.session_state:
+            if default_excluded is not None:
+                st.session_state[f"{key_prefix}_excluded"] = default_excluded.copy()
+            else:
+                st.session_state[f"{key_prefix}_excluded"] = []
+
+        excluded_key = f"{key_prefix}_excluded"
+
+        # Tek bir searchable multiselect ile hariç tutma
+        st.markdown("**Province Selection**")
+
+        col_header = st.columns([3, 1])
+        with col_header[0]:
+            st.caption("Exclude provinces from analysis (all others are included)")
+        with col_header[1]:
+            if st.button("Clear", key=f"{key_prefix}_clear_btn", type="secondary"):
+                st.session_state[excluded_key] = []
+                st.rerun()
+
+        # Searchable multiselect with better UX
+        excluded = st.multiselect(
+            "Exclude provinces:",
+            options=all_provinces,
+            default=st.session_state[excluded_key],
+            key=f"{key_prefix}_exclude_compact",
+            label_visibility="collapsed",
+            placeholder="Search and select provinces to exclude..."
+        )
+
+        if excluded != st.session_state[excluded_key]:
+            st.session_state[excluded_key] = excluded.copy()
+            st.rerun()
+
+        # Calculate final selected (all minus excluded)
+        final_selected = [p for p in all_provinces if p not in st.session_state[excluded_key]]
+
+        # Mini summary
+        st.caption(f"**{len(final_selected)}** provinces selected, **{len(st.session_state[excluded_key])}** excluded")
+
+        return final_selected
+
+
 
     def render_tab_selection(self):
        # if "selected_tab" not in st.session_state:
@@ -219,8 +288,12 @@ class PageNames(BasePage):
         # ---   Apply Filter ---
         # Only filter by gender if we are looking at names
         df = self.data[name_surname_selection.lower()]
+        st.dataframe(df)
+        st.write(df.index.get_level_values("province").unique().tolist())
+        selected_provinces = self.province_selector(df.index.get_level_values("province").unique().tolist())
+
         idx = pd.IndexSlice
-        df = df.loc[idx[selected_years, :], :]
+        df = df.loc[idx[selected_years,selected_provinces], :]
         if name_surname_selection != "surname":
             # Ensure the column 'sex' exists before filtering
             if 'sex' in df.columns:
@@ -385,6 +458,7 @@ class PageNames(BasePage):
                     df_results.append(df_result_not_null)
                     df_result_with_nulls = gdf_borders.merge(df_result_not_null[["province", "name"]],
                                                              left_on="province", right_on="province", how="left")
+                    print("456987",df_result_with_nulls)
                     self.plot_names(df_result_with_nulls, axs[i, 0])#, sorted(df_result_not_null['name'].unique()))  -->GEREKLİ Mİ, fonksiyondan parametre kalkmıştı, buradan yollamaya gerek var mı?
                     axs[i, 0].set_title(f"Provinces where selected {names_or_surnames_statement} in the top {n} for {year}")
             # else:  # K-means

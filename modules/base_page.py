@@ -219,7 +219,7 @@ class BasePage(ABC):
         if not clustering_algorithm:
             return
         engine_class = get_engine_class(clustering_algorithm)
-        n_cluster = st.session_state["n_cluster"] = st.session_state.get("n_cluster_" + clustering_algorithm,-1)
+        n_cluster = st.session_state["n_cluster"] = st.session_state.get("n_cluster_" + clustering_algorithm, -1)
         def prepare_kwargs():
             kwargs = {}
             if engine_class is GMMEngine or engine_class is KMeansEngine:
@@ -255,7 +255,7 @@ class BasePage(ABC):
             try_all_neighbors=True
             if engine_class is SpectralClusteringEngine and try_all_neighbors:
                 scaler, spectral_geometry, year1, year2 = st.session_state['scaler'], st.session_state['spectral_geometry'], st.session_state["year_1"], st.session_state["year_2"]
-                st.write( scaler, spectral_geometry, year1, year2 )
+                st.write(scaler, spectral_geometry, year1, year2 )
                 for n in range(5, 21):
                     kwargs["n_neighbors"] = n
                     st.write(f"Running optimal k analysis for Spectral Clustering with n_neighbors={n} and scaler={scaler}")
@@ -275,7 +275,7 @@ class BasePage(ABC):
                 col1.dataframe(OptimalKPlotter.style_metrics_dataframe(df_summary))
                 col2.write("Raw results")
                 col2.dataframe(df_summary)
-                scaler, gmm_cov, year1, year2= st.session_state['scaler'],st.session_state['gmm_covariance_type'], st.session_state["year_1"], st.session_state["year_2"]
+                scaler, gmm_cov, year1, year2 = st.session_state['scaler'], st.session_state['gmm_covariance_type'], st.session_state["year_1"], st.session_state["year_2"]
                 if engine_class is KMedoidsEngine or engine_class is KMeansEngine:
                     df_summary.to_csv(f"results/files/{engine_class.__name__}/{scaler}_{year1}_{year2}.csv")
                     pd.DataFrame(consensus_labels_all).to_csv(f"results/files/{engine_class.__name__}/{scaler}_{year1}_{year2}_consensus_labels_all.csv")
@@ -283,14 +283,19 @@ class BasePage(ABC):
                     df_summary.to_csv(f"results/files/{engine_class.__name__}/{scaler}_{gmm_cov}_{year1}_{year2}.csv")
                     pd.DataFrame(consensus_labels_all).to_csv(f"results/files/{engine_class.__name__}/{scaler}_{gmm_cov}_{year1}_{year2}_consensus_labels_all.csv")
 
-
         elif st.session_state.get("use_consensus_labels_"+engine_class.__name__, False):
             df_pivot["clusters"] = st.session_state["consensus_labels_" + engine_class.__name__][n_cluster]
             st.header("Using previously saved consensus labels")
         else:
+            silhouette_analysis=True
+            if silhouette_analysis:
+                engine_class.silhouette_analysis(df_pivot, kwargs=kwargs, k_values=range(2,6))
+                return
             kwargs["n_cluster"] = n_cluster
             engine = get_engine_class(clustering_algorithm)(**kwargs)
             df_pivot = engine.fit_predict(df_pivot)
+           # st.dataframe(engine.probabilities(df_pivot.drop(columns=["clusters"])))
+            #st.dataframe(df_pivot)
         # Step: Update geodata
         representatives = Clustering.get_representatives(df_pivot)
         if st.session_state.get("selected_tab_" + self.page_name, "") == "tab_geo_clustering":

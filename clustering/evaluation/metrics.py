@@ -1,3 +1,4 @@
+"""
 # Helper function for Dunn Index
 def dunn_index(self, df, labels):
     unique_labels = np.unique(labels)
@@ -40,3 +41,4 @@ def compute_gap_statistic(self, df, k, random_state, n_refs=5):
         ref_inertias.append(ref_kmeans.inertia_)
     gap = np.mean(np.log(ref_inertias)) - np.log(observed_inertia)
     return gap
+"""

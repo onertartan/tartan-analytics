@@ -30,22 +30,23 @@ class OptimalKPlotter:
         AXIS_LABEL_FONTSIZE = 12
         TICK_LABEL_FONTSIZE = 11
         LEGEND_FONTSIZE = 11
-        # Create subplot grid: (seeds + mean + ARI) rows, num_cols columns
+        # Create subplot grid: (3 rows for 3 seeds + last row for mean  values & ARI) rows, num_cols columns
         #  Smaller Figure Size, Higher DPI
         # Width 20 is plenty for 3 columns. Height 25 gives enough vertical room for 5 rows.
         if engine_class is KMeansEngine:
-            num_cols=3
-        else:
             num_cols=4
+        elif engine_class is GMMEngine:
+            num_cols=5
+        else:
+            num_cols=3
         num_seeds_to_plot = min(num_seeds_to_plot, len(random_states))
-        fig, axs = plt.subplots(num_seeds_to_plot + 2, num_cols,  figsize=(20, 25), dpi=200)
+        fig, axs = plt.subplots(num_seeds_to_plot + 1, num_cols,  figsize=(20, 25), dpi=200)
         # Titles for each column
         column_titles = ['Silhouette Score', 'Davies-Bouldin Index']
         if engine_class is KMeansEngine:
             column_titles += ['Elbow Analysis']
         elif engine_class is GMMEngine:
             column_titles += ['AIC', 'BIC']
-        column_titles += ['Consensus Index']
 
         df_optimal_k = pd.DataFrame(data=0,index=column_titles,columns=k_values)
         for i, random_state in enumerate(random_states):
@@ -79,16 +80,26 @@ class OptimalKPlotter:
                     axs[i, 2].axvline(x=elbow.elbow, color='r', linestyle='--')
                 axs[i, 2].set_title(f'Seed {random_state}: {column_titles[2]}', fontsize=TITLE_FONTSIZE)
 
-        # Plot mean metrics
+            # Hide unused subplots in ARI row
+            for j in range(num_cols-1, num_cols):
+                axs[i, j].axis('off')
+
+        # After plotting results for 3 sample seeds, plot mean metrics
         axs[num_seeds_to_plot, 0].plot(k_values, metrics_mean["Silhouette Score"], 'ro-')
         optimal_k_mean_sil = k_values[np.argmax(metrics_mean["Silhouette Score"],)]
-        axs[num_seeds_to_plot, 0].axvline(x=optimal_k_mean_sil, color='r', linestyle='--')
-        axs[num_seeds_to_plot, 0].set_title(f'Mean: {column_titles[1]}', fontsize=TITLE_FONTSIZE)
+      #  axs[num_seeds_to_plot, 0].axvline(x=optimal_k_mean_sil, color='r', linestyle='--')
+        axs[num_seeds_to_plot, 0].set_title(f'Mean: {column_titles[0]+" vs Number of Clusters"}', fontsize=TITLE_FONTSIZE)
+        axs[num_seeds_to_plot, 0].set_ylabel(column_titles[0])
 
         axs[num_seeds_to_plot, 1].plot(k_values, metrics_mean["Davies-Bouldin Index"], 'co-')
         optimal_k_mean_db = k_values[np.argmin( metrics_mean["Davies-Bouldin Index"])]
-        axs[num_seeds_to_plot, 1].axvline(x=optimal_k_mean_db, color='r', linestyle='--')
-        axs[num_seeds_to_plot, 1].set_title(f'Mean: {column_titles[2]}', fontsize=TITLE_FONTSIZE)
+     #   axs[num_seeds_to_plot, 1].axvline(x=optimal_k_mean_db, color='r', linestyle='--')
+        axs[num_seeds_to_plot, 1].set_title(f'Mean: {column_titles[1]+" vs Number of Clusters"}', fontsize=TITLE_FONTSIZE)
+        axs[num_seeds_to_plot, 1].set_ylabel(column_titles[1])
+
+        # Hide unused subplots in ARI row
+   #     for j in range(num_cols-1, num_cols):
+    #        axs[num_seeds_to_plot, j].axis('off')
 
         if engine_class is KMeansEngine:
             axs[num_seeds_to_plot, 2].plot(k_values, metrics_mean["Inertia"], 'bo-')
@@ -98,33 +109,35 @@ class OptimalKPlotter:
             axs[num_seeds_to_plot, 2].set_title(f'Mean: {column_titles[2]}', fontsize=TITLE_FONTSIZE)
         elif engine_class is GMMEngine:
             axs[num_seeds_to_plot, 2].plot(k_values, metrics_mean["AIC"], label="AIC", marker="o")
-            axs[num_seeds_to_plot, 2].axvline(k_values[np.argmin(metrics_mean["AIC"])], linestyle="--", label="min AIC")
+       #     axs[num_seeds_to_plot, 2].axvline(k_values[np.argmin(metrics_mean["AIC"])], linestyle="--", label="min AIC")
             axs[num_seeds_to_plot, 2].set_title("Mean AIC vs k", fontsize=TITLE_FONTSIZE)
             axs[num_seeds_to_plot, 3].plot(k_values, metrics_mean["BIC"], label="BIC", marker="s")
-            axs[num_seeds_to_plot, 3].axvline(k_values[np.argmin(metrics_mean["BIC"])],linestyle=":", label="min BIC")
+      #      axs[num_seeds_to_plot, 3].axvline(k_values[np.argmin(metrics_mean["BIC"])],linestyle=":", label="min BIC")
             axs[num_seeds_to_plot, 3].set_title("Mean BIC vs k", fontsize=TITLE_FONTSIZE)
 
-
         # Plot ARI metrics
-        axs[num_seeds_to_plot + 1, 0].plot(k_values, ari_mean, 'bo-')
-        axs[num_seeds_to_plot + 1, 0].set_title('Mean ARI vs Clusters', fontsize=TITLE_FONTSIZE)
-        # Annotate each point with its value
-        for k, val in zip(k_values, ari_mean):
-            axs[num_seeds_to_plot + 1, 0].text(k, val, f'{val:.2f}',fontsize=12,
-                         ha='center', va='bottom',
-                         bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
-        axs[num_seeds_to_plot + 1, 1].scatter(k_values, ari_std, color='g')
-        axs[num_seeds_to_plot + 1, 1].set_title('ARI Std vs Clusters',  fontsize=TITLE_FONTSIZE)
+        ax = axs[num_seeds_to_plot , num_cols-1]
+        # Mean ARI line
+        ax.plot(k_values, ari_mean, 'bo-', label='Mean ARI')
+        # Std as shaded area
+        ax.fill_between(k_values, np.array(ari_mean) - np.array(ari_std),
+            np.array(ari_mean) + np.array(ari_std),
+            color='blue', alpha=0.2, label='±1 Std')
 
-        # Plot Consensus Index
-        axs[num_seeds_to_plot+1, 2].plot(k_values, consensus_indices, 'purple', marker='o', linestyle='-')
-        optimal_k_consensus = k_values[np.argmax(consensus_indices)]
-        axs[num_seeds_to_plot+1, 2].axvline(x=optimal_k_consensus, color='r', linestyle='--')
-        axs[num_seeds_to_plot+1, 2].set_title(f'Mean: {column_titles[-1]}', fontsize=TITLE_FONTSIZE)
+        ax.set_title('ARI Stability vs Number of Clusters', fontsize=TITLE_FONTSIZE)
+        ax.set_xlabel('Number of clusters (k)')
+        ax.set_ylabel('Adjusted Rand Index')
+        ax.set_ylim(0, 1.05)
+        ax.legend()
+
+        # Optional: annotate mean values
+        for k, mean, std in zip(k_values, ari_mean, ari_std):
+            ax.text(k, mean + std + 0.02,f'{mean:.2f}', fontsize=11, ha='center', va='bottom')
+
 
         # Hide unused subplots in ARI row
         for j in range(3, num_cols):
-            axs[num_seeds_to_plot + 1, j].axis('off')
+            axs[num_seeds_to_plot , j].axis('off')
 
         # Set labels and layout
         for ax in axs.flat:

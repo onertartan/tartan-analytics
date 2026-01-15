@@ -19,6 +19,9 @@ def create_cluster_color_mapping(
     for idx, color in cluster_color_defaults.items():
         if idx in gdf.index:
             cluster = gdf.loc[idx, "clusters"]
+            if isinstance(cluster, pd.Series):
+                cluster = cluster.iloc[0]
+
             if cluster not in color_map and color not in used_colors:
                 color_map[cluster] = color
                 used_colors.add(color)

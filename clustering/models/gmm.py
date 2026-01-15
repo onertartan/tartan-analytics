@@ -36,3 +36,19 @@ class GMMEngine(Clustering):
             random_state=random_state
         )
         self.metric_for_silhouette = "euclidean"
+
+    def probabilities(self, df: pd.DataFrame) -> np.ndarray:
+        """
+        Get the posterior probabilities of each sample belonging to each cluster.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            Input data.
+
+        Returns
+        -------
+        np.ndarray
+            Array of shape (n_samples, n_clusters) with posterior probabilities.
+        """
+        return self.model.predict_proba(df)
