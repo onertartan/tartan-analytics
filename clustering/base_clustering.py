@@ -19,9 +19,7 @@ class Clustering:
     """
     def fit_predict(self, df: pd.DataFrame) -> pd.DataFrame:
         labels = self.model.fit_predict(df) + 1
-        df_out = df.copy()
-        df_out["clusters"] = labels
-        return df_out
+        return labels
 
     @staticmethod
     def get_representatives(df: pd.DataFrame) -> List[str]:
@@ -85,7 +83,7 @@ class Clustering:
     ):
         n_samples = df.shape[0]
 
-        metrics_all = {"Silhouette Score": [], "Davies-Bouldin Index": []}
+        metrics_all = {"Silhouette Score (cosine)": [], "Silhouette Score (euclidean)": [], "Davies-Bouldin Index": []}
         if cls.__name__ == "KMeansEngine":
             metrics_all["Inertia"] = []
         elif cls.__name__ == "GMMEngine":
@@ -103,20 +101,15 @@ class Clustering:
 
         # ---- Run Clustering ----
         for idx, random_state in enumerate(random_states):
-            silhouettes = []
-            db_scores = []
-            if cls.__name__ == "KMeansEngine":
-                inertias = []
-            elif cls.__name__ == "GMMEngine":
-                aics, bics, nlls = [], [], []
+            silhouettes_cosine, silhouettes_euclidean, db_scores, inertias,aics, bics, nlls = [], [],[], [],[], [], []
 
             seed_start = time.time()
 
             for k in k_values:
                 engine = cls(n_cluster=k, random_state=random_state, **model_kwargs)
-                df_out = engine.fit_predict(df)
-                labels = df_out["clusters"].values
-                silhouettes.append(silhouette_score(df, labels, metric=engine.metric_for_silhouette))
+                labels = engine.fit_predict(df)
+                silhouettes_cosine.append(silhouette_score(df, labels, metric="cosine"))
+                silhouettes_euclidean.append(silhouette_score(df, labels, metric="euclidean"))
                 db_scores.append(davies_bouldin_score(df, labels))
                 labels_all[random_state][k] = labels
                 if cls.__name__ == "KMeansEngine":
@@ -133,7 +126,9 @@ class Clustering:
                 metrics_all["BIC"].append(bics)
                 metrics_all["NegLogLikelihood"].append(nlls)
 
-            metrics_all["Silhouette Score"].append(silhouettes)
+            metrics_all["Silhouette Score (cosine)"].append(silhouettes_cosine)
+            metrics_all["Silhouette Score (euclidean)"].append(silhouettes_euclidean)
+
             metrics_all["Davies-Bouldin Index"].append(db_scores)
             # Update progress and status after loop for one random state is completed
             progress_bar.progress((idx + 1) / total_states)
@@ -149,11 +144,11 @@ class Clustering:
         metrics_mean = {key: np.mean(metrics_all[key], axis=0) for key in metrics_all}
 
         # ---- Model-independent evaluation ----
-        ari_mean, ari_std, consensus_indices, consensus_labels_all = \
+        ari_mean, ari_std, consensus_labels_all = \
             stability_and_consensus(labels_all=labels_all, k_values=k_values, random_states=random_states,
                                     n_samples=n_samples)
-        df_summary = cls.summarize(metrics_all, ari_mean, ari_std, consensus_indices, k_values)
-        return df_summary, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all
+        df_summary = cls.summarize(metrics_all, ari_mean, ari_std,  k_values)
+        return df_summary, metrics_all, metrics_mean, ari_mean, ari_std,  consensus_labels_all
 
     @staticmethod
     def mean_sd_at_k(metrics_all, metric_name, k_index):
@@ -166,21 +161,24 @@ class Clustering:
         return np.mean(values), np.std(values)
 
     @classmethod
-    def summarize(cls, metrics_all, ari_mean, ari_std, consensus_indices, k_values):
+    def summarize(cls, metrics_all, ari_mean, ari_std,  k_values):
         rows = []
         for k in k_values:
             idx = list(k_values).index(k)
-            sil_m, sil_s = cls.mean_sd_at_k(metrics_all, "Silhouette Score", idx)
+            sil_cos_mean, sil_cos_std = cls.mean_sd_at_k(metrics_all, "Silhouette Score (cosine)", idx)
+            sil_euc_mean, sil_euc_std = cls.mean_sd_at_k(metrics_all, "Silhouette Score (euclidean)", idx)
+
             db_m, db_s = cls.mean_sd_at_k(metrics_all, "Davies-Bouldin Index", idx)
             row_dict={
                 "Number of clusters": k,
-                "Silhouette_mean": sil_m,
-                "Silhouette_std": sil_s,
+                "Silhouette_mean (cosine)": sil_cos_mean,
+                "Silhouette_std (cosine)": sil_cos_std,
+                "Silhouette_mean (euclidean)": sil_euc_mean,
+                "Silhouette_std (euclidean)": sil_euc_std,
                 "DaviesBouldin_mean": db_m,
                 "DaviesBouldin_std": db_s,
                 "ARI_mean": ari_mean[idx],
-                "ARI_std": ari_std[idx],
-                "Consensus": consensus_indices[idx],
+                "ARI_std": ari_std[idx]
             }
             if cls.__name__ == "KMeansEngine":
                 iner_m, iner_s = cls.mean_sd_at_k(metrics_all, "Inertia", idx)
@@ -199,10 +197,12 @@ class Clustering:
 
     @classmethod
     def silhouette_analysis(cls,df_pivot, kwargs, k_values=range(2,7)):
-        for n_clusters in k_values:
-            # Create a subplot with 1 row and 2 columns
-            fig, (ax1, ax2) = plt.subplots(1, 2)
-            fig.set_size_inches(18, 7)
+        # Create a subplot with 1 row and n columns
+        st.dataframe(df_pivot.head())
+       # st.header("df_pivot.shape:"+str(df_pivot.shape))
+        fig, axs = plt.subplots(1, len(k_values))
+        fig.set_size_inches(12, 4)
+        for n_clusters, ax1 in zip(k_values, axs.flatten()):
 
             # The 1st subplot is the silhouette plot
             # The silhouette coefficient can range from -1, 1 but in this example all
@@ -220,22 +220,23 @@ class Clustering:
             # The silhouette_score gives the average value for all the samples.
             # This gives a perspective into the density and separation of the formed
             # clusters
-            silhouette_avg = silhouette_score(df_pivot, cluster_labels)
-            print(
-                "For n_clusters =",
-                n_clusters,
-                "The average silhouette_score is :",
-                silhouette_avg,
-            )
+            silhouette_avg = silhouette_score(df_pivot, cluster_labels, metric=clusterer.metric_for_silhouette)
+            st.header("n_clusters="+str(n_clusters))
+            st.write("For n_clusters =", n_clusters, "The average silhouette_score is :", silhouette_avg)
 
             # Compute the silhouette scores for each sample
             sample_silhouette_values = silhouette_samples(df_pivot, cluster_labels)
-
             y_lower = 10
-            for i in range(n_clusters):
+            for i in range(1, n_clusters+1):
                 # Aggregate the silhouette scores for samples belonging to
                 # cluster i, and sort them
                 ith_cluster_silhouette_values = sample_silhouette_values[cluster_labels == i]
+                negative_indices = np.where((cluster_labels == i) & (sample_silhouette_values < 0))[0]
+                provinces_with_negative_silhouette = df_pivot.index[negative_indices].tolist()
+                end_statement = ""
+                if provinces_with_negative_silhouette:
+                    end_statement = f"Provinces with negative silhouette values: {provinces_with_negative_silhouette}"
+                st.write(f"Cluster {i} has {len(negative_indices)} negative silhouette values."+end_statement)
 
                 ith_cluster_silhouette_values.sort()
 
@@ -243,14 +244,7 @@ class Clustering:
                 y_upper = y_lower + size_cluster_i
 
                 color = cm.nipy_spectral(float(i) / n_clusters)
-                ax1.fill_betweenx(
-                    np.arange(y_lower, y_upper),
-                    0,
-                    ith_cluster_silhouette_values,
-                    facecolor=color,
-                    edgecolor=color,
-                    alpha=0.7,
-                )
+                ax1.fill_betweenx( np.arange(y_lower, y_upper), 0, ith_cluster_silhouette_values, facecolor=color, edgecolor=color, alpha=0.7)
 
                 # Label the silhouette plots with their cluster numbers at the middle
                 ax1.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
@@ -267,7 +261,8 @@ class Clustering:
 
             ax1.set_yticks([])  # Clear the yaxis labels / ticks
             ax1.set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
-        st.pyplot(fig)
+        col1,_=st.columns([9,1])
+        col1.pyplot(fig)
 
     # Not used
     @staticmethod

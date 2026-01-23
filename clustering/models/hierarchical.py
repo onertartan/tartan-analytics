@@ -47,8 +47,8 @@ class HierarchicalClusteringEngine(Clustering):
 
     # ------------------------------------------------------------------
 
-    def summarize(self,metrics_all, ari_mean, ari_std, consensus_indices, k_values):
-        return self.summarize(metrics_all, ari_mean, ari_std, consensus_indices, k_values)
+    def summarize(self,metrics_all, ari_mean, ari_std,  k_values):
+        return self.summarize(metrics_all, ari_mean, ari_std, k_values)
 
     import matplotlib.pyplot as plt
     from scipy.cluster.hierarchy import dendrogram

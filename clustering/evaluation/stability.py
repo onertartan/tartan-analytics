@@ -23,8 +23,6 @@ def stability_and_consensus(labels_all, k_values, random_states, n_samples):
         Mean ARI across random seeds for each k.
     ari_std : list
         Standard deviation of ARI for each k.
-    consensus_indices : list
-        Average consensus index for each k.
     consensus_labels_all : dict
         consensus_labels_all[k] -> consensus labels
     """
@@ -45,7 +43,6 @@ def stability_and_consensus(labels_all, k_values, random_states, n_samples):
     ari_std = [np.std(ari_scores[k]) for k in k_values]
 
     # ---- Consensus clustering ----
-    consensus_indices = []
     consensus_labels_all = {}
 
     for k in k_values:
@@ -61,8 +58,8 @@ def stability_and_consensus(labels_all, k_values, random_states, n_samples):
 
         consensus_matrix /= len(random_states)
 
-        mask = ~np.eye(n_samples, dtype=bool)
-        consensus_indices.append(np.mean(consensus_matrix[mask]))
+        #mask = ~np.eye(n_samples, dtype=bool)
+        #masked_consensus_matrix= consensus_matrix[mask]
 
         dissimilarity = 1 - consensus_matrix
         Z = linkage(
@@ -71,4 +68,4 @@ def stability_and_consensus(labels_all, k_values, random_states, n_samples):
         )
         consensus_labels_all[k] = fcluster(Z, t=k, criterion="maxclust")
 
-    return ari_mean, ari_std, consensus_indices, consensus_labels_all
+    return ari_mean, ari_std, consensus_labels_all

@@ -20,135 +20,126 @@ METRIC_OBJECTIVES = {
 }
 
 class OptimalKPlotter:
-
-    @staticmethod
-    def plot_optimal_k_analysis(engine_class, num_seeds_to_plot, k_values, random_states, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, kwargs):
-        st.header("Running "+engine_class.__name__+" Optimal k Analysis for "+str(len(random_states))+" seeds.")
-        st.write("Using params:"+str(kwargs))
+    def plot_optimal_k_analysis(
+            engine_class,
+            num_seeds_to_plot,
+            k_values,
+            random_states,
+            metrics_all,
+            metrics_mean,
+            ari_mean,
+            ari_std,
+            kwargs,
+    ):
+        st.header(f"Running {engine_class.__name__} Optimal k Analysis ({len(random_states)} seeds)")
+        st.write("Using params:", kwargs)
 
         TITLE_FONTSIZE = 14
         AXIS_LABEL_FONTSIZE = 12
         TICK_LABEL_FONTSIZE = 11
-        LEGEND_FONTSIZE = 11
-        # Create subplot grid: (3 rows for 3 seeds + last row for mean  values & ARI) rows, num_cols columns
-        #  Smaller Figure Size, Higher DPI
-        # Width 20 is plenty for 3 columns. Height 25 gives enough vertical room for 5 rows.
+
+        # ---- column specification (ORDER MATTERS) ----
+        columns = [("Silhouette Score (cosine)", "Silhouette Score (cosine)", "max"),
+            ("Silhouette Score (euclidean)", "Silhouette Score (euclidean)", "max")]
+
         if engine_class is KMeansEngine:
-            num_cols=4
-        elif engine_class is GMMEngine:
-            num_cols=5
-        else:
-            num_cols=3
+            columns.append(("Inertia", "Inertia (Elbow)", "min"))
+
+        if engine_class is GMMEngine:
+            columns.append(("AIC", "AIC", "min"))
+            columns.append(("BIC", "BIC", "min"))
+
+        # last column reserved for ARI (mean ± std)
+        columns.append(("ARI", "ARI Stability", "max"))
+
+        num_cols = len(columns)
         num_seeds_to_plot = min(num_seeds_to_plot, len(random_states))
-        fig, axs = plt.subplots(num_seeds_to_plot + 1, num_cols,  figsize=(20, 25), dpi=200)
-        # Titles for each column
-        column_titles = ['Silhouette Score', 'Davies-Bouldin Index']
-        if engine_class is KMeansEngine:
-            column_titles += ['Elbow Analysis']
-        elif engine_class is GMMEngine:
-            column_titles += ['AIC', 'BIC']
 
-        df_optimal_k = pd.DataFrame(data=0,index=column_titles,columns=k_values)
-        for i, random_state in enumerate(random_states):
-            optimal_k_sil = k_values[np.argmax( metrics_all["Silhouette Score"][i])]
-            df_optimal_k.loc['Silhouette Score', optimal_k_sil] += 1
-            optimal_k_db = k_values[np.argmin(metrics_all["Davies-Bouldin Index"][i])]
-            df_optimal_k.loc['Davies-Bouldin Index', optimal_k_db] += 1
-            if engine_class == 'KMeansEngine':
-                elbow = KneeLocator(k_values, metrics_all["Inertia"][i], curve='convex', direction='decreasing')
-                elbow = elbow.elbow
-                df_optimal_k.loc['Elbow Analysis', elbow] += 1
+        fig, axs = plt.subplots(
+            num_seeds_to_plot + 1,
+            num_cols,
+            figsize=(4.8 * num_cols, 4.2 * (num_seeds_to_plot + 1)),
+            dpi=200,
+            sharex="col",
+        )
 
-        # Plot metrics for each seed of the first num_seeds_to_plot random states
-        for i, random_state in enumerate(random_states[:num_seeds_to_plot]):
-            # Silhouette Score
-            axs[i, 0].plot(k_values,  metrics_all["Silhouette Score"][i], 'ro-')
-            axs[i, 0].set_title(f'Seed {random_state}: {column_titles[0]}', fontsize=TITLE_FONTSIZE)
-            axs[i, 0].set_ylabel("Score", fontsize=AXIS_LABEL_FONTSIZE)
-            axs[i, 1].set_ylabel("Index Value", fontsize=AXIS_LABEL_FONTSIZE)
+        # ---- per-seed rows ----
+        for i, seed in enumerate(random_states[:num_seeds_to_plot]):
+            for j, (key, title, _) in enumerate(columns):
+                ax = axs[i, j]
+                if key.startswith("Silhouette"):
+                    ax.plot(k_values, metrics_all[key][i], "o-")
+                    ax.set_title(f"Seed {seed}: {title}", fontsize=TITLE_FONTSIZE)
 
-            # Davies-Bouldin Index
-            axs[i, 1].plot(k_values, metrics_all["Davies-Bouldin Index"][i], 'co-')
-            axs[i, 1].set_title(f'Seed {random_state}: {column_titles[1]}', fontsize=TITLE_FONTSIZE)
-            if engine_class is KMeansEngine:
-                # Inertia
-                axs[i, 2].plot(k_values, metrics_all["Inertia"][i], 'bo-')
-                axs[i, 2].set_ylabel("Inertia", fontsize=AXIS_LABEL_FONTSIZE)
+                elif key == "Inertia":
+                    ax.plot(k_values, metrics_all["Inertia"][i], "o-")
+                    elbow = KneeLocator(
+                        k_values,
+                        metrics_all["Inertia"][i],
+                        curve="convex",
+                        direction="decreasing",
+                    )
+                    if elbow.elbow:
+                        ax.axvline(elbow.elbow, color="r", linestyle="--")
+                    ax.set_title(f"Seed {seed}: {title}", fontsize=TITLE_FONTSIZE)
 
-                elbow = KneeLocator(k_values, metrics_all["Inertia"][i], curve='convex', direction='decreasing')
+                elif key in ("AIC", "BIC"):
+                    ax.plot(k_values, metrics_all[key][i], "o-")
+                    ax.set_title(f"Seed {seed}: {title}", fontsize=TITLE_FONTSIZE)
+
+                else:  # ARI column → hidden for seed rows
+                    ax.axis("off")
+
+                ax.grid(True)
+                ax.tick_params(labelsize=TICK_LABEL_FONTSIZE)
+
+        # ---- mean row ----
+        r = num_seeds_to_plot
+        st.header(metrics_mean.keys())
+
+        for j, (key, title, _) in enumerate(columns):
+            ax = axs[r, j]
+
+            if key.startswith("Silhouette"):
+                ax.plot(k_values, metrics_mean[key], "o-")
+                ax.set_title(f"Mean {title}", fontsize=TITLE_FONTSIZE)
+
+            elif key == "Inertia":
+                ax.plot(k_values, metrics_mean["Inertia"], "o-")
+                elbow = KneeLocator(
+                    k_values,
+                    metrics_mean[key],
+                    curve="convex",
+                    direction="decreasing",
+                )
                 if elbow.elbow:
-                    axs[i, 2].axvline(x=elbow.elbow, color='r', linestyle='--')
-                axs[i, 2].set_title(f'Seed {random_state}: {column_titles[2]}', fontsize=TITLE_FONTSIZE)
+                    ax.axvline(elbow.elbow, color="r", linestyle="--")
+                ax.set_title("Mean Inertia", fontsize=TITLE_FONTSIZE)
 
-            # Hide unused subplots in ARI row
-            for j in range(num_cols-1, num_cols):
-                axs[i, j].axis('off')
+            elif key in ("AIC", "BIC"):
+                ax.plot(k_values, metrics_mean[key], "o-")
+                ax.set_title(f"Mean {title}", fontsize=TITLE_FONTSIZE)
 
-        # After plotting results for 3 sample seeds, plot mean metrics
-        axs[num_seeds_to_plot, 0].plot(k_values, metrics_mean["Silhouette Score"], 'ro-')
-        optimal_k_mean_sil = k_values[np.argmax(metrics_mean["Silhouette Score"],)]
-      #  axs[num_seeds_to_plot, 0].axvline(x=optimal_k_mean_sil, color='r', linestyle='--')
-        axs[num_seeds_to_plot, 0].set_title(f'Mean: {column_titles[0]+" vs Number of Clusters"}', fontsize=TITLE_FONTSIZE)
-        axs[num_seeds_to_plot, 0].set_ylabel(column_titles[0])
+            elif key == "ARI":
+                ax.plot(k_values, ari_mean, "o-", label="Mean ARI")
+                ax.fill_between(
+                    k_values,
+                    np.array(ari_mean) - np.array(ari_std),
+                    np.array(ari_mean) + np.array(ari_std),
+                    alpha=0.2,
+                    label="±1 std",
+                )
+                ax.set_ylim(0, 1.05)
+                ax.legend()
+                ax.set_title("ARI Stability", fontsize=TITLE_FONTSIZE)
 
-        axs[num_seeds_to_plot, 1].plot(k_values, metrics_mean["Davies-Bouldin Index"], 'co-')
-        optimal_k_mean_db = k_values[np.argmin( metrics_mean["Davies-Bouldin Index"])]
-     #   axs[num_seeds_to_plot, 1].axvline(x=optimal_k_mean_db, color='r', linestyle='--')
-        axs[num_seeds_to_plot, 1].set_title(f'Mean: {column_titles[1]+" vs Number of Clusters"}', fontsize=TITLE_FONTSIZE)
-        axs[num_seeds_to_plot, 1].set_ylabel(column_titles[1])
-
-        # Hide unused subplots in ARI row
-   #     for j in range(num_cols-1, num_cols):
-    #        axs[num_seeds_to_plot, j].axis('off')
-
-        if engine_class is KMeansEngine:
-            axs[num_seeds_to_plot, 2].plot(k_values, metrics_mean["Inertia"], 'bo-')
-            mean_elbow = KneeLocator(k_values, metrics_mean["Inertia"], curve='convex', direction='decreasing')
-            if mean_elbow.elbow:
-                axs[num_seeds_to_plot, 2].axvline(x=mean_elbow.elbow, color='r', linestyle='--')
-            axs[num_seeds_to_plot, 2].set_title(f'Mean: {column_titles[2]}', fontsize=TITLE_FONTSIZE)
-        elif engine_class is GMMEngine:
-            axs[num_seeds_to_plot, 2].plot(k_values, metrics_mean["AIC"], label="AIC", marker="o")
-       #     axs[num_seeds_to_plot, 2].axvline(k_values[np.argmin(metrics_mean["AIC"])], linestyle="--", label="min AIC")
-            axs[num_seeds_to_plot, 2].set_title("Mean AIC vs k", fontsize=TITLE_FONTSIZE)
-            axs[num_seeds_to_plot, 3].plot(k_values, metrics_mean["BIC"], label="BIC", marker="s")
-      #      axs[num_seeds_to_plot, 3].axvline(k_values[np.argmin(metrics_mean["BIC"])],linestyle=":", label="min BIC")
-            axs[num_seeds_to_plot, 3].set_title("Mean BIC vs k", fontsize=TITLE_FONTSIZE)
-
-        # Plot ARI metrics
-        ax = axs[num_seeds_to_plot , num_cols-1]
-        # Mean ARI line
-        ax.plot(k_values, ari_mean, 'bo-', label='Mean ARI')
-        # Std as shaded area
-        ax.fill_between(k_values, np.array(ari_mean) - np.array(ari_std),
-            np.array(ari_mean) + np.array(ari_std),
-            color='blue', alpha=0.2, label='±1 Std')
-
-        ax.set_title('ARI Stability vs Number of Clusters', fontsize=TITLE_FONTSIZE)
-        ax.set_xlabel('Number of clusters (k)')
-        ax.set_ylabel('Adjusted Rand Index')
-        ax.set_ylim(0, 1.05)
-        ax.legend()
-
-        # Optional: annotate mean values
-        for k, mean, std in zip(k_values, ari_mean, ari_std):
-            ax.text(k, mean + std + 0.02,f'{mean:.2f}', fontsize=11, ha='center', va='bottom')
-
-
-        # Hide unused subplots in ARI row
-        for j in range(3, num_cols):
-            axs[num_seeds_to_plot , j].axis('off')
-
-        # Set labels and layout
-        for ax in axs.flat:
-            ax.set_xlabel('Number of Clusters (k)', fontsize=AXIS_LABEL_FONTSIZE)
-            ax.tick_params(axis='both', labelsize=TICK_LABEL_FONTSIZE)
+            ax.set_xlabel("Number of clusters (k)", fontsize=AXIS_LABEL_FONTSIZE)
             ax.grid(True)
 
-        fig.tight_layout(pad=3.0) # Adds padding to prevent labels overlapping
-        fig.savefig('kmeans_metrics_analysis.png', dpi=300, bbox_inches='tight')
-        st.dataframe(df_optimal_k)
+        fig.tight_layout(pad=2.5)
         st.pyplot(fig)
+
+
 
 
 
@@ -163,10 +154,10 @@ class OptimalKPlotter:
             )
 
         # ---- Always-present metrics ----
-        display["Silhouette Score"] = mean_pm_std("Silhouette_mean", "Silhouette_std")
+        display["Silhouette Score (cosine)"] = mean_pm_std("Silhouette_mean (cosine)", "Silhouette_std (cosine)")
+        display["Silhouette Score (euclidean)"] = mean_pm_std("Silhouette_mean (euclidean)", "Silhouette_std (euclidean)")
         display["Davies–Bouldin"] = mean_pm_std("DaviesBouldin_mean", "DaviesBouldin_std" )
         display["ARI"] = mean_pm_std("ARI_mean", "ARI_std")
-        display["Consensus"] = df["Consensus"].map(lambda x: f"{x:.3f}")
 
         # ---- GMM-only metrics (guarded) ----
         if "BIC_mean" in df.columns:
@@ -212,6 +203,3 @@ class OptimalKPlotter:
                 st.header(label+" not found in dataframe columns!"+str(df.columns))
 
         return styler
-
-
-

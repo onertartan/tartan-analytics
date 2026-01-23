@@ -259,17 +259,17 @@ class BasePage(ABC):
                 for n in range(5, 21):
                     kwargs["n_neighbors"] = n
                     st.write(f"Running optimal k analysis for Spectral Clustering with n_neighbors={n} and scaler={scaler}")
-                    df_summary, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all = engine_class.optimal_k_analysis(df_pivot, random_states, k_values, kwargs)
+                    df_summary, metrics_all, metrics_mean, ari_mean, ari_std, consensus_labels_all = engine_class.optimal_k_analysis(df_pivot, random_states, k_values, kwargs)
                     st.write(f"Completed optimal k analysis for n_neighbors={n}")
                     df_summary.to_csv(f"results/files/{engine_class.__name__}/{scaler}_{spectral_geometry}_{year1}_{year2}_{n}.csv")
                     pd.DataFrame(consensus_labels_all).to_csv(f"results/files/{engine_class.__name__}/consensus_labels_all_{scaler}_{spectral_geometry}_{year1}_{year2}_{n}.csv")
 
                 return
             else:
-                df_summary, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, consensus_labels_all = engine_class.optimal_k_analysis(df_pivot, random_states, k_values, kwargs)
+                df_summary, metrics_all, metrics_mean, ari_mean, ari_std, consensus_labels_all = engine_class.optimal_k_analysis(df_pivot, random_states, k_values, kwargs)
                 st.session_state["consensus_labels_"+engine_class.__name__] = consensus_labels_all
                 df_pivot["clusters"] = consensus_labels_all[n_cluster]
-                OptimalKPlotter.plot_optimal_k_analysis(engine_class, num_seeds_to_plot, k_values, random_states, metrics_all, metrics_mean, ari_mean, ari_std, consensus_indices, kwargs)
+                OptimalKPlotter.plot_optimal_k_analysis(engine_class, num_seeds_to_plot, k_values, random_states, metrics_all, metrics_mean, ari_mean, ari_std, kwargs)
                 col1, col2 = st.columns(2)
                 col1.write("Formatted results")
                 col1.dataframe(OptimalKPlotter.style_metrics_dataframe(df_summary))
@@ -289,11 +289,12 @@ class BasePage(ABC):
         else:
             silhouette_analysis=True
             if silhouette_analysis:
-                engine_class.silhouette_analysis(df_pivot, kwargs=kwargs, k_values=range(2,6))
+                engine_class.silhouette_analysis(df_pivot, kwargs=kwargs)
                 return
             kwargs["n_cluster"] = n_cluster
             engine = get_engine_class(clustering_algorithm)(**kwargs)
-            df_pivot = engine.fit_predict(df_pivot)
+            labels = engine.fit_predict(df_pivot)
+            df_pivot["clusters"] = labels
            # st.dataframe(engine.probabilities(df_pivot.drop(columns=["clusters"])))
             #st.dataframe(df_pivot)
         # Step: Update geodata
@@ -351,4 +352,7 @@ class BasePage(ABC):
         # The Clustering class handles engine selection and .fit() execution
         # fit() returns (df_pivot, closest_indices)
         engine = Clustering.get_engine_class(clustering_algorithm)(**kwargs)
-        return engine.fit_predict(df_pivot)
+        labels = engine.fit_predict(df_pivot)
+        df_out=df_pivot.copy()
+        df_out["clusters"] = labels["clusters"]
+        return df_out

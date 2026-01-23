@@ -36,6 +36,4 @@ class SpectralClusteringEngine(Clustering):
             df_out = nn.fit(df_out).kneighbors_graph(df_out, mode="connectivity")
 
         labels = self.model.fit_predict(df_out) + 1
-        df_out = df.copy()
-        df_out["clusters"] = labels
-        return df_out
+        return labels

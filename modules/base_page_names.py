@@ -288,8 +288,6 @@ class PageNames(BasePage):
         # ---   Apply Filter ---
         # Only filter by gender if we are looking at names
         df = self.data[name_surname_selection.lower()]
-        st.dataframe(df)
-        st.write(df.index.get_level_values("province").unique().tolist())
         selected_provinces = self.province_selector(df.index.get_level_values("province").unique().tolist())
 
         idx = pd.IndexSlice
