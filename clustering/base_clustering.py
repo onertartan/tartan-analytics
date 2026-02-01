@@ -17,29 +17,86 @@ class Clustering:
     Unified clustering factory.
     Creates the correct engine and executes fit().
     """
+
+    model = None
     def fit_predict(self, df: pd.DataFrame) -> pd.DataFrame:
         labels = self.model.fit_predict(df) + 1
         return labels
 
-    @staticmethod
-    def get_representatives(df: pd.DataFrame) -> List[str]:
-        """
-        Calculates representatives based on the 'clusters' column in the dataframe.
-        No need for class instance (self) parameters.
-        IMPORTANT : LAST COLUMN OF df AFTER CALLING fit METHOD ABOVE BECOMES CLUSTER COLUMN
-        this is the reason of using df.iloc[:-1]
-        """
-        calculated_centers = df.groupby("clusters").mean()
-        # En yakın noktaları bulma
-        # Hesapladığımız merkezleri kullanarak en yakın noktaları (representatives) buluyoruz.
-        # calculated_centers DataFrame olduğu için .values ile numpy array'e çevirmemiz gerekebilir
-        # (ancak pairwise_distances genelde DF de kabul eder).
-        closest_indices, _ = pairwise_distances_argmin_min(calculated_centers.values, df.iloc[:,:-1])
-        representatives = df.index[closest_indices].tolist()
-        return representatives
+    import numpy as np
+    import pandas as pd
+    from sklearn.metrics import silhouette_samples
+    from sklearn.metrics import pairwise_distances_argmin_min
 
-    @staticmethod
-    def recompute_centroid_provinces(df_pivot):
+    def get_representatives(self, df_pivot: pd.DataFrame):
+        """
+        Select cluster representatives in a method-aware way.
+        Representatives are used for visualization / interpretation only.
+
+        Parameters
+        ----------
+        df_pivot : pd.DataFrame
+            Feature matrix (rows = observations, columns = features+ 1 column clusters).
+        method : str
+            One of {"kmeans", "kmedoids", "gmm", "spectral"}.
+        metric : str
+            Distance metric used for silhouette or medoids ("euclidean", "cosine").
+        model : object, optional
+            Fitted clustering model (required for GMM).
+
+        Returns
+        -------
+        representatives : list of indices
+        """
+        # Ensure alignment
+        labels= df_pivot["clusters"]
+        df_features= df_pivot.drop(columns="clusters")
+        # Convert labels to numpy-friendly form
+        unique_clusters = sorted(labels.dropna().unique())
+        # 1. K-MEANS: nearest-to-centroid (Euclidean)
+        if self.__class__.__name__ == "KMeansEngine":
+            # Centroids in feature space
+            feature_space_centroids = df_pivot.groupby("clusters").mean()
+            closest_idx, _ = pairwise_distances_argmin_min(feature_space_centroids.values, df_features.values)
+            representatives = df_pivot.index[closest_idx].tolist()
+            return representatives
+
+        # 2. GMM: maximum posterior responsibility (Simplified)
+        if self.__class__.__name__ == "GMMEngine":
+            probs = self.model.predict_proba(df_features.values)
+            representatives = []
+
+            for cid in unique_clusters:
+                # Assumes cid=1 maps to component 0, cid=2 to component 1, etc.
+                component_idx = int(cid) - 1
+
+                mask = (labels == cid)
+                # Find max probability within the cluster for that component
+                cluster_probs = probs[mask, component_idx]
+                best_local_idx = np.argmax(cluster_probs)
+
+                # Map back to global index
+                best_row_in_cluster = df_features[mask].index[best_local_idx]
+                representatives.append(best_row_in_cluster)
+
+            return representatives
+        # 3. SPECTRAL: highest silhouette
+        if self.__class__.__name__ == "SpectralClusteringEngine":
+            sil = silhouette_samples(df_features.values,labels.values, metric =  self.metric_for_silhouette  )
+            sil_series = pd.Series(sil, index=df_features.index)
+            representatives = []
+            for cid in unique_clusters:
+                idx = sil_series[labels == cid].idxmax()
+                representatives.append(idx)
+            return representatives
+
+        # 4. K - MEDOIDS
+        if self.__class__.__name__ == "KMedoidsEngine":
+            return df_pivot.index[self.model.medoid_indices_].tolist()
+
+
+    @classmethod
+    def recompute_centroid_provinces(cls,df_pivot):
         """Recompute centroid provinces after clusters changed due to consensus relabel.
         The last column of df_pivot must be 'clusters', first len(df_pivot.columns-1) columns are features."""
         features = df_pivot.columns[:-1]  # exclude 'clusters'
@@ -47,8 +104,8 @@ class Clustering:
         closest_indices, _ = pairwise_distances_argmin_min(centroids, df_pivot[features])
         return closest_indices
 
-    @staticmethod
-    def update_geo_cluster_centers(gdf_dict, geo_scale, df_pivot, closest_indices):
+    @classmethod
+    def update_geo_cluster_centers(cls, gdf_dict, geo_scale, df_pivot, closest_indices):
         """
         Attach cluster labels to geodata and compute centroids for display.
         Args:
@@ -56,9 +113,8 @@ class Clustering:
             geo_scale: Geographical scale key (province etc. ) to select the appropriate GeoDataFrame
             df_pivot: DataFrame containing the 'clusters' column
             closest_indices: List of indices representing cluster centers
-
         Returns:
-            gdf_clusters: GeoDataFrame merged with clusters
+            gdf_clusters: GeoDataFrame merged with clusters (last column is clusters)
             gdf_centroids: GeoDataFrame of the cluster representatives
         """
         # Prepare the base GeoDataFrame

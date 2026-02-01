@@ -139,10 +139,6 @@ class OptimalKPlotter:
         fig.tight_layout(pad=2.5)
         st.pyplot(fig)
 
-
-
-
-
     def style_metrics_dataframe(df: pd.DataFrame):
         display = pd.DataFrame(index=df.index)
 

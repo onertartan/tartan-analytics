@@ -43,9 +43,8 @@ def load_spectral_results(data_dir, geometry):
 
         geom, scaler, year_range, n_nb = parsed
         df = pd.read_csv(f)
-        df["k"] = df["Number of clusters"].astype(int)
-        df.drop(columns=["Number of clusters"], inplace=True)
-
+        df["Number of clusters"] = df["Number of clusters"].astype(int)
+        df.rename(columns={"Number of clusters":"k"}, inplace=True)
         df["geometry"] = geom
         df["scaler"] = scaler
         df["n_neighbors"] = n_nb
@@ -53,9 +52,8 @@ def load_spectral_results(data_dir, geometry):
 
     if not dfs:
         raise FileNotFoundError(f"No files found for geometry={geometry}")
-
+    print("shape:",pd.concat(dfs, ignore_index=True).shape,"unique ",pd.concat(dfs, ignore_index=True)["geometry"].unique())
     return pd.concat(dfs, ignore_index=True)
-import numpy as np
 
 def plot_spectral_row(
     ax_row,
@@ -68,7 +66,7 @@ def plot_spectral_row(
     alpha_thin=0.30,
     linewidth_thin=1.0,
     linewidth_best=2.0,
-    marker_best="o",
+    marker_best="o",line_style="solid"
 ):
     scalers = list(dict.fromkeys(df_all["scaler"]))
     k_vals = np.sort(df_all["k"].unique())
@@ -84,7 +82,7 @@ def plot_spectral_row(
         # Thin lines: all n_neighbors
         for n_nb, g in df_s.groupby("n_neighbors"):
             g = g.sort_values("k")
-            ax.plot(g["k"], g[metric], linewidth=linewidth_thin, alpha=alpha_thin)
+            ax.plot(g["k"], g[metric], linewidth=linewidth_thin, alpha=alpha_thin,linestyle=line_style)
 
         # Best n_neighbors per k
         # ---- select best per k: max ARI_mean, tie → smallest n_neighbors ----
@@ -122,7 +120,6 @@ def plot_spectral_row(
         df_hit = df_s[df_s["ARI_mean"] ==1]
         result = (df_hit.groupby("k")["n_neighbors"].unique())
         result_sorted = result.apply(lambda x: sorted(x))
-        print(result_sorted)
 
         for sc, scaler in enumerate(scalers):
             df_s = df_all[df_all["scaler"] == scaler]
@@ -195,76 +192,74 @@ def plot_spectral_row(
         ax_comp.grid(True, alpha=0.2)
 
         # Legend: show once per row; place inside panel
-        ax_comp.legend(fontsize=8, loc="center")
+        ax_comp.legend(fontsize=8, loc="center", title="Scaler")
 
 
 
 def plot_spectral_k_analysis_two_geometries(
     geometries=("cosine", "euclidean"),
     data_dir="files/SpectralClusteringEngine",
-    metric="ARI_mean",
+    metrics=["ARI_mean"],
     figsize_per_row=4.0,
     show_comparison_col=True,
     save_path=None,
-    dpi=300
+    dpi=300,
+    ylabel=None
 ):
     dfs = {g: load_spectral_results(data_dir, g) for g in geometries}
-
     scalers = list(dict.fromkeys(dfs[geometries[0]]["scaler"]))
     n_cols = len(scalers) + (1 if show_comparison_col else 0)
     n_rows = len(geometries)
-
-    fig, axes = plt.subplots(
-        nrows=n_rows,
-        ncols=n_cols,
-        figsize=(5 * n_cols, figsize_per_row * n_rows),
-        sharex=True,
-        constrained_layout=True
-    )
+    fig_size=(5 * n_cols, figsize_per_row * n_rows)
+    fig, axes = plt.subplots( nrows=n_rows, ncols=n_cols, figsize=fig_size, sharex=True, constrained_layout=True)
 
     if n_rows == 1:
         axes = np.array([axes])
 
     for i, geom in enumerate(geometries):
-        plot_spectral_row(
-            ax_row=axes[i],
-            df_all=dfs[geom],
-            metric=metric,
-            ylabel="ARI",
-            title=f"{geom.capitalize()} geometry",
-            show_comparison_col=show_comparison_col
-        )
+        for metric,line_style in zip( metrics,["solid","dashed"]):
+            plot_spectral_row(
+                ax_row=axes[i],
+                df_all=dfs[geom],
+                metric=metric,
+                ylabel=ylabel,
+                title=f"{geom.capitalize()} geometry",
+                show_comparison_col=show_comparison_col,line_style=line_style
+            )
 
-        axes[i][0].annotate(
-            geom.capitalize(),
-            xy=(-0.15, 0.5),
-            xycoords="axes fraction",
-            fontsize=11,
-            fontweight="bold",
-            rotation=90,
-            va="center"
-        )
+            #axes[i][0].annotate(geom.capitalize(),xy=(-0.15, 0.5),xycoords="axes fraction", fontsize=11, fontweight="bold", rotation=90,va="center")
 
-    k_vals = np.sort(dfs[geometries[0]]["k"].unique())
-    for ax in axes.flat:
-        ax.set_xticks(k_vals)
-        ax.set_xlabel("Number of clusters (k)")
+        k_vals = np.sort(dfs[geometries[0]]["k"].unique())
+        for ax in axes.flat:
+            ax.set_xticks(k_vals)
+            ax.set_xlabel("Number of clusters (k)")
 
-    fig.suptitle("Sensitivity of spectral clustering stability to affinity geometry", fontsize=13)
+        fig.suptitle("Sensitivity of spectral clustering stability to affinity geometry, normalization scheme and n_neighbors", fontsize=13)
 
     if save_path:
         fig.savefig(save_path, dpi=dpi, bbox_inches="tight")
 
     return fig,dfs
 
-
-
-
-fig, df_all = plot_spectral_k_analysis_two_geometries(
+def save_max_silhouette_per_geometry(
+    data_dir="files/SpectralClusteringEngine",
     geometries=("cosine", "euclidean"),
-    metric="ARI_mean"
-)
-plt.show()
+    silhouette_cols=("Silhouette_mean (cosine)", "Silhouette_mean (euclidean)"),
+):
+    for geom in geometries:
+        df = load_spectral_results(data_dir, geom)
+        # choose the correct silhouette column
+        columns = ["Silhouette_mean (cosine)", "Silhouette_mean (euclidean)"]
+        df=df[["k","Silhouette_mean (cosine)", "Silhouette_mean (euclidean)", "ARI_mean","scaler","geometry","n_neighbors"]].round(3)
+        # ---- max silhouette per k ----
+        df_best=df.sort_values(by=["k", columns[0]],ascending=[True, False]).groupby("k", as_index=False).first()
+        columns = ["Silhouette_mean (cosine)", "Silhouette_mean (euclidean)"]
+        df_best=df_best[columns].round(2).T
+        df_best.to_csv(f"files/SpectralClustering_{geom}_best.csv")
+        df = df.set_index("k")
+        df=df.sort_values(by=["k", "Silhouette_mean (cosine)", "Silhouette_mean (euclidean)"], ascending=[True, False,False])
+        df.to_csv(f"files/SpectralClustering_{geom}_all.csv")
+
 
 def plot_spectral_ari1_regions_two_geometries(
     geometries=("cosine", "euclidean"),
@@ -284,7 +279,6 @@ def plot_spectral_ari1_regions_two_geometries(
 
     # ---- load data ----
     dfs = {g: load_spectral_results(data_dir, g) for g in geometries}
-
     # consistent scaler order & colors
     scalers = list(dict.fromkeys(dfs[geometries[0]]["scaler"]))
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']
@@ -312,9 +306,9 @@ def plot_spectral_ari1_regions_two_geometries(
         df = dfs[geom]
 
         # filter perfect-stability points
-        df_hit = df[df[metric] ==1]
+        df_hit = df[df[metric] == 1]
 
-        for i,scaler in enumerate(scalers):
+        for i, scaler in enumerate(scalers):
             df_s = df_hit[df_hit["scaler"] == scaler]
             if df_s.empty:
                 continue
@@ -343,10 +337,13 @@ def plot_spectral_ari1_regions_two_geometries(
     fig.legend(
         handles, labels,
         title="Scaler",
-        loc="upper center",
-        ncol=len(scalers),
-        frameon=False
-    )
+        loc="upper right",
+        bbox_to_anchor=(0.98, 0.88),
+        ncol=1,
+       frameon=True,
+       fancybox=True,
+      framealpha=0.95
+      )
 
     fig.suptitle(
         "Neighborhood sizes yielding perfect clustering stability (ARI_mean = 1)",
@@ -358,8 +355,12 @@ def plot_spectral_ari1_regions_two_geometries(
 
     return fig, dfs
 
-fig, dfs = plot_spectral_ari1_regions_two_geometries(
-    geometries=("cosine", "euclidean"),
-    metric="ARI_mean"
-)
+fig, dfs = plot_spectral_k_analysis_two_geometries( geometries=("cosine", "euclidean"),  metrics=["ARI_mean"],ylabel="mean ARI",save_path="files/stability_spectral_ari_mean.png")
 plt.show()
+fig, dfs = plot_spectral_ari1_regions_two_geometries(geometries=("cosine", "euclidean"),metric="ARI_mean",save_path="files/stability_spectral_ari1_regions.png")
+plt.show()
+fig, dfs = plot_spectral_k_analysis_two_geometries( geometries=("cosine","euclidean"),
+                                                       metrics=["Silhouette_mean (cosine)","Silhouette_mean (euclidean)"],
+                                                       ylabel="Mean Silhouette Score",save_path="files/stability_spectral_silhouette.png")
+plt.show()
+save_max_silhouette_per_geometry()

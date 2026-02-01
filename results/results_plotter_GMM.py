@@ -34,8 +34,8 @@ def _parse_gmm_filename(fname: Path):
     return m.group(1), m.group(2), m.group(3)
 
 
-def load_gmm_results(data_dir):
-    data_dir = Path(data_dir)
+def load_gmm_results():
+    data_dir = Path("files/GMMEngine")
     dfs = []
 
     for f in data_dir.glob("*.csv"):
@@ -62,80 +62,115 @@ def load_gmm_results(data_dir):
     return pd.concat(dfs, ignore_index=True)
 
 
+import numpy as np
+import matplotlib.pyplot as plt
+
 def plot_gmm_k_analysis_one_row(
-    data_dir="files/GMMEngine",
-    scaler_labels=scaler_labels,
-    covariance_order=("diag", "tied", "spherical"),
-    linestyles=linestyles,
-    figsize=(18, 4.5),
-    ylim=(0, 1.05),
-    dpi=300,
-    save_path=None
+    metric="ARI_mean",
+    ylabel="Clustering stability (ARI)",
+    covariances=("diag", "tied", "spherical"),
+    colors=None,
+    linewidth=2.0,
+    marker="o"
 ):
-    df_all = load_gmm_results(data_dir)
+    """
+    Plot GMM stability results in a 1×3 row:
+      - Each subplot = one covariance type
+      - Each line = one normalization scheme (scaler)
 
-    scalers = list(scaler_labels.keys())
-    k_vals = np.sort(df_all["k"].unique())
-
+    Parameters
+    ----------
+    df_all : pd.DataFrame
+        Must contain columns: ['k', metric, 'scaler', 'covariance'].
+    """
+    df_all= load_gmm_results()
     fig, axes = plt.subplots(
         nrows=1,
-        ncols=len(scalers),
-        figsize=figsize,
-        sharey=True,
-        constrained_layout=True
+        ncols=3,
+        figsize=(15, 4),
+        constrained_layout=True,
     )
 
-    if len(scalers) == 1:
-        axes = [axes]
+    if colors is None:
+        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']
 
-    for ax, scaler in zip(axes, scalers):
-        df_s = df_all[df_all["scaler"] == scaler]
+    scalers = list(dict.fromkeys(df_all["scaler"]))
+    k_vals = np.sort(df_all["k"].unique())
 
-        for cov in covariance_order:
-            df_sc = df_s[df_s["covariance"] == cov].sort_values("k")
+    # ---- loop over covariance types (panels) ----
+    for j, cov in enumerate(covariances):
+        ax = axes[j]
+        df_cov = df_all[df_all["covariance"] == cov]
 
-            if df_sc.empty:
-                continue
+        # ---- plot each scaler as a line ----
+        for i, scaler in enumerate(scalers):
+            df_s = df_cov[df_cov["scaler"] == scaler]
 
-            ax.plot(
-                df_sc["k"],
-                df_sc[METRIC],
-                linestyle=linestyles.get(cov, "-"),
-                marker="o",
-                label=cov
+            # best-per-k (max ARI, tie → smallest k handled upstream)
+            df_best = (
+                df_s
+                .sort_values(by=["k", metric], ascending=[True, False])
+                .groupby("k", as_index=False)
+                .first()
+                .sort_values("k")
             )
 
-        ax.set_title(scaler_labels.get(scaler, scaler), fontsize=12)
-        ax.set_xticks(k_vals)
-        ax.set_ylim(*ylim)
-        ax.grid(True, alpha=0.25)
+            ax.plot(
+                df_best["k"],
+                df_best[metric],
+                marker=marker,
+                linewidth=linewidth,
+                color=colors[i % len(colors)],
+                label=scaler,
+                alpha=0.8,
+            )
+
+        ax.set_title(f"{cov.capitalize()} covariance", fontsize=11)
         ax.set_xlabel("Number of clusters (k)")
+        ax.set_ylabel(ylabel)
+        ax.set_xticks(k_vals)
+        ax.set_ylim(0, 1.05)
+        ax.grid(True, alpha=0.3)
 
-    axes[0].set_ylabel("ARI (stability across seeds)")
-
-    # One shared legend (cleaner)
-    handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(
-        handles, labels,
-        title="Covariance type",
-        loc="upper center",
-        ncol=3,
-        frameon=False
+    # ---- shared legend (only once) ----
+    axes[-1].legend(
+        title="Normalization scheme",
+        fontsize=9,
+        title_fontsize=9,
+        bbox_to_anchor=(0.95, 0.4),
+        frameon=True,
     )
 
     fig.suptitle(
-        "Sensitivity of GMM clustering stability to covariance structure and  normalization schemes",
-        fontsize=14
+        "Sensitivity of Gaussian Mixture Model clustering stability to covariance structure",
+        fontsize=13
     )
-
-    if save_path:
-        fig.savefig(save_path, dpi=dpi, bbox_inches="tight")
+    fig.savefig("files/stability_gmm.png", dpi=300, bbox_inches="tight")
 
     return fig
 
 # Example usage:
-fig = plot_gmm_k_analysis_one_row(
-     data_dir="files/GMMEngine",
-     save_path="gmm_k_analysis_grid.png"
- )
+fig = plot_gmm_k_analysis_one_row()
 plt.show()
+def save_max_silhouette_per_geometry():
+
+    dfs = load_gmm_results()
+    for cov in ["diag", "tied", "spherical"]:
+        df = dfs[dfs["covariance"] == cov]
+        # choose the correct silhouette column
+        columns = ["Silhouette_mean (cosine)", "Silhouette_mean (euclidean)"]
+        df=df[["k","Silhouette_mean (cosine)", "Silhouette_mean (euclidean)", "ARI_mean","AIC_mean","BIC_mean","scaler"]].round(3)
+        # ---- max silhouette per k ----
+        df_best=df.sort_values(by=["k", columns[0]],ascending=[True, False]).groupby("k", as_index=False).first()
+        columns = ["Silhouette_mean (cosine)", "Silhouette_mean (euclidean)","scaler"]
+        df_best=df_best[columns].round(2).T
+        df_best.to_csv(f"files/GMM_{cov}_silhouette_best.csv")
+        df=df.set_index("k")
+        df=df.sort_values(by=["k", "Silhouette_mean (cosine)", "Silhouette_mean (euclidean)"], ascending=[True, False,False])
+        df.to_csv(f"files/GMM_{cov}_silhouette.csv")
+
+    #    df_best = df.sort_values(by=["k", "ARI_mean"], ascending=[True, False]).groupby("k", as_index=False).first()
+        df.to_csv(f"files/GMM_{cov}_ari.csv")
+
+
+save_max_silhouette_per_geometry()

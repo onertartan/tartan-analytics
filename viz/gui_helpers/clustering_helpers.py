@@ -67,7 +67,7 @@ def gui_clustering_main():
 def gui_options_gmm():
     st.number_input("Number of clusters / components", 2, 15, 4, key="n_cluster_gmm")
     st.number_input("Random restarts (n_init)", 1, 100, 10, key="n_init_gmm")
-    st.selectbox("Covariance", options=["diag", "full", "tied", "spherical"],key="gmm_covariance_type")
+    st.selectbox("Covariance", options=["spherical", "diag", "tied"],key="gmm_covariance_type")
 
 
 def gui_options_spectral():

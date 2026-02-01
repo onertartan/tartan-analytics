@@ -43,14 +43,14 @@ class GeoClusterPlotter:
                 color_map[cluster] = "grey"  # Fallback
         return color_map
 
-    def plot(self, gdf_clusters, gdf_centroids, n_clusters, year_label):
+    def plot_cluster_map(self, gdf_clusters, gdf_centroids, n_clusters, year_label):
         """
         Plots the geographic clusters.
         """
         fig, ax = plt.subplots(1, 1, figsize=(10, 6))
 
         # 1. Create Colors
-      ##  color_map = self.create_color_mapping(gdf_clusters, n_clusters)
+        ##  color_map = self.create_color_mapping(gdf_clusters, n_clusters)
         color_map = create_cluster_color_mapping(gdf_clusters, self.cluster_color_mapping_dict)
 
         # 2. Map colors and Plot
@@ -79,9 +79,8 @@ class GeoClusterPlotter:
                         ha=ha, va=va, fontsize=5, color="black", bbox=bbox)
 
         # 4. Legend & Centroid Markers
-        ax.set_title(f"{n_clusters} Clusters Identified {year_label} (K-means)")
-        ax.legend(loc="upper right", fontsize=6)
-
+        title = f"{n_clusters} Clusters Identified {year_label}"
+        ax.set_title(title)
         if gdf_centroids is not None:
             closest_provinces_centroids = gdf_centroids.to_crs("EPSG:4326")#gdf_centroids.to_crs("EPSG:4326").copy()
             closest_provinces_centroids["centroid_geometry"] = closest_provinces_centroids.geometry.centroid
@@ -91,11 +90,12 @@ class GeoClusterPlotter:
                 geometry="centroid_geometry",
                 crs=gdf_clusters.crs
             )
-
-            closest_points.plot(ax=ax, facecolor="none", markersize=120,
+            closest_points.plot(ax=ax, facecolor="none", markersize=90,
                                 edgecolor="black", linewidth=1.5,
-                                label="Closest provinces\nto cluster centers")
+                                label="Cluster representatives")
+            ax.legend(loc="upper right", fontsize=6)
 
+        fig.savefig(f"temp/{title}.png", dpi=300, bbox_inches="tight")
         st.pyplot(fig)
 
     def plot_elections(self, gdf_clusters):
@@ -148,4 +148,5 @@ class GeoClusterPlotter:
             frameon=False  # Remove if you want a background
         )
         ax.set_title(title)
+
         st.pyplot(fig)
