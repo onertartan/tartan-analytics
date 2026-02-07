@@ -1,0 +1,8 @@
+,0,1,2,3,4,5,6,7,8,9,10,11,12
+k,2,3,4,5,6,7,8,9,10,11,12,13,14
+Silhouette_mean (cosine),0.537,0.355,0.327,0.291,0.299,0.269,0.255,0.233,0.23,0.219,0.214,0.223,0.209
+Silhouette_mean (euclidean),0.365,0.211,0.194,0.172,0.176,0.159,0.151,0.14,0.137,0.133,0.128,0.132,0.122
+ARI_mean,1.0,1.0,1.0,1.0,0.99,0.985,0.861,0.867,0.822,0.807,0.761,0.838,0.693
+scaler,Share of Total,L2 Normalization,L2 Normalization,L2 Normalization,L2 Normalization,L2 Normalization,L2 Normalization,L2 Normalization,L2 Normalization,L2 Normalization,L2 Normalization,L2 Normalization,L2 Normalization
+geometry,cosine,cosine,cosine,cosine,cosine,cosine,cosine,cosine,cosine,cosine,cosine,cosine,cosine
+n_neighbors,7,10,16,9,11,9,19,14,15,14,15,11,15

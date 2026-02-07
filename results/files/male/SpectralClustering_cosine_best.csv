@@ -1,0 +1,8 @@
+,0,1,2,3,4,5,6,7,8,9,10,11,12
+k,2,3,4,5,6,7,8,9,10,11,12,13,14
+Silhouette_mean (cosine),0.525,0.393,0.38,0.337,0.351,0.336,0.29,0.297,0.288,0.268,0.256,0.249,0.243
+Silhouette_mean (euclidean),0.375,0.231,0.217,0.193,0.196,0.186,0.159,0.167,0.169,0.154,0.137,0.139,0.135
+ARI_mean,1.0,1.0,1.0,0.998,0.982,0.985,0.778,0.847,0.985,0.978,0.649,0.94,0.802
+scaler,Share of Total,Share of Top 30 (L1 Norm),Share of Top 30 (L1 Norm),Share of Top 30 (L1 Norm),Share of Top 30 (L1 Norm),Share of Top 30 (L1 Norm),Share of Top 30 (L1 Norm),Share of Top 30 (L1 Norm),Share of Top 30 (L1 Norm),Share of Top 30 (L1 Norm),Share of Top 30 (L1 Norm),Share of Top 30 (L1 Norm),Share of Top 30 (L1 Norm)
+geometry,cosine,cosine,cosine,cosine,cosine,cosine,cosine,cosine,cosine,cosine,cosine,cosine,cosine
+n_neighbors,10,10,11,8,5,5,19,12,6,6,20,6,11

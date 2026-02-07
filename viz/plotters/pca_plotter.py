@@ -185,6 +185,17 @@ class PCAPlotter:
             fig.suptitle(title, fontsize=13)
         st.pyplot(fig)
         # return PCA objects too (useful for reporting PC variance + loadings in text/tables)
+        pca = PCA()
+        pca.fit(df_pivot)
+        per_var = np.round(pca.explained_variance_ratio_ * 100, decimals=1)
+        fig, ax = plt.subplots(1, 1, figsize=(14, 6), constrained_layout=True)
+
+        ax.plot(range(1, len(per_var) + 1), per_var.cumsum(), marker="o", linestyle="--")
+        ax.grid(True)
+        ax.set_ylabel("Percentage Cumulative of Explained Variance")
+        ax.set_xlabel("Number of Components")
+        ax.set_title("Explained Variance by Component")
+        st.pyplot()
         return fig, (pca_raw, pca_clr)
     def plot_pca_old(self, df_pivot, df_clusters, dense_threshold, mid_threshold, colors, title=""):
         fig, ax = plt.subplots(1, 1, figsize=(10, 6))

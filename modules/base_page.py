@@ -212,7 +212,7 @@ class BasePage(ABC):
     def preprocess_clustering(self, df, *args):
         pass    # Overriden by sub-classes Base_Page_Names & Base_Page_Common
 
-    def tab_clustering(self, df, *args):
+    def tab_clustering(self, df, save_sub_folder="", *args):
         # 0. Render UI
         clustering_algorithm = gui_clustering_main()
 
@@ -237,12 +237,14 @@ class BasePage(ABC):
                 kwargs["affinity"] = st.session_state["affinity_spectral"]
                 kwargs["n_neighbors"] = st.session_state["n_neighbors_spectral"]
                 kwargs["assign_labels"] = "kmeans"
-                kwargs["spectral_geometry"] = st.session_state["spectral_geometry"]
             elif engine_class is HierarchicalClusteringEngine:
                 kwargs["metric"] = st.session_state["distance_metric_hierarchical"]
                 kwargs["linkage_method"] = st.session_state["linkage_hierarchical"]
             return kwargs
         kwargs = prepare_kwargs()
+        save_folder = "results/files"
+        if save_sub_folder != "":
+            save_folder = f"results/files/{save_sub_folder}"
         # 1. Run clustering: Preprocess
         df_pivot = self.preprocess_clustering(df, *args)
      #   pca = PCA(n_components=50)
@@ -254,17 +256,18 @@ class BasePage(ABC):
             k_values = list(range(2, 15)) if not (engine_class is  HierarchicalClusteringEngine) else range(n_cluster, n_cluster + 1)
             random_states = range(st.session_state["number_of_seeds"]) if engine_class.__name__ != "HierarchicalClusteringEngine" else range(1)
             num_seeds_to_plot = 3  if engine_class.__name__ != "HierarchicalClusteringEngine" else 1
-            try_all_neighbors=False
+            try_all_neighbors=True
             if engine_class is SpectralClusteringEngine and try_all_neighbors:
-                scaler, spectral_geometry, year1, year2 = st.session_state['scaler'], st.session_state['spectral_geometry'], st.session_state["year_1"], st.session_state["year_2"]
-                st.write(scaler, spectral_geometry, year1, year2 )
-                for n in range(5, 21):
+                scaler, affinity,year1, year2 = st.session_state['scaler'], st.session_state['affinity_spectral'], st.session_state["year_1"], st.session_state["year_2"]
+                st.write(scaler, affinity, year1, year2 )
+                n_range= range(4, 11) if affinity=="nearest_neighbors" else range(1,2)
+                for n in n_range:
                     kwargs["n_neighbors"] = n
                     st.write(f"Running optimal k analysis for Spectral Clustering with n_neighbors={n} and scaler={scaler}")
                     df_summary, metrics_all, metrics_mean, ari_mean, ari_std, consensus_labels_all = engine_class.optimal_k_analysis(df_pivot, random_states, k_values, kwargs)
                     st.write(f"Completed optimal k analysis for n_neighbors={n}")
-                    df_summary.to_csv(f"results/files/{engine_class.__name__}/{scaler}_{spectral_geometry}_{year1}_{year2}_{n}.csv")
-                    pd.DataFrame(consensus_labels_all).to_csv(f"results/files/{engine_class.__name__}/consensus_labels_all_{scaler}_{spectral_geometry}_{year1}_{year2}_{n}.csv")
+                    df_summary.to_csv(f"{save_folder}/{engine_class.__name__}/{scaler}_{affinity}_{year1}_{year2}_{n}.csv")
+                    pd.DataFrame(consensus_labels_all).to_csv(f"{save_folder}/{engine_class.__name__}/consensus_labels_all_{scaler}_{affinity}_{year1}_{year2}_{n}.csv")
                 return
             else:
                 st.write(f"Running optimal k analysis for {engine_class.__name__} and scaler={st.session_state['scaler']}")
@@ -279,11 +282,11 @@ class BasePage(ABC):
                 col2.dataframe(df_summary)
                 scaler, gmm_cov, year1, year2 = st.session_state['scaler'], st.session_state['gmm_covariance_type'], st.session_state["year_1"], st.session_state["year_2"]
                 if engine_class is KMedoidsEngine or engine_class is KMeansEngine:
-                    df_summary.to_csv(f"results/files/{engine_class.__name__}/{scaler}_{year1}_{year2}.csv")
-                    pd.DataFrame(consensus_labels_all).to_csv(f"results/files/{engine_class.__name__}/{scaler}_{year1}_{year2}_consensus_labels_all.csv")
+                    df_summary.to_csv(f"{save_folder}/{engine_class.__name__}/{scaler}_{year1}_{year2}.csv")
+                    pd.DataFrame(consensus_labels_all).to_csv(f"{save_folder}/{engine_class.__name__}/{scaler}_{year1}_{year2}_consensus_labels_all.csv")
                 elif engine_class is GMMEngine:
-                    df_summary.to_csv(f"results/files/{engine_class.__name__}/{scaler}_{gmm_cov}_{year1}_{year2}.csv")
-                    pd.DataFrame(consensus_labels_all).to_csv(f"results/files/{engine_class.__name__}/{scaler}_{gmm_cov}_{year1}_{year2}_consensus_labels_all.csv")
+                    df_summary.to_csv(f"{save_folder}/{engine_class.__name__}/{scaler}_{gmm_cov}_{year1}_{year2}.csv")
+                    pd.DataFrame(consensus_labels_all).to_csv(f"{save_folder}/{engine_class.__name__}/{scaler}_{gmm_cov}_{year1}_{year2}_consensus_labels_all.csv")
         elif st.session_state.get("use_consensus_labels_"+engine_class.__name__, False):
             df_pivot["clusters"] = st.session_state["consensus_labels_" + engine_class.__name__][n_cluster]
             st.header("Using previously saved consensus labels")
@@ -301,8 +304,10 @@ class BasePage(ABC):
         # Step: Update geodata
         if st.session_state.get("selected_tab_" + self.page_name, "") == "tab_geo_clustering" and engine:
             representatives = engine.get_representatives(df_pivot)
-            # self.update_geo_cluster_centers(df_pivot, representatives)
-            self.gdf_clusters, self.gdf_centroids = engine.update_geo_cluster_centers(self.gdf, st.session_state["geo_scale"], df_pivot, representatives)
+        else:
+            representatives = None
+        # self.update_geo_cluster_centers(df_pivot, representatives)
+        self.gdf_clusters, self.gdf_centroids = engine_class.update_geo_cluster_centers(self.gdf, st.session_state["geo_scale"], df_pivot, representatives)
 
        # st.header("CONSENSuS?,"+str(st.session_state.get("use_consensus_labels_" + engine_class.__name__)))
 

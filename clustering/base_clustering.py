@@ -120,12 +120,14 @@ class Clustering:
         # Prepare the base GeoDataFrame
         # Note: We assume gdf_dict has keys matching the values in st.session_state["geo_scale"]
         # or that mapping logic handles it. Based on BasePage logic:
+        gdf_centroids = None
         gdf_clusters = gdf_dict[geo_scale].set_index(geo_scale)
         # Merge with clusters
         gdf_clusters = gdf_clusters.merge(df_pivot["clusters"], left_index=True, right_index=True)
         # Compute centroids for representatives
-        gdf_centroids = gdf_clusters[gdf_clusters.index.isin(closest_indices)].copy()
-        gdf_centroids["centroid"] = gdf_centroids.geometry.centroid
+        if closest_indices:
+            gdf_centroids = gdf_clusters[gdf_clusters.index.isin(closest_indices)].copy()
+            gdf_centroids["centroid"] = gdf_centroids.geometry.centroid
         return gdf_clusters, gdf_centroids
 
     @classmethod

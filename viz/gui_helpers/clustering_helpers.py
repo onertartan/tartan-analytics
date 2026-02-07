@@ -79,13 +79,9 @@ def gui_options_spectral():
         help="Controls local connectivity in the graph (higher = more global structure)",
         key="n_neighbors_spectral"
     )
-    st.selectbox("Spectral similarity geometry",
-          options=["cosine","euclidean"],
-        index=0,
-        key="spectral_geometry"
-    )
+    #st.selectbox("Spectral similarity geometry",  options=["euclidean"], index=0, key="spectral_geometry"  )
 
-    st.selectbox("Affinity", options=["nearest_neighbors"], index=0, key="affinity_spectral")
+    st.selectbox("Affinity", options=["nearest_neighbors","rbf"], index=0, key="affinity_spectral")
 
 
 def gui_options_hierarchical():

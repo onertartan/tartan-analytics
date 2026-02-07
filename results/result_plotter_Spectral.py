@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -29,11 +31,9 @@ def _parse_spectral_filename(fname: Path,geometry:str):
     return geometry, scaler, year_range, n_neighbors
 
 def load_spectral_results(data_dir, geometry):
+    data_dir +="/SpectralClusteringEngine"
     DATA_DIR = Path(data_dir)
-    files = sorted(
-        f for f in DATA_DIR.glob("*.csv")
-        if not f.name.startswith("consensus_labels_all_")
-    )
+    files = sorted(f for f in DATA_DIR.glob("*.csv")  if not f.name.startswith("consensus_labels_all_") )
 
     dfs = []
     for f in files:
@@ -197,8 +197,8 @@ def plot_spectral_row(
 
 
 def plot_spectral_k_analysis_two_geometries(
-    geometries=("cosine", "euclidean"),
-    data_dir="files/SpectralClusteringEngine",
+    geometries=None,
+    data_dir=None,
     metrics=["ARI_mean"],
     figsize_per_row=4.0,
     show_comparison_col=True,
@@ -215,12 +215,16 @@ def plot_spectral_k_analysis_two_geometries(
 
     if n_rows == 1:
         axes = np.array([axes])
+    MAX_K_TO_PLOT = 10
 
     for i, geom in enumerate(geometries):
         for metric,line_style in zip( metrics,["solid","dashed"]):
+            df_all = dfs[geom]
+            df_all = df_all[df_all["k"] <= MAX_K_TO_PLOT]
+
             plot_spectral_row(
                 ax_row=axes[i],
-                df_all=dfs[geom],
+                df_all=df_all,
                 metric=metric,
                 ylabel=ylabel,
                 title=f"{geom.capitalize()} geometry",
@@ -241,29 +245,28 @@ def plot_spectral_k_analysis_two_geometries(
 
     return fig,dfs
 
-def save_max_silhouette_per_geometry(
-    data_dir="files/SpectralClusteringEngine",
-    geometries=("cosine", "euclidean"),
-    silhouette_cols=("Silhouette_mean (cosine)", "Silhouette_mean (euclidean)"),
-):
+def save_max_silhouette_per_geometry(data_dir=None, geometries=None):
+
     for geom in geometries:
         df = load_spectral_results(data_dir, geom)
         # choose the correct silhouette column
-        columns = ["Silhouette_mean (cosine)", "Silhouette_mean (euclidean)"]
+        if geom == "euclidean":
+            sort_by_cols = ["k", "Silhouette_mean (euclidean)", "Silhouette_mean (cosine)", "ARI_mean"]
+        else:
+            sort_by_cols = ["k", "Silhouette_mean (cosine)", "Silhouette_mean (euclidean)", "ARI_mean"]
+
         df=df[["k","Silhouette_mean (cosine)", "Silhouette_mean (euclidean)", "ARI_mean","scaler","geometry","n_neighbors"]].round(3)
         # ---- max silhouette per k ----
-        df_best=df.sort_values(by=["k", columns[0]],ascending=[True, False]).groupby("k", as_index=False).first()
-        columns = ["Silhouette_mean (cosine)", "Silhouette_mean (euclidean)"]
-        df_best=df_best[columns].round(2).T
-        df_best.to_csv(f"files/SpectralClustering_{geom}_best.csv")
+        df_best=df.sort_values(by=sort_by_cols,ascending=[True, False,False,False]).groupby("k", as_index=False).first()
+        df_best.T.to_csv(f"{data_dir}/SpectralClustering_{geom}_best.csv")
         df = df.set_index("k")
-        df=df.sort_values(by=["k", "Silhouette_mean (cosine)", "Silhouette_mean (euclidean)"], ascending=[True, False,False])
-        df.to_csv(f"files/SpectralClustering_{geom}_all.csv")
+        df = df.sort_values(by=sort_by_cols, ascending=[True, False,False,False])
+        df.to_csv(f"{data_dir}/SpectralClustering_{geom}_all.csv")
 
 
 def plot_spectral_ari1_regions_two_geometries(
     geometries=("cosine", "euclidean"),
-    data_dir="files/SpectralClusteringEngine",
+    data_dir=None,
     metric="ARI_mean",
     scaler_abbr=DEFAULT_SCALER_ABBR,
     figsize_per_col=5.5,
@@ -355,12 +358,19 @@ def plot_spectral_ari1_regions_two_geometries(
 
     return fig, dfs
 
-fig, dfs = plot_spectral_k_analysis_two_geometries( geometries=("cosine", "euclidean"),  metrics=["ARI_mean"],ylabel="mean ARI",save_path="files/stability_spectral_ari_mean.png")
-plt.show()
-fig, dfs = plot_spectral_ari1_regions_two_geometries(geometries=("cosine", "euclidean"),metric="ARI_mean",save_path="files/stability_spectral_ari1_regions.png")
-plt.show()
-fig, dfs = plot_spectral_k_analysis_two_geometries( geometries=("cosine","euclidean"),
-                                                       metrics=["Silhouette_mean (cosine)","Silhouette_mean (euclidean)"],
-                                                       ylabel="Mean Silhouette Score",save_path="files/stability_spectral_silhouette.png")
-plt.show()
-save_max_silhouette_per_geometry()
+genders= ["female"]
+for gender in genders:
+    data_dir = "files/"
+    if gender:
+        data_dir += gender
+    #geometries= ("cosine", "euclidean")
+    geometries = ("euclidean",)
+    fig, dfs = plot_spectral_k_analysis_two_geometries(data_dir=data_dir, geometries=geometries,  metrics=["ARI_mean"],ylabel="mean ARI",save_path=data_dir+"/stability_spectral_ari_mean.png")
+    plt.show()
+    fig, dfs = plot_spectral_ari1_regions_two_geometries(data_dir=data_dir, geometries=geometries, metric="ARI_mean",save_path=data_dir+"/stability_spectral_ari1_regions.png")
+    plt.show()
+    fig, dfs = plot_spectral_k_analysis_two_geometries(data_dir=data_dir, geometries=geometries,
+                                                           metrics=["Silhouette_mean (cosine)","Silhouette_mean (euclidean)"],
+                                                           ylabel="Mean Silhouette Score",save_path=data_dir+"/stability_spectral_silhouette.png")
+    plt.show()
+    save_max_silhouette_per_geometry(data_dir,geometries)

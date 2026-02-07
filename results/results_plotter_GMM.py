@@ -152,17 +152,20 @@ def plot_gmm_k_analysis_one_row(
 # Example usage:
 fig = plot_gmm_k_analysis_one_row()
 plt.show()
-def save_max_silhouette_per_geometry():
 
+
+def save_max_silhouette_per_geometry():
     dfs = load_gmm_results()
     for cov in ["diag", "tied", "spherical"]:
         df = dfs[dfs["covariance"] == cov]
         # choose the correct silhouette column
         columns = ["Silhouette_mean (cosine)", "Silhouette_mean (euclidean)"]
-        df=df[["k","Silhouette_mean (cosine)", "Silhouette_mean (euclidean)", "ARI_mean","AIC_mean","BIC_mean","scaler"]].round(3)
+        df = df[["k","Silhouette_mean (cosine)", "Silhouette_mean (euclidean)", "ARI_mean","AIC_mean","BIC_mean","scaler"]].round(3)
         # ---- max silhouette per k ----
+
+
         df_best=df.sort_values(by=["k", columns[0]],ascending=[True, False]).groupby("k", as_index=False).first()
-        columns = ["Silhouette_mean (cosine)", "Silhouette_mean (euclidean)","scaler"]
+        columns = ["Silhouette_mean (cosine)", "Silhouette_mean (euclidean)", "scaler"]
         df_best=df_best[columns].round(2).T
         df_best.to_csv(f"files/GMM_{cov}_silhouette_best.csv")
         df=df.set_index("k")

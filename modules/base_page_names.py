@@ -160,7 +160,7 @@ class PageNames(BasePage):
         # based on the existing list data (if any).
         if widget_key not in st.session_state:
             # Default to "Both"
-            initial_val = "Both"
+            initial_val = "Both genders"
             # If we have previous list data, sync the widget to match it
             if gender_list_state_key in st.session_state:
                 current_list = st.session_state[gender_list_state_key]
@@ -172,7 +172,7 @@ class PageNames(BasePage):
             st.session_state[widget_key] = initial_val
 
         # 2. Render Widget
-        gender_selection = col_1.radio("Select Gender", ["Both", "Male", "Female"], key=widget_key,label_visibility="collapsed",disabled=disable )
+        gender_selection = col_1.radio("Select Gender", ["Both genders", "Male", "Female"], key=widget_key,label_visibility="collapsed",disabled=disable )
         # 3. Update the Data List based on the Widget's new value
         if gender_selection == "Male":
             st.session_state[gender_list_state_key] = ["male"]
@@ -185,8 +185,6 @@ class PageNames(BasePage):
         # If surname is selected, we force both genders (or ignore gender column)
         if disable:
             st.session_state[gender_list_state_key] = ["male", "female"]
-
-
 
         return name_surname_selection, selected_years, gender_list_state_key
 
@@ -255,7 +253,6 @@ class PageNames(BasePage):
         return final_selected
 
 
-
     def render_tab_selection(self):
        # if "selected_tab" not in st.session_state:
         #    st.session_state["selected_tab_"+self.page_name] = "map"
@@ -306,7 +303,7 @@ class PageNames(BasePage):
 
         col_plot, col_df = st.columns([5, 1])
         if tab_selected == "tab_geo_clustering" or tab_selected == "tab_name_clustering":  # Main Tab-1
-            self.tab_clustering(df)
+            self.tab_clustering(df=df,save_sub_folder=st.session_state["gender_radio_widget_" + self.page_name].lower())
         elif tab_selected == "tab_map":  # Main Tab-2: Tab-1
             self.tab_2_map(df)
         elif tab_selected in ["rank_bump", "rank_bar", "custom_bar"]:  # Main Tab-2: Tab 3-4-5

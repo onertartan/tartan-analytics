@@ -1,0 +1,417 @@
+k,Silhouette_mean (cosine),Silhouette_mean (euclidean),ARI_mean,scaler,geometry,n_neighbors
+2,0.525,0.375,1.0,Share of Total,cosine,10
+2,0.525,0.375,1.0,Share of Total,cosine,11
+2,0.525,0.375,1.0,Share of Total,cosine,12
+2,0.525,0.375,1.0,Share of Total,cosine,13
+2,0.525,0.375,1.0,Share of Total,cosine,14
+2,0.525,0.34,1.0,Share of Top 30 (L1 Norm),cosine,10
+2,0.525,0.34,1.0,Share of Top 30 (L1 Norm),cosine,11
+2,0.525,0.34,1.0,Share of Top 30 (L1 Norm),cosine,12
+2,0.525,0.34,1.0,Share of Top 30 (L1 Norm),cosine,13
+2,0.525,0.34,1.0,Share of Top 30 (L1 Norm),cosine,14
+2,0.513,0.361,1.0,Share of Total,cosine,15
+2,0.513,0.33,1.0,Share of Top 30 (L1 Norm),cosine,15
+2,0.512,0.345,1.0,Share of Total,cosine,17
+2,0.512,0.345,0.994,Share of Total,cosine,16
+2,0.512,0.328,1.0,Share of Top 30 (L1 Norm),cosine,17
+2,0.512,0.328,0.994,Share of Top 30 (L1 Norm),cosine,16
+2,0.503,0.367,1.0,Share of Total,cosine,6
+2,0.503,0.367,1.0,Share of Total,cosine,7
+2,0.503,0.33,1.0,Share of Top 30 (L1 Norm),cosine,6
+2,0.503,0.33,1.0,Share of Top 30 (L1 Norm),cosine,7
+2,0.497,0.357,1.0,Share of Total,cosine,5
+2,0.497,0.357,1.0,Share of Total,cosine,8
+2,0.497,0.357,1.0,Share of Total,cosine,9
+2,0.497,0.321,1.0,Share of Top 30 (L1 Norm),cosine,5
+2,0.497,0.321,1.0,Share of Top 30 (L1 Norm),cosine,8
+2,0.497,0.321,1.0,Share of Top 30 (L1 Norm),cosine,9
+2,0.495,0.327,1.0,Share of Total,cosine,18
+2,0.495,0.312,1.0,Share of Top 30 (L1 Norm),cosine,18
+2,0.49,0.32,0.999,Share of Total,cosine,19
+2,0.49,0.309,0.999,Share of Top 30 (L1 Norm),cosine,19
+2,0.476,0.303,1.0,Share of Total,cosine,20
+2,0.476,0.295,1.0,Share of Top 30 (L1 Norm),cosine,20
+3,0.393,0.231,1.0,Share of Top 30 (L1 Norm),cosine,10
+3,0.393,0.231,1.0,Share of Top 30 (L1 Norm),cosine,11
+3,0.393,0.231,1.0,Share of Top 30 (L1 Norm),cosine,12
+3,0.393,0.226,1.0,Share of Total,cosine,10
+3,0.393,0.226,1.0,Share of Total,cosine,11
+3,0.393,0.226,1.0,Share of Total,cosine,12
+3,0.39,0.227,1.0,Share of Top 30 (L1 Norm),cosine,15
+3,0.39,0.227,1.0,Share of Top 30 (L1 Norm),cosine,16
+3,0.39,0.227,1.0,Share of Top 30 (L1 Norm),cosine,19
+3,0.39,0.227,0.999,Share of Top 30 (L1 Norm),cosine,17
+3,0.39,0.222,1.0,Share of Total,cosine,15
+3,0.39,0.222,1.0,Share of Total,cosine,16
+3,0.39,0.222,1.0,Share of Total,cosine,19
+3,0.39,0.222,0.999,Share of Total,cosine,17
+3,0.389,0.227,0.995,Share of Top 30 (L1 Norm),cosine,18
+3,0.389,0.221,0.995,Share of Total,cosine,18
+3,0.385,0.229,1.0,Share of Top 30 (L1 Norm),cosine,6
+3,0.385,0.224,1.0,Share of Total,cosine,6
+3,0.383,0.223,1.0,Share of Top 30 (L1 Norm),cosine,14
+3,0.383,0.218,1.0,Share of Total,cosine,14
+3,0.373,0.219,1.0,Share of Top 30 (L1 Norm),cosine,7
+3,0.373,0.215,1.0,Share of Total,cosine,7
+3,0.371,0.218,0.986,Share of Top 30 (L1 Norm),cosine,9
+3,0.371,0.214,0.986,Share of Total,cosine,9
+3,0.363,0.208,1.0,Share of Top 30 (L1 Norm),cosine,20
+3,0.363,0.196,1.0,Share of Total,cosine,20
+3,0.336,0.199,1.0,Share of Top 30 (L1 Norm),cosine,13
+3,0.336,0.196,1.0,Share of Total,cosine,13
+3,0.324,0.196,1.0,Share of Top 30 (L1 Norm),cosine,8
+3,0.324,0.194,1.0,Share of Total,cosine,8
+3,0.259,0.162,1.0,Share of Top 30 (L1 Norm),cosine,5
+3,0.259,0.161,1.0,Share of Total,cosine,5
+4,0.38,0.217,1.0,Share of Top 30 (L1 Norm),cosine,11
+4,0.38,0.215,1.0,Share of Total,cosine,11
+4,0.375,0.214,1.0,Share of Top 30 (L1 Norm),cosine,8
+4,0.375,0.212,1.0,Share of Total,cosine,8
+4,0.374,0.213,1.0,Share of Top 30 (L1 Norm),cosine,14
+4,0.374,0.213,1.0,Share of Top 30 (L1 Norm),cosine,15
+4,0.374,0.213,0.998,Share of Top 30 (L1 Norm),cosine,13
+4,0.374,0.21,1.0,Share of Total,cosine,14
+4,0.374,0.21,1.0,Share of Total,cosine,15
+4,0.374,0.21,0.998,Share of Total,cosine,13
+4,0.373,0.214,1.0,Share of Top 30 (L1 Norm),cosine,10
+4,0.373,0.214,1.0,Share of Top 30 (L1 Norm),cosine,7
+4,0.373,0.213,1.0,Share of Total,cosine,10
+4,0.373,0.213,1.0,Share of Total,cosine,7
+4,0.37,0.212,1.0,Share of Top 30 (L1 Norm),cosine,9
+4,0.37,0.211,1.0,Share of Top 30 (L1 Norm),cosine,16
+4,0.37,0.21,1.0,Share of Total,cosine,9
+4,0.37,0.208,1.0,Share of Total,cosine,16
+4,0.369,0.212,1.0,Share of Top 30 (L1 Norm),cosine,12
+4,0.369,0.21,1.0,Share of Total,cosine,12
+4,0.366,0.212,1.0,Share of Top 30 (L1 Norm),cosine,6
+4,0.366,0.211,1.0,Share of Total,cosine,6
+4,0.366,0.209,1.0,Share of Top 30 (L1 Norm),cosine,17
+4,0.366,0.205,1.0,Share of Total,cosine,17
+4,0.362,0.206,1.0,Share of Top 30 (L1 Norm),cosine,18
+4,0.362,0.202,1.0,Share of Total,cosine,18
+4,0.361,0.206,0.997,Share of Top 30 (L1 Norm),cosine,19
+4,0.361,0.201,0.997,Share of Total,cosine,19
+4,0.359,0.202,0.985,Share of Top 30 (L1 Norm),cosine,20
+4,0.359,0.197,0.985,Share of Total,cosine,20
+4,0.325,0.188,1.0,Share of Top 30 (L1 Norm),cosine,5
+4,0.325,0.187,1.0,Share of Total,cosine,5
+5,0.337,0.193,0.998,Share of Top 30 (L1 Norm),cosine,8
+5,0.337,0.184,0.998,Share of Total,cosine,8
+5,0.33,0.189,1.0,Share of Top 30 (L1 Norm),cosine,9
+5,0.33,0.18,1.0,Share of Total,cosine,9
+5,0.317,0.182,1.0,Share of Top 30 (L1 Norm),cosine,6
+5,0.317,0.177,1.0,Share of Total,cosine,6
+5,0.313,0.177,0.968,Share of Top 30 (L1 Norm),cosine,19
+5,0.313,0.175,1.0,Share of Top 30 (L1 Norm),cosine,13
+5,0.313,0.173,0.968,Share of Total,cosine,19
+5,0.313,0.172,1.0,Share of Total,cosine,13
+5,0.312,0.175,0.985,Share of Top 30 (L1 Norm),cosine,20
+5,0.312,0.171,0.985,Share of Total,cosine,20
+5,0.311,0.173,0.949,Share of Top 30 (L1 Norm),cosine,15
+5,0.311,0.172,0.992,Share of Top 30 (L1 Norm),cosine,16
+5,0.311,0.172,0.981,Share of Top 30 (L1 Norm),cosine,18
+5,0.311,0.169,0.992,Share of Total,cosine,16
+5,0.311,0.169,0.981,Share of Total,cosine,18
+5,0.311,0.168,0.949,Share of Total,cosine,15
+5,0.31,0.171,0.978,Share of Top 30 (L1 Norm),cosine,17
+5,0.31,0.168,0.978,Share of Total,cosine,17
+5,0.308,0.171,1.0,Share of Top 30 (L1 Norm),cosine,5
+5,0.308,0.171,1.0,Share of Total,cosine,5
+5,0.308,0.171,0.975,Share of Top 30 (L1 Norm),cosine,14
+5,0.308,0.165,0.975,Share of Total,cosine,14
+5,0.307,0.17,0.973,Share of Top 30 (L1 Norm),cosine,12
+5,0.307,0.164,0.973,Share of Total,cosine,12
+5,0.304,0.168,0.999,Share of Top 30 (L1 Norm),cosine,10
+5,0.304,0.167,0.961,Share of Top 30 (L1 Norm),cosine,11
+5,0.304,0.162,0.999,Share of Total,cosine,10
+5,0.304,0.159,0.961,Share of Total,cosine,11
+5,0.302,0.169,0.989,Share of Top 30 (L1 Norm),cosine,7
+5,0.302,0.163,0.989,Share of Total,cosine,7
+6,0.351,0.196,0.982,Share of Top 30 (L1 Norm),cosine,5
+6,0.351,0.19,0.982,Share of Total,cosine,5
+6,0.33,0.184,0.99,Share of Top 30 (L1 Norm),cosine,6
+6,0.33,0.18,0.99,Share of Total,cosine,6
+6,0.322,0.177,0.983,Share of Top 30 (L1 Norm),cosine,7
+6,0.322,0.173,0.983,Share of Total,cosine,7
+6,0.321,0.179,0.99,Share of Top 30 (L1 Norm),cosine,16
+6,0.321,0.173,0.99,Share of Total,cosine,16
+6,0.32,0.178,0.983,Share of Top 30 (L1 Norm),cosine,15
+6,0.32,0.177,0.965,Share of Top 30 (L1 Norm),cosine,13
+6,0.32,0.172,0.983,Share of Total,cosine,15
+6,0.32,0.17,0.965,Share of Total,cosine,13
+6,0.317,0.177,0.947,Share of Top 30 (L1 Norm),cosine,17
+6,0.317,0.169,0.947,Share of Total,cosine,17
+6,0.315,0.176,0.946,Share of Top 30 (L1 Norm),cosine,14
+6,0.315,0.169,0.946,Share of Total,cosine,14
+6,0.304,0.17,0.986,Share of Top 30 (L1 Norm),cosine,19
+6,0.304,0.164,0.986,Share of Total,cosine,19
+6,0.3,0.167,0.985,Share of Top 30 (L1 Norm),cosine,10
+6,0.3,0.159,0.985,Share of Total,cosine,10
+6,0.299,0.168,0.912,Share of Top 30 (L1 Norm),cosine,18
+6,0.299,0.161,0.912,Share of Total,cosine,18
+6,0.298,0.165,0.971,Share of Top 30 (L1 Norm),cosine,20
+6,0.298,0.159,0.971,Share of Total,cosine,20
+6,0.294,0.165,0.984,Share of Top 30 (L1 Norm),cosine,8
+6,0.294,0.159,0.984,Share of Total,cosine,8
+6,0.293,0.166,1.0,Share of Top 30 (L1 Norm),cosine,9
+6,0.293,0.16,1.0,Share of Total,cosine,9
+6,0.284,0.156,0.934,Share of Top 30 (L1 Norm),cosine,12
+6,0.284,0.15,0.934,Share of Total,cosine,12
+6,0.282,0.157,0.93,Share of Top 30 (L1 Norm),cosine,11
+6,0.282,0.149,0.93,Share of Total,cosine,11
+7,0.336,0.186,0.985,Share of Top 30 (L1 Norm),cosine,5
+7,0.336,0.175,0.985,Share of Total,cosine,5
+7,0.302,0.166,0.992,Share of Top 30 (L1 Norm),cosine,6
+7,0.302,0.16,0.992,Share of Total,cosine,6
+7,0.297,0.169,0.92,Share of Top 30 (L1 Norm),cosine,13
+7,0.297,0.161,0.92,Share of Total,cosine,13
+7,0.296,0.159,0.932,Share of Top 30 (L1 Norm),cosine,20
+7,0.296,0.154,0.932,Share of Total,cosine,20
+7,0.294,0.17,0.967,Share of Top 30 (L1 Norm),cosine,14
+7,0.294,0.159,0.967,Share of Total,cosine,14
+7,0.286,0.163,0.937,Share of Top 30 (L1 Norm),cosine,9
+7,0.286,0.157,0.937,Share of Total,cosine,9
+7,0.284,0.153,0.843,Share of Top 30 (L1 Norm),cosine,17
+7,0.284,0.151,0.907,Share of Top 30 (L1 Norm),cosine,11
+7,0.284,0.146,0.843,Share of Total,cosine,17
+7,0.284,0.144,0.907,Share of Total,cosine,11
+7,0.283,0.159,0.902,Share of Top 30 (L1 Norm),cosine,15
+7,0.283,0.152,0.902,Share of Total,cosine,15
+7,0.275,0.15,0.904,Share of Top 30 (L1 Norm),cosine,16
+7,0.275,0.144,0.904,Share of Total,cosine,16
+7,0.27,0.15,0.999,Share of Top 30 (L1 Norm),cosine,8
+7,0.27,0.142,0.999,Share of Total,cosine,8
+7,0.268,0.151,0.771,Share of Top 30 (L1 Norm),cosine,7
+7,0.268,0.15,0.814,Share of Top 30 (L1 Norm),cosine,12
+7,0.268,0.144,0.771,Share of Total,cosine,7
+7,0.268,0.142,0.814,Share of Total,cosine,12
+7,0.266,0.146,0.779,Share of Top 30 (L1 Norm),cosine,18
+7,0.266,0.138,0.779,Share of Total,cosine,18
+7,0.265,0.146,0.745,Share of Top 30 (L1 Norm),cosine,19
+7,0.265,0.137,0.745,Share of Total,cosine,19
+7,0.253,0.134,0.954,Share of Top 30 (L1 Norm),cosine,10
+7,0.253,0.127,0.954,Share of Total,cosine,10
+8,0.29,0.159,0.778,Share of Top 30 (L1 Norm),cosine,19
+8,0.29,0.151,0.778,Share of Total,cosine,19
+8,0.288,0.163,0.885,Share of Top 30 (L1 Norm),cosine,12
+8,0.288,0.15,0.885,Share of Total,cosine,12
+8,0.287,0.161,0.864,Share of Top 30 (L1 Norm),cosine,17
+8,0.287,0.15,0.864,Share of Total,cosine,17
+8,0.285,0.156,0.762,Share of Top 30 (L1 Norm),cosine,20
+8,0.285,0.149,0.762,Share of Total,cosine,20
+8,0.284,0.159,0.8,Share of Top 30 (L1 Norm),cosine,18
+8,0.284,0.149,0.8,Share of Total,cosine,18
+8,0.283,0.155,0.932,Share of Top 30 (L1 Norm),cosine,13
+8,0.283,0.143,0.932,Share of Total,cosine,13
+8,0.28,0.156,0.844,Share of Top 30 (L1 Norm),cosine,14
+8,0.28,0.143,0.844,Share of Total,cosine,14
+8,0.279,0.156,0.918,Share of Top 30 (L1 Norm),cosine,16
+8,0.279,0.156,0.877,Share of Top 30 (L1 Norm),cosine,15
+8,0.279,0.146,0.918,Share of Total,cosine,16
+8,0.279,0.144,0.877,Share of Total,cosine,15
+8,0.277,0.179,0.991,Share of Top 30 (L1 Norm),cosine,5
+8,0.277,0.159,0.968,Share of Top 30 (L1 Norm),cosine,8
+8,0.277,0.15,0.968,Share of Total,cosine,8
+8,0.277,0.149,0.991,Share of Total,cosine,5
+8,0.276,0.157,0.916,Share of Top 30 (L1 Norm),cosine,7
+8,0.276,0.156,0.859,Share of Top 30 (L1 Norm),cosine,9
+8,0.276,0.148,0.916,Share of Total,cosine,7
+8,0.276,0.146,0.859,Share of Total,cosine,9
+8,0.275,0.152,0.966,Share of Top 30 (L1 Norm),cosine,10
+8,0.275,0.142,0.966,Share of Total,cosine,10
+8,0.274,0.158,0.99,Share of Top 30 (L1 Norm),cosine,6
+8,0.274,0.148,0.99,Share of Total,cosine,6
+8,0.268,0.158,0.906,Share of Top 30 (L1 Norm),cosine,11
+8,0.268,0.14,0.906,Share of Total,cosine,11
+9,0.297,0.167,0.847,Share of Top 30 (L1 Norm),cosine,12
+9,0.297,0.155,0.847,Share of Total,cosine,12
+9,0.287,0.157,0.921,Share of Top 30 (L1 Norm),cosine,19
+9,0.287,0.157,0.848,Share of Top 30 (L1 Norm),cosine,20
+9,0.287,0.148,0.848,Share of Total,cosine,20
+9,0.287,0.147,0.921,Share of Total,cosine,19
+9,0.284,0.155,0.85,Share of Top 30 (L1 Norm),cosine,13
+9,0.284,0.146,0.85,Share of Total,cosine,13
+9,0.281,0.16,0.787,Share of Top 30 (L1 Norm),cosine,15
+9,0.281,0.148,0.787,Share of Total,cosine,15
+9,0.279,0.155,0.826,Share of Top 30 (L1 Norm),cosine,14
+9,0.279,0.145,0.826,Share of Total,cosine,14
+9,0.278,0.161,0.858,Share of Top 30 (L1 Norm),cosine,11
+9,0.278,0.147,0.858,Share of Total,cosine,11
+9,0.276,0.172,0.997,Share of Top 30 (L1 Norm),cosine,5
+9,0.276,0.155,0.859,Share of Top 30 (L1 Norm),cosine,10
+9,0.276,0.154,0.997,Share of Total,cosine,5
+9,0.276,0.144,0.859,Share of Total,cosine,10
+9,0.274,0.167,0.917,Share of Top 30 (L1 Norm),cosine,7
+9,0.274,0.152,0.917,Share of Total,cosine,7
+9,0.272,0.153,0.76,Share of Top 30 (L1 Norm),cosine,17
+9,0.272,0.141,0.76,Share of Total,cosine,17
+9,0.271,0.17,0.939,Share of Top 30 (L1 Norm),cosine,6
+9,0.271,0.151,0.939,Share of Total,cosine,6
+9,0.27,0.157,0.765,Share of Top 30 (L1 Norm),cosine,16
+9,0.27,0.144,0.765,Share of Total,cosine,16
+9,0.269,0.15,0.828,Share of Top 30 (L1 Norm),cosine,18
+9,0.269,0.137,0.828,Share of Total,cosine,18
+9,0.267,0.162,0.91,Share of Top 30 (L1 Norm),cosine,8
+9,0.267,0.15,0.91,Share of Total,cosine,8
+9,0.264,0.157,0.788,Share of Top 30 (L1 Norm),cosine,9
+9,0.264,0.145,0.788,Share of Total,cosine,9
+10,0.288,0.169,0.985,Share of Top 30 (L1 Norm),cosine,6
+10,0.288,0.155,0.985,Share of Total,cosine,6
+10,0.284,0.162,0.974,Share of Top 30 (L1 Norm),cosine,5
+10,0.284,0.152,0.974,Share of Total,cosine,5
+10,0.279,0.162,0.973,Share of Top 30 (L1 Norm),cosine,8
+10,0.279,0.16,0.939,Share of Top 30 (L1 Norm),cosine,7
+10,0.279,0.15,0.939,Share of Total,cosine,7
+10,0.279,0.149,0.973,Share of Total,cosine,8
+10,0.278,0.161,0.889,Share of Top 30 (L1 Norm),cosine,11
+10,0.278,0.148,0.889,Share of Total,cosine,11
+10,0.276,0.157,0.934,Share of Top 30 (L1 Norm),cosine,9
+10,0.276,0.146,0.934,Share of Total,cosine,9
+10,0.275,0.155,0.856,Share of Top 30 (L1 Norm),cosine,12
+10,0.275,0.145,0.856,Share of Total,cosine,12
+10,0.274,0.157,0.85,Share of Top 30 (L1 Norm),cosine,10
+10,0.274,0.145,0.85,Share of Total,cosine,10
+10,0.266,0.146,0.818,Share of Top 30 (L1 Norm),cosine,14
+10,0.266,0.136,0.818,Share of Total,cosine,14
+10,0.265,0.148,0.757,Share of Top 30 (L1 Norm),cosine,16
+10,0.265,0.139,0.757,Share of Total,cosine,16
+10,0.264,0.146,0.777,Share of Top 30 (L1 Norm),cosine,15
+10,0.264,0.138,0.777,Share of Total,cosine,15
+10,0.262,0.143,0.82,Share of Top 30 (L1 Norm),cosine,13
+10,0.262,0.134,0.82,Share of Total,cosine,13
+10,0.261,0.142,0.77,Share of Top 30 (L1 Norm),cosine,18
+10,0.261,0.141,0.777,Share of Top 30 (L1 Norm),cosine,17
+10,0.261,0.135,0.777,Share of Total,cosine,17
+10,0.261,0.134,0.77,Share of Total,cosine,18
+10,0.258,0.14,0.754,Share of Top 30 (L1 Norm),cosine,19
+10,0.258,0.134,0.754,Share of Total,cosine,19
+10,0.251,0.134,0.718,Share of Top 30 (L1 Norm),cosine,20
+10,0.251,0.129,0.718,Share of Total,cosine,20
+11,0.268,0.154,0.978,Share of Top 30 (L1 Norm),cosine,6
+11,0.268,0.138,0.978,Share of Total,cosine,6
+11,0.266,0.146,0.807,Share of Top 30 (L1 Norm),cosine,12
+11,0.266,0.136,0.807,Share of Total,cosine,12
+11,0.265,0.145,0.846,Share of Top 30 (L1 Norm),cosine,11
+11,0.265,0.135,0.846,Share of Total,cosine,11
+11,0.26,0.141,0.682,Share of Top 30 (L1 Norm),cosine,19
+11,0.26,0.132,0.682,Share of Total,cosine,19
+11,0.259,0.141,0.989,Share of Top 30 (L1 Norm),cosine,7
+11,0.259,0.137,0.989,Share of Total,cosine,7
+11,0.257,0.138,0.661,Share of Top 30 (L1 Norm),cosine,20
+11,0.257,0.137,0.782,Share of Top 30 (L1 Norm),cosine,14
+11,0.257,0.131,0.782,Share of Total,cosine,14
+11,0.257,0.129,0.661,Share of Total,cosine,20
+11,0.255,0.139,0.895,Share of Top 30 (L1 Norm),cosine,10
+11,0.255,0.133,0.895,Share of Total,cosine,10
+11,0.252,0.138,0.95,Share of Top 30 (L1 Norm),cosine,9
+11,0.252,0.131,0.95,Share of Total,cosine,9
+11,0.251,0.134,0.689,Share of Top 30 (L1 Norm),cosine,16
+11,0.251,0.129,0.689,Share of Total,cosine,16
+11,0.246,0.132,0.77,Share of Top 30 (L1 Norm),cosine,15
+11,0.246,0.127,0.77,Share of Total,cosine,15
+11,0.244,0.127,0.757,Share of Top 30 (L1 Norm),cosine,13
+11,0.244,0.123,0.757,Share of Total,cosine,13
+11,0.242,0.136,0.979,Share of Top 30 (L1 Norm),cosine,8
+11,0.242,0.136,0.942,Share of Top 30 (L1 Norm),cosine,5
+11,0.242,0.134,0.942,Share of Total,cosine,5
+11,0.242,0.126,0.979,Share of Total,cosine,8
+11,0.239,0.126,0.651,Share of Top 30 (L1 Norm),cosine,18
+11,0.239,0.121,0.651,Share of Total,cosine,18
+11,0.233,0.122,0.693,Share of Top 30 (L1 Norm),cosine,17
+11,0.233,0.119,0.693,Share of Total,cosine,17
+12,0.256,0.137,0.649,Share of Top 30 (L1 Norm),cosine,20
+12,0.256,0.129,0.649,Share of Total,cosine,20
+12,0.252,0.135,0.615,Share of Top 30 (L1 Norm),cosine,19
+12,0.252,0.128,0.615,Share of Total,cosine,19
+12,0.246,0.13,0.613,Share of Top 30 (L1 Norm),cosine,18
+12,0.246,0.125,0.613,Share of Total,cosine,18
+12,0.243,0.14,0.918,Share of Top 30 (L1 Norm),cosine,9
+12,0.243,0.133,0.918,Share of Total,cosine,9
+12,0.24,0.138,0.817,Share of Top 30 (L1 Norm),cosine,10
+12,0.24,0.132,0.817,Share of Total,cosine,10
+12,0.238,0.135,0.964,Share of Top 30 (L1 Norm),cosine,6
+12,0.238,0.133,0.787,Share of Top 30 (L1 Norm),cosine,11
+12,0.238,0.13,0.787,Share of Total,cosine,11
+12,0.238,0.126,0.964,Share of Total,cosine,6
+12,0.238,0.125,0.714,Share of Top 30 (L1 Norm),cosine,15
+12,0.238,0.121,0.714,Share of Total,cosine,15
+12,0.232,0.135,0.839,Share of Top 30 (L1 Norm),cosine,8
+12,0.232,0.127,0.839,Share of Total,cosine,8
+12,0.232,0.122,0.678,Share of Top 30 (L1 Norm),cosine,14
+12,0.232,0.117,0.678,Share of Total,cosine,14
+12,0.23,0.126,0.696,Share of Top 30 (L1 Norm),cosine,12
+12,0.23,0.122,0.696,Share of Total,cosine,12
+12,0.23,0.121,0.676,Share of Top 30 (L1 Norm),cosine,16
+12,0.23,0.116,0.676,Share of Total,cosine,16
+12,0.226,0.127,0.938,Share of Top 30 (L1 Norm),cosine,7
+12,0.226,0.118,0.938,Share of Total,cosine,7
+12,0.226,0.117,0.617,Share of Top 30 (L1 Norm),cosine,17
+12,0.226,0.115,0.617,Share of Total,cosine,17
+12,0.224,0.117,0.701,Share of Top 30 (L1 Norm),cosine,13
+12,0.224,0.113,0.701,Share of Total,cosine,13
+12,0.223,0.129,0.892,Share of Top 30 (L1 Norm),cosine,5
+12,0.223,0.122,0.892,Share of Total,cosine,5
+13,0.249,0.139,0.94,Share of Top 30 (L1 Norm),cosine,6
+13,0.249,0.13,0.94,Share of Total,cosine,6
+13,0.245,0.131,0.684,Share of Top 30 (L1 Norm),cosine,15
+13,0.245,0.123,0.684,Share of Total,cosine,15
+13,0.244,0.136,0.881,Share of Top 30 (L1 Norm),cosine,11
+13,0.244,0.13,0.881,Share of Total,cosine,11
+13,0.243,0.14,0.834,Share of Top 30 (L1 Norm),cosine,10
+13,0.243,0.133,0.834,Share of Total,cosine,10
+13,0.24,0.126,0.593,Share of Top 30 (L1 Norm),cosine,19
+13,0.24,0.126,0.584,Share of Top 30 (L1 Norm),cosine,20
+13,0.24,0.12,0.593,Share of Total,cosine,19
+13,0.24,0.12,0.584,Share of Total,cosine,20
+13,0.239,0.123,0.624,Share of Top 30 (L1 Norm),cosine,16
+13,0.239,0.119,0.624,Share of Total,cosine,16
+13,0.237,0.122,0.613,Share of Top 30 (L1 Norm),cosine,17
+13,0.237,0.118,0.613,Share of Total,cosine,17
+13,0.236,0.123,0.604,Share of Top 30 (L1 Norm),cosine,18
+13,0.236,0.119,0.604,Share of Total,cosine,18
+13,0.233,0.131,0.819,Share of Top 30 (L1 Norm),cosine,9
+13,0.233,0.124,0.819,Share of Total,cosine,9
+13,0.233,0.124,0.653,Share of Top 30 (L1 Norm),cosine,14
+13,0.233,0.117,0.653,Share of Total,cosine,14
+13,0.225,0.127,0.826,Share of Top 30 (L1 Norm),cosine,8
+13,0.225,0.122,0.704,Share of Top 30 (L1 Norm),cosine,12
+13,0.225,0.119,0.704,Share of Total,cosine,12
+13,0.225,0.118,0.826,Share of Total,cosine,8
+13,0.223,0.126,0.835,Share of Top 30 (L1 Norm),cosine,5
+13,0.223,0.12,0.835,Share of Total,cosine,5
+13,0.218,0.116,0.664,Share of Top 30 (L1 Norm),cosine,13
+13,0.218,0.111,0.664,Share of Total,cosine,13
+13,0.21,0.114,0.853,Share of Top 30 (L1 Norm),cosine,7
+13,0.21,0.107,0.853,Share of Total,cosine,7
+14,0.243,0.135,0.802,Share of Top 30 (L1 Norm),cosine,11
+14,0.243,0.132,0.802,Share of Total,cosine,11
+14,0.242,0.136,0.807,Share of Top 30 (L1 Norm),cosine,9
+14,0.242,0.129,0.807,Share of Total,cosine,9
+14,0.241,0.135,0.786,Share of Top 30 (L1 Norm),cosine,10
+14,0.241,0.128,0.786,Share of Total,cosine,10
+14,0.235,0.13,0.874,Share of Top 30 (L1 Norm),cosine,6
+14,0.235,0.121,0.874,Share of Total,cosine,6
+14,0.234,0.131,0.862,Share of Top 30 (L1 Norm),cosine,8
+14,0.234,0.124,0.862,Share of Total,cosine,8
+14,0.233,0.119,0.632,Share of Top 30 (L1 Norm),cosine,16
+14,0.233,0.116,0.632,Share of Total,cosine,16
+14,0.232,0.123,0.625,Share of Top 30 (L1 Norm),cosine,14
+14,0.232,0.118,0.625,Share of Total,cosine,14
+14,0.232,0.117,0.625,Share of Top 30 (L1 Norm),cosine,17
+14,0.232,0.114,0.625,Share of Total,cosine,17
+14,0.226,0.129,0.921,Share of Top 30 (L1 Norm),cosine,5
+14,0.226,0.122,0.921,Share of Total,cosine,5
+14,0.223,0.116,0.581,Share of Top 30 (L1 Norm),cosine,19
+14,0.223,0.113,0.581,Share of Total,cosine,19
+14,0.222,0.118,0.658,Share of Top 30 (L1 Norm),cosine,15
+14,0.222,0.116,0.587,Share of Top 30 (L1 Norm),cosine,20
+14,0.222,0.114,0.658,Share of Total,cosine,15
+14,0.222,0.109,0.587,Share of Total,cosine,20
+14,0.217,0.114,0.628,Share of Top 30 (L1 Norm),cosine,13
+14,0.217,0.112,0.628,Share of Total,cosine,13
+14,0.212,0.113,0.731,Share of Top 30 (L1 Norm),cosine,12
+14,0.212,0.11,0.731,Share of Total,cosine,12
+14,0.211,0.116,0.868,Share of Top 30 (L1 Norm),cosine,7
+14,0.211,0.108,0.589,Share of Top 30 (L1 Norm),cosine,18
+14,0.211,0.106,0.868,Share of Total,cosine,7
+14,0.211,0.105,0.589,Share of Total,cosine,18

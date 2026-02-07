@@ -87,7 +87,7 @@ class PageCommon(BasePage):
         selected_features = self.get_selected_features(cols_nom_denom)
         years_selected = sorted({st.session_state["year_1"], st.session_state["year_2"]})
         df_result = self.get_df_result(df_data, selected_features, geo_scale, years_selected, give_total=True)
-        self.tab_clustering(df_result, df_data, years_selected, selected_features, geo_scale)
+        self.tab_clustering(df_result, "",df_data, years_selected, selected_features, geo_scale)
 
     def render(self):
         self._apply_custom_css()
