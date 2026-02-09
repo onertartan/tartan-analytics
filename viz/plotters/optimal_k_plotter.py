@@ -4,7 +4,7 @@ from kneed import KneeLocator
 from matplotlib import pyplot as plt
 import streamlit as st
 
-from clustering.base_clustering import Clustering
+from clustering.base_clustering import BaseClustering
 from clustering.models.kmeans import KMeansEngine
 from clustering.models.gmm import GMMEngine
 

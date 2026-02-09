@@ -195,7 +195,7 @@ class PCAPlotter:
         ax.set_ylabel("Percentage Cumulative of Explained Variance")
         ax.set_xlabel("Number of Components")
         ax.set_title("Explained Variance by Component")
-        st.pyplot()
+        st.pyplot(fig)
         return fig, (pca_raw, pca_clr)
     def plot_pca_old(self, df_pivot, df_clusters, dense_threshold, mid_threshold, colors, title=""):
         fig, ax = plt.subplots(1, 1, figsize=(10, 6))

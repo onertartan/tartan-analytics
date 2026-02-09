@@ -8,15 +8,15 @@ import pandas as pd
 from sklearn.metrics import silhouette_score, davies_bouldin_score
 from sklearn.mixture import GaussianMixture
 
-from clustering.base_clustering import Clustering
+from clustering.base_clustering import BaseClustering
 from clustering.evaluation.stability import stability_and_consensus
 import streamlit as st
 import time
-class GMMEngine(Clustering):
+class GMMEngine(BaseClustering):
     """
     A clean Gaussian Mixture clustering engine for tabular data.
     """
-    def __init__(self, n_cluster: int, n_init: int,  random_state: int = 1,  covariance_type: str = ""):
+    def __init__(self, n_clusters: int, n_init: int,  random_state: int = 1,  covariance_type: str = ""):
         """
         Parameters
         ----------
@@ -30,12 +30,26 @@ class GMMEngine(Clustering):
             Random seed for reproducibility.
         """
         self.model = GaussianMixture(
-            n_components=n_cluster,
+            n_components=n_clusters,
             covariance_type=covariance_type,
             n_init=n_init,
             random_state=random_state
         )
         self.metric_for_silhouette = "euclidean"
+    @classmethod
+    def optimal_k_analysis(cls,
+        df: pd.DataFrame,
+        random_states: list[int],
+        k_values: range,
+        model_kwargs: dict,
+        save_folder: str,
+        saved_file_suffix: str = "",
+        model_specific_metrics: list[str] = []
+        ):
+        saved_file_suffix = f"{model_kwargs['covariance_type']}_{saved_file_suffix}"
+        return super().optimal_k_analysis(df, random_states, k_values, model_kwargs, save_folder,saved_file_suffix, model_specific_metrics)
+
+
 
     def probabilities(self, df: pd.DataFrame) -> np.ndarray:
         """

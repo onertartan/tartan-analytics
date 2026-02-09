@@ -9,11 +9,11 @@ from scipy.cluster.hierarchy import linkage, fcluster, dendrogram
 from scipy.spatial.distance import pdist
 from sklearn.metrics import silhouette_score, davies_bouldin_score
 
-from clustering.base_clustering import Clustering
+from clustering.base_clustering import BaseClustering
 from clustering.evaluation.stability import stability_and_consensus
 
 
-class HierarchicalClusteringEngine(Clustering):
+class HierarchicalBaseClusteringEngine(BaseClustering):
     """
     Agglomerative hierarchical clustering engine.
     Deterministic for fixed metric and linkage.
@@ -33,6 +33,8 @@ class HierarchicalClusteringEngine(Clustering):
         self.Z = None
         self.metric_for_silhouette = "cosine"
         self.model = self  # for interface compatibility
+
+
     # ------------------------------------------------------------------
     def fit_predict(self, df: pd.DataFrame) -> pd.DataFrame:
         # ---- build full hierarchy (deterministic) ----

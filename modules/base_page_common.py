@@ -127,6 +127,7 @@ class PageCommon(BasePage):
         df_pivot = df_pivot.groupby(level=1).sum()
         #df_pivot = scale(df_pivot)
         return df_pivot
+
     def get_df_result(self, df_data, selected_features, geo_scale, years, give_total=True):
         clustering = st.session_state["clustering_" + st.session_state["page_name"]]
         df_result = df_nom_result = self.get_df_year_and_features(df_data, "nominator", years, selected_features, geo_scale, not clustering)

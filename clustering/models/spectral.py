@@ -8,21 +8,21 @@ from sklearn.metrics import silhouette_score, davies_bouldin_score
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.neighbors import NearestNeighbors
 
-from clustering.base_clustering import Clustering
+from clustering.base_clustering import BaseClustering
 from clustering.evaluation.stability import stability_and_consensus
 
 
-class SpectralClusteringEngine(Clustering):
+class SpectralClusteringEngine(BaseClustering):
 
-    def __init__(self, n_cluster: int,
+    def __init__(self, n_clusters: int,
                  n_neighbors: int,
                  random_state: int = 1,
                  affinity: str = "",
                  assign_labels: str = ""):
         self.n_neighbors = n_neighbors
         self.metric_for_silhouette = "euclidean"
-        self.affinity=affinity
-        self.model = SpectralClustering(n_clusters=n_cluster, affinity=affinity, n_neighbors=n_neighbors, assign_labels=assign_labels, random_state=random_state)
+        self.affinity = affinity
+        self.model = SpectralClustering(n_clusters=n_clusters, affinity=affinity, n_neighbors=n_neighbors, assign_labels=assign_labels, random_state=random_state)
 
    # Overrides fit_predict method inhertited from Clustering class
     def fit_predict(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -38,3 +38,24 @@ class SpectralClusteringEngine(Clustering):
 
         labels = self.model.fit_predict(df_out) + 1
         return labels
+
+    @classmethod
+    def optimal_k_analysis(cls,
+        df: pd.DataFrame,
+        random_states: list[int],
+        k_values: range,
+        model_kwargs: dict,
+        save_folder: str,
+        saved_file_suffix: str = "",
+        model_specific_metrics: list[str] = []
+        ):
+        affinity = model_kwargs["affinity"]
+        saved_file_suffix = f"{affinity}_{saved_file_suffix}"
+        n_range = range(4, 11) #if self.affinity == "nearest_neighbors" else range(1, 2)
+        for n in n_range:
+            model_kwargs["n_neighbors"] = n
+            df_summary, metrics_all, metrics_mean, ari_mean, ari_std, consensus_labels_all = super().optimal_k_analysis(
+            df, random_states, k_values, model_kwargs, save_folder, saved_file_suffix+f"_{n}", model_specific_metrics)
+            st.write(f"Completed optimal k analysis for n_neighbors={n}")
+        # returns the results for the last n
+        return df_summary, metrics_all, metrics_mean, ari_mean, ari_std, consensus_labels_all

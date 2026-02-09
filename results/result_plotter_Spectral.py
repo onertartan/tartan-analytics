@@ -17,18 +17,27 @@ DEFAULT_SCALER_ABBR = {
     "TF-IDF": "TF",
     "L2 Normalization": "L2",
 }
-def _parse_spectral_filename(fname: Path,geometry:str):
-    m = re.match(rf"(.+?)_({re.escape(geometry)})_(\d{{4}}_\d{{4}})_(\d+)\.csv",fname.name)
-
+def _parse_spectral_filename(fname: Path,geometry):
+    """
+    Expected filename format:
+    {affinity}_{scaler}_{year1}_{year2}_{n}.csv
+    Examples:
+    nearest_neighbors_Share of Total_2018_2024_5.csv
+    rbf_TF-IDF_2018_2024_10.csv
+    """
+    m = re.match(
+        r"^(nearest_neighbors|rbf)_(.+?)_(\d{4}_\d{4})_(\d+)\.csv$",
+        fname.name
+    )
     if m is None:
         return None
 
-    scaler = m.group(1)
-    geometry = m.group(2)
-    year_range = m.group(3)
-    n_neighbors = int(m.group(4))
+    affinity = m.group(1)          # nearest_neighbors | rbf
+    scaler = m.group(2)            # may contain spaces
+    year_range = m.group(3)        # 2018_2024
+    n_neighbors = int(m.group(4))  # kNN size (or gamma index if rbf)
+    return affinity, scaler, year_range, n_neighbors
 
-    return geometry, scaler, year_range, n_neighbors
 
 def load_spectral_results(data_dir, geometry):
     data_dir +="/SpectralClusteringEngine"
@@ -233,7 +242,8 @@ def plot_spectral_k_analysis_two_geometries(
 
             #axes[i][0].annotate(geom.capitalize(),xy=(-0.15, 0.5),xycoords="axes fraction", fontsize=11, fontweight="bold", rotation=90,va="center")
 
-        k_vals = np.sort(dfs[geometries[0]]["k"].unique())
+        df_first = dfs[geometries[0]] # dfs is a dict, so we take the first geometry's df to get the k values for x-axis ticks
+        k_vals = np.sort(df_first[df_first["k"]<= MAX_K_TO_PLOT]["k"].unique())
         for ax in axes.flat:
             ax.set_xticks(k_vals)
             ax.set_xlabel("Number of clusters (k)")

@@ -12,7 +12,7 @@ from sklearn.metrics import (
 from clustering.evaluation.stability import stability_and_consensus
 
 
-class Clustering:
+class BaseClustering:
     """
     Unified clustering factory.
     Creates the correct engine and executes fit().
@@ -130,17 +130,18 @@ class Clustering:
             gdf_centroids["centroid"] = gdf_centroids.geometry.centroid
         return gdf_clusters, gdf_centroids
 
+
     @classmethod
     def optimal_k_analysis(cls,
         df: pd.DataFrame,
         random_states: list[int],
         k_values: range,
         model_kwargs: dict,
-        extra_metrics: dict = None,            # e.g., {"Calinski-Harabasz": calinski_harabasz_score}
-        progress_callback: callable = None     # Optional: function to update progress (for UI)
+        save_folder: str,
+        saved_file_suffix: str = "",
+        model_specific_metrics: list[str] = []           # e.g., {"Calinski-Harabasz": calinski_harabasz_score}
     ):
         n_samples = df.shape[0]
-
         metrics_all = {"Silhouette Score (cosine)": [], "Silhouette Score (euclidean)": [], "Davies-Bouldin Index": []}
         if cls.__name__ == "KMeansEngine":
             metrics_all["Inertia"] = []
@@ -164,7 +165,9 @@ class Clustering:
             seed_start = time.time()
 
             for k in k_values:
-                engine = cls(n_cluster=k, random_state=random_state, **model_kwargs)
+                if "n_clusters" in model_kwargs:
+                    model_kwargs["n_clusters"] = k
+                engine = cls(random_state=random_state, **model_kwargs)
                 labels = engine.fit_predict(df)
                 silhouettes_cosine.append(silhouette_score(df, labels, metric="cosine"))
                 silhouettes_euclidean.append(silhouette_score(df, labels, metric="euclidean"))
@@ -206,6 +209,8 @@ class Clustering:
             stability_and_consensus(labels_all=labels_all, k_values=k_values, random_states=random_states,
                                     n_samples=n_samples)
         df_summary = cls.summarize(metrics_all, ari_mean, ari_std,  k_values)
+        df_summary.to_csv(f"{save_folder}/{saved_file_suffix}.csv")
+        pd.DataFrame(consensus_labels_all).to_csv(f"{save_folder}/consensus_labels_all_{saved_file_suffix}.csv")
         return df_summary, metrics_all, metrics_mean, ari_mean, ari_std,  consensus_labels_all
 
     @staticmethod
